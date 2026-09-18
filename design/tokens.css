@@ -1,0 +1,52 @@
+:root {
+  --accent: #1f8a5e;
+  --accent-hover: #166a48;
+  --accent-soft: #e6f4ee;
+  --negative: #b42318;
+  --negative-soft: #fbeae7;
+  --transfer: #2f6fdb;
+  --transfer-soft: #e8effc;
+  --warning: #b45309;
+  --warning-soft: #fdf1e3;
+  --ink: #111827;
+  --ink-2: #5b6472;
+  --ink-3: #8a93a1;
+  --neutral-soft: #eef0f3;
+  --border: #e4e7eb;
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+
+  --font: 'Nunito Sans', system-ui, sans-serif;
+  --text-display: 700 32px/40px var(--font);
+  --text-h1: 700 24px/32px var(--font);
+  --text-h2: 700 18px/26px var(--font);
+  --text-body: 400 15px/22px var(--font);
+  --text-table: 400 14px/20px var(--font);
+  --text-caption: 600 12px/16px var(--font);
+  --tracking-display: -.01em;
+  --tracking-caption: .06em;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-control: 6px;
+  --radius-chip: 8px;
+  --radius-card: 12px;
+
+  --h-row: 44px;
+  --h-input: 40px;
+  --h-button: 36px;
+  --h-compact: 32px;
+
+  --focus-ring: 0 0 0 3px var(--accent-soft);
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
