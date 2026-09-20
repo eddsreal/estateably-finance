@@ -4,19 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Estateably Finance — Design system</title>
-<!--
-  Self-contained visual reference. No network, no dependencies, no build step:
-  open it in any browser. Rewritten from the claude.ai/design preview, whose runtime
-  (DCLogic + React + Babel, all loaded from a CDN) is deliberately not vendored.
-
-  What is missing versus the original: live picker interactivity. The panels below are
-  rendered open so their design is visible; the behaviour they are supposed to have is
-  specified in design-system.md § "Pickers — ours, never the browser's".
-
-  Token values are duplicated here as literal hexes because this page is a rendering of
-  the design, not application code. tokens.css is the source of truth for anything you
-  implement. If you change a token, update this page to match.
--->
 <style>
 body{margin:0;background:#f6f7f9;color:#111827;font-family:'Nunito Sans',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:#1f8a5e}a:hover{color:#166a48}
@@ -181,8 +168,6 @@ button{font-family:inherit}
 
 </div>
 <script>
-// Applies the authored `style-hover` declarations. Keeps hover states in the markup
-// next to the base style, the way the original preview wrote them.
 for (const el of document.querySelectorAll('[style-hover]')) {
   const base = el.getAttribute('style') || '';
   const hover = el.getAttribute('style-hover');
