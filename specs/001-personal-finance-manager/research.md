@@ -215,7 +215,7 @@ demands deterministic, no external service).
 
 | Code                    | HTTP | When                                                                                                                                                                                                         |
 | ----------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `VALIDATION_FAILED`     | 400  | DTO validation: shape, pattern, money guard, dates, limits                                                                                                                                                   |
+| `VALIDATION_FAILED`     | 400  | DTO validation: shape, pattern, money guard, per-intent sign (a non-positive amount on expense/income/transfer, a zero opening balance in an update), dates, limits                                          |
 | `NOT_FOUND`             | 404  | route id does not exist (or is soft-deleted)                                                                                                                                                                 |
 | `DUPLICATE_NAME`        | 409  | unique-name violation (accounts, categories, projects)                                                                                                                                                       |
 | `DOMAIN_RULE_VIOLATION` | 422  | typed domain errors: archived account, category type mismatch, same-account transfer, closed project, project on non-expense, delete of a used project, opening-kind change, future date, range > 24 months… |
@@ -235,10 +235,17 @@ FR-015 requires distinguishing three LLM failures plus not-configured).
 **Decision**: Anthropic Messages API called with native `fetch` (no SDK) and
 `AbortSignal.timeout(LLM_TIMEOUT_MS)`, no retries. `LLM_API_KEY` is the Anthropic key. Model
 is the constant `claude-haiku-4-5-20251001` in the `ai` module (economical; a constant, not an
-env var — FR-035 closes the variable list; comment names the ceiling: promote to configuration
-if model choice ever needs to vary per environment). Empty key → `AI_NOT_CONFIGURED` without
-any network call; timeout/429/other map per R-011 via the global filter. The deterministic
-FR-014 report is computed locally and never touched by any provider failure.
+env var; comment names the ceiling: promote to configuration if model choice ever needs to
+vary per environment). The assumed provider contract is pinned here, since no SDK absorbs
+changes: `POST {LLM_BASE_URL}/v1/messages` with headers `x-api-key: {LLM_API_KEY}` and
+`anthropic-version: 2023-06-01`; the narrative is read from `content[0].text` of the JSON
+response; HTTP 429 → `AI_RATE_LIMITED`, any other non-2xx → `AI_PROVIDER_ERROR`. The base URL
+comes from `LLM_BASE_URL` (FR-035 as amended 2026-09-21, default `https://api.anthropic.com`):
+the API e2e suite points it at a local HTTP stub to exercise `AI_PROVIDER_ERROR`,
+`AI_RATE_LIMITED` and `AI_TIMEOUT` end to end through the real global filter. Empty key →
+`AI_NOT_CONFIGURED` without any network call; timeout/429/other map per R-011 via the global
+filter. The deterministic FR-014 report is computed locally and never touched by any provider
+failure.
 **Alternatives**: `@anthropic-ai/sdk` (rejected: one bounded POST does not justify a runtime
 dependency — constitution prefers the platform).
 
@@ -256,9 +263,13 @@ report/projection. Run manually (not CI). quickstart.md documents how to run it.
 ## R-014. `/docs` — static Swagger UI from the frozen contract
 
 **Decision**: no `@nestjs/swagger`. `contracts/openapi.yaml` is both the frozen contract
-(Principle IV) and the complete API documentation. The web build copies `swagger-ui-dist`
-assets plus a copy of `openapi.yaml` into `public/docs`; served identically by Vite (dev) and
-nginx (compose) at `/docs`, no CDN, API untouched. The page documents the agreed contract,
+(Principle IV) and the complete API documentation, and it is the **single source copy**:
+codegen and the `/docs` build read it from `specs/001-personal-finance-manager/contracts/`
+directly (no duplicate under `packages/contract`). The web build copies `swagger-ui-dist`
+assets plus that yaml into `public/docs` as build output; served identically by Vite (dev)
+and nginx (compose) at `/docs`, no CDN, API untouched. The one copy Prisma forces
+(`apps/api/prisma/schema.prisma`) is byte-diffed against the frozen schema by
+`contract:check`. The page documents the agreed contract,
 not what the code happens to expose. Drift guards replace decorator-generated docs:
 
 1. `contract:check` (CI): instantiates `AppModule` without listening, lists Nest's registered
@@ -315,6 +326,10 @@ does not need).
   or description in a log line.
 - **Env vars** (`.env.example`, complete list per FR-035 as amended): `APP_TIMEZONE=UTC`,
   `LOG_LEVEL=info`, `LLM_API_KEY=`, `LLM_TIMEOUT_MS=10000`,
-  `CORS_ORIGINS=http://localhost:5173,http://localhost:8080`, `DATABASE_URL`.
+  `LLM_BASE_URL=https://api.anthropic.com`,
+  `CORS_ORIGINS=http://localhost:5173,http://localhost:8080`, and
+  `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/finance` (the dev-against-
+  compose-postgres default; compose injects its own). `NODE_ENV` is a platform convention,
+  not an FR-035 variable: compose sets `production` (R-006), dev leaves it unset.
 - **Pagination**: `limit`/`offset`, default 50, max 200 (above → `VALIDATION_FAILED`), `total`
   in every list response.

@@ -20,12 +20,12 @@ Light theme only. No dark mode until a spec asks for one.
 Exactly four, matching the ledger intents (Constitution III). Never show debits, credits or
 system accounts.
 
-| Kind | Glyph | Colour | Chip background |
-|---|---|---|---|
-| Expense | `↑` | `--negative` | `--negative-soft` |
-| Income | `↓` | `--accent` | `--accent-soft` |
-| Transfer | `⇄` | `--transfer` | `--transfer-soft` |
-| Opening balance | `●` | `--ink-2` | `--neutral-soft` |
+| Kind            | Glyph | Colour       | Chip background   |
+| --------------- | ----- | ------------ | ----------------- |
+| Expense         | `↑`   | `--negative` | `--negative-soft` |
+| Income          | `↓`   | `--accent`   | `--accent-soft`   |
+| Transfer        | `⇄`   | `--transfer` | `--transfer-soft` |
+| Opening balance | `●`   | `--ink-2`    | `--neutral-soft`  |
 
 Keep the arrow glyphs rather than swapping in an icon set — kind has to read at a glance in a
 dense table.
@@ -41,6 +41,9 @@ A trigger button plus a floating panel, so chrome, type and focus ring match eve
 behave identically on every OS.
 
 - `position: fixed`, portalled out of the card, so the panel escapes overflow clipping.
+- Keyboard: opening moves focus into the panel; arrow keys move the active option (or day),
+  `Enter` selects and closes, `Escape` closes without selecting; either way focus returns to
+  the trigger. `Tab` leaves the picker entirely (FR-034).
 - Closes on outside click, on `Escape`, and on scroll.
 - Flips above the trigger when there is no room below.
 - **Date**: the title is a button — one tap gives the month grid, two the 12-year grid, and the

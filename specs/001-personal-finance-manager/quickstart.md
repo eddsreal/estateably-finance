@@ -34,34 +34,36 @@ pnpm db:migrate && pnpm db:seed
 pnpm dev                            # api on :3000, web (Vite) on :5173
 ```
 
-## Environment (complete list, FR-035 — never invent another variable)
+## Environment (complete list — the FR-035 seven plus one platform convention; never invent another)
 
-| Variable         | Default                                       | Purpose                                                     |
-| ---------------- | --------------------------------------------- | ----------------------------------------------------------- |
-| `DATABASE_URL`   | compose-provided                              | PostgreSQL connection                                       |
-| `APP_TIMEZONE`   | `UTC`                                         | The timezone that defines "today"                           |
-| `LOG_LEVEL`      | `info`                                        | JSON log level                                              |
-| `LLM_API_KEY`    | _(empty = AI disabled)_                       | Anthropic key for the narrative                             |
-| `LLM_TIMEOUT_MS` | `10000`                                       | LLM call timeout                                            |
-| `CORS_ORIGINS`   | `http://localhost:5173,http://localhost:8080` | Comma-separated browser-origin allowlist for the API's CORS |
+| Variable         | Default                                                 | Purpose                                                                         |
+| ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `DATABASE_URL`   | `postgresql://postgres:postgres@localhost:5432/finance` | PostgreSQL connection (dev default; compose injects its own)                    |
+| `APP_TIMEZONE`   | `UTC`                                                   | The timezone that defines "today"                                               |
+| `LOG_LEVEL`      | `info`                                                  | JSON log level                                                                  |
+| `LLM_API_KEY`    | _(empty = AI disabled)_                                 | Anthropic key for the narrative                                                 |
+| `LLM_TIMEOUT_MS` | `10000`                                                 | LLM call timeout                                                                |
+| `LLM_BASE_URL`   | `https://api.anthropic.com`                             | LLM provider base URL; the e2e suite points it at a local stub                  |
+| `CORS_ORIGINS`   | `http://localhost:5173,http://localhost:8080`           | Comma-separated browser-origin allowlist for the API's CORS                     |
+| `NODE_ENV`       | _(unset in dev; compose sets `production`)_             | Platform convention, **not** FR-035: `production` enables HSTS (research R-006) |
 
 ## Root scripts (fixed names)
 
-| Script                        | What it proves                                                            |
-| ----------------------------- | ------------------------------------------------------------------------- |
-| `pnpm dev` / `pnpm build`     | monorepo builds                                                           |
-| `pnpm lint`                   | oxlint (incl. `--type-aware`), one root config                            |
-| `pnpm typecheck`              | `tsc` (TS7) across packages                                               |
-| `pnpm test`                   | unit: domain, services, DTOs, components — no DB needed                   |
-| `pnpm test:e2e`               | supertest vs real Postgres; every response ajv-validated against the yaml |
-| `pnpm test:ui`                | Playwright (Chromium) vs the compose stack, keyboard-only story specs     |
-| `pnpm db:migrate` / `db:seed` | schema + deterministic demo data                                          |
-| `pnpm db:generate-perf`       | ~5 000 tx / 24 months (FR-032; never part of startup)                     |
-| `pnpm ledger:check`           | sum-to-zero integrity + snapshot reconciliation (FR-031)                  |
-| `pnpm ledger:rebuild`         | rebuild the balance cache from entries alone                              |
-| `pnpm contract:check`         | Nest routes ⟷ yaml paths diff (drift guard)                               |
-| `pnpm contract:generate`      | regenerate web types from the yaml                                        |
-| `pnpm perf:measure`           | SC-008 p95 measurement (below)                                            |
+| Script                        | What it proves                                                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev` / `pnpm build`     | monorepo builds                                                                                                   |
+| `pnpm lint`                   | oxlint (incl. `--type-aware`), one root config                                                                    |
+| `pnpm typecheck`              | `tsc` (TS7) across packages                                                                                       |
+| `pnpm test`                   | unit: domain, services, DTOs, components — no DB needed                                                           |
+| `pnpm test:e2e`               | supertest vs real Postgres; every response ajv-validated against the yaml; AI provider stubbed via `LLM_BASE_URL` |
+| `pnpm test:ui`                | Playwright (Chromium) vs the compose stack, keyboard-only story specs                                             |
+| `pnpm db:migrate` / `db:seed` | schema + deterministic demo data                                                                                  |
+| `pnpm db:generate-perf`       | ~5 000 tx / 24 months (FR-032; never part of startup)                                                             |
+| `pnpm ledger:check`           | sum-to-zero integrity + snapshot reconciliation (FR-031)                                                          |
+| `pnpm ledger:rebuild`         | rebuild the balance cache from entries alone                                                                      |
+| `pnpm contract:check`         | Nest routes ⟷ yaml paths diff (drift guard)                                                                       |
+| `pnpm contract:generate`      | regenerate web types from the yaml                                                                                |
+| `pnpm perf:measure`           | SC-008 p95 measurement (below)                                                                                    |
 
 ## Validation scenarios
 
@@ -86,7 +88,7 @@ pnpm dev                            # api on :3000, web (Vite) on :5173
 
 1. What it is, one paragraph + screenshot.
 2. **Run it**: the single `docker compose up`, the three URLs, the under-five-minutes claim.
-3. Environment variables table (the six above, defaults included).
+3. Environment variables table (the seven above plus the `NODE_ENV` platform row, defaults included).
 4. Scripts table (as above).
 5. Testing: `test`, `test:e2e` (needs Postgres), `test:ui` (needs compose), `ledger:check`.
 6. Performance: how to run `db:generate-perf` + `perf:measure` and read the p95 output.

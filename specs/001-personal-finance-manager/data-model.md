@@ -213,6 +213,10 @@ INSERT INTO system_accounts (kind) VALUES ('equity');
 
 ## Seed (FR-025, deterministic `db:seed`)
 
+Deterministic means: two runs on the same calendar date (in `APP_TIMEZONE`) produce
+byte-identical data; between different run dates only the dates shift, so the demo is always
+current and the acceptance scenarios stay reproducible within a run date.
+
 - The 12 fixed categories of FR-003 (9 expense, 3 income), each with its system account.
 - 4 accounts: "Checking" (bank, opening $1,500.00 on the first seeded month's 1st), "Savings"
   (bank), "Visa" (card, negative opening −$500.00 — exercises US1 #11), "Cash" (cash), plus
@@ -222,7 +226,9 @@ INSERT INTO system_accounts (kind) VALUES ('equity');
   category with activity, at least one transfer per month, descriptions that exercise FR-014
   grouping ("Uber 1234", "UBER 5678", "uber", …).
 - Scheduled items: one `once` bill, one `monthly` bill (anchored on the 31st to show
-  month-end clamping), one `weekly` income, one with an end date, one overdue.
+  month-end clamping), one `weekly` income, one with an end date, one overdue. Amounts are
+  sized so the projection to the end of next month dips below zero at least once — the
+  walkthrough shows that flagged occurrence (US4 AS-5).
 - One archived category with historical expenses; one project "Trip to France" with budget
   and tagged expenses from two accounts, and one closed project.
 - `db:generate-perf` (FR-032, separate explicit command): ~5 000 transactions over 24 months,
