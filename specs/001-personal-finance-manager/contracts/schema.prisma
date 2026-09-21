@@ -1,0 +1,169 @@
+// Frozen contract (Principle IV) — Personal Finance Manager, 2026-09-20.
+// Copied verbatim to apps/api/prisma/schema.prisma in the Foundational phase.
+// The raw SQL of data-model.md (sum-to-zero constraint trigger, lower(trim(name))
+// unique indexes, CHECK constraints, equity row) ships in the same first migration;
+// Prisma cannot express it, so it lives in the migration's SQL directly.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountKind {
+  bank
+  cash
+  card
+}
+
+enum CategoryType {
+  expense
+  income
+}
+
+enum SystemAccountKind {
+  category
+  equity
+}
+
+enum TransactionKind {
+  expense
+  income
+  transfer
+  opening
+}
+
+enum ScheduledItemKind {
+  bill
+  income
+}
+
+enum Recurrence {
+  once
+  weekly
+  monthly
+}
+
+enum ScheduledItemStatus {
+  active
+  completed
+}
+
+enum ProjectStatus {
+  active
+  closed
+}
+
+model Account {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(60)
+  kind        AccountKind
+  openingDate DateTime @map("opening_date") @db.Date
+  archived    Boolean  @default(false)
+
+  entries        Entry[]
+  scheduledItems ScheduledItem[]
+  snapshot       BalanceSnapshot?
+
+  // uniqueness on lower(trim(name)) is a raw-SQL index (data-model.md)
+  @@map("accounts")
+}
+
+model Category {
+  id       BigInt       @id @default(autoincrement())
+  name     String       @db.VarChar(60)
+  type     CategoryType
+  archived Boolean      @default(false)
+
+  systemAccount  SystemAccount?
+  scheduledItems ScheduledItem[]
+
+  @@map("categories")
+}
+
+model SystemAccount {
+  id         BigInt            @id @default(autoincrement())
+  kind       SystemAccountKind
+  categoryId BigInt?           @unique @map("category_id")
+
+  category Category? @relation(fields: [categoryId], references: [id])
+  entries  Entry[]
+
+  @@map("system_accounts")
+}
+
+model Transaction {
+  id          BigInt          @id @default(autoincrement())
+  kind        TransactionKind
+  date        DateTime        @db.Date
+  description String          @db.VarChar(120)
+  projectId   BigInt?         @map("project_id")
+  deletedAt   DateTime?       @map("deleted_at") @db.Timestamptz(6)
+
+  project Project? @relation(fields: [projectId], references: [id])
+  entries Entry[]
+
+  @@index([date, id])
+  @@index([projectId])
+  @@index([deletedAt])
+  @@map("transactions")
+}
+
+model Entry {
+  id              BigInt  @id @default(autoincrement())
+  transactionId   BigInt  @map("transaction_id")
+  accountId       BigInt? @map("account_id")
+  systemAccountId BigInt? @map("system_account_id")
+  amount          BigInt
+
+  transaction   Transaction    @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  account       Account?       @relation(fields: [accountId], references: [id])
+  systemAccount SystemAccount? @relation(fields: [systemAccountId], references: [id])
+
+  @@index([transactionId])
+  @@index([accountId])
+  @@index([systemAccountId])
+  @@map("entries")
+}
+
+model ScheduledItem {
+  id          BigInt              @id @default(autoincrement())
+  kind        ScheduledItemKind
+  description String              @db.VarChar(120)
+  amount      BigInt
+  accountId   BigInt              @map("account_id")
+  categoryId  BigInt              @map("category_id")
+  nextDueDate DateTime            @map("next_due_date") @db.Date
+  recurrence  Recurrence
+  endDate     DateTime?           @map("end_date") @db.Date
+  status      ScheduledItemStatus @default(active)
+
+  account  Account  @relation(fields: [accountId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@index([status, nextDueDate])
+  @@map("scheduled_items")
+}
+
+model Project {
+  id     BigInt        @id @default(autoincrement())
+  name   String        @db.VarChar(60)
+  budget BigInt?
+  status ProjectStatus @default(active)
+
+  transactions Transaction[]
+
+  @@map("projects")
+}
+
+model BalanceSnapshot {
+  accountId BigInt @id @map("account_id")
+  balance   BigInt
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@map("balance_snapshots")
+}

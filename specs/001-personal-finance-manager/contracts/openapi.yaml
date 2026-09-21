@@ -1,0 +1,1546 @@
+openapi: 3.1.0
+info:
+  title: Estateably Finance API
+  version: 1.0.0
+  description: |
+    Personal finance manager — single user, single currency (USD), double-entry ledger.
+
+    This document is the **frozen contract** (constitution Principle IV) and the complete API
+    documentation. Served verbatim at `/docs` by the web app. Any change to it goes back
+    through the plan.
+
+    **Money** travels as JSON **strings of integer cents** (`"4250"` = $42.50), never as JSON
+    numbers: `JSON.parse` reads a JSON number as a float and can corrupt large values before
+    validation runs. Arithmetic uses `bigint`. Amounts are bounded to ±10^15 cents — a
+    technical guard protecting the database's BIGINT columns, validated after `BigInt`
+    conversion, rejected with `VALIDATION_FAILED`.
+
+    **Dates** are calendar dates, `YYYY-MM-DD`, no time component. "Today" is the current
+    date in the `APP_TIMEZONE` environment variable's timezone.
+
+    **Ids** are serialized as decimal strings (they are BIGINT).
+
+    **Errors** all share one shape (`ErrorResponse`) with a machine-readable `code`, a
+    human-readable `message`, optional field-level `details`, and the request's
+    `correlationId`. Every response (success or error) also carries the correlation id in the
+    `X-Correlation-Id` header. Referencing a non-existent or archived entity in a request
+    *body* is a domain rule violation (`422 DOMAIN_RULE_VIOLATION`); `404 NOT_FOUND` is
+    reserved for the id in the URL path.
+
+    The API expresses **intent** (expense, income, transfer). It never exposes entries,
+    debits, credits or system accounts (Principle III).
+servers:
+  - url: http://localhost:3000
+    description: API origin, identical in dev and Docker Compose (no proxy; strict CORS)
+tags:
+  - name: accounts
+    description: Accounts, their balances, and the transactions that move money between them
+  - name: categories
+    description: Expense and income categories
+  - name: transactions
+    description: Recording, editing, deleting and listing transactions (intents)
+  - name: scheduled-items
+    description: Future bills and income, and marking them paid
+  - name: projection
+    description: Budget projection of the total balance
+  - name: projects
+    description: Projects grouping expenses, optionally against a budget
+  - name: reports
+    description: Monthly expense report, similar-transaction report, AI narrative
+
+paths:
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List accounts with current balances
+      description: >
+        Returns every account (archived ones only when `includeArchived=true`), each with its
+        current balance, plus the total across non-archived accounts. Accounts are few, so
+        this list is not paginated.
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          description: Include archived accounts in the list. Defaults to false.
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Accounts and the non-archived total.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountListResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Create an account
+      description: >
+        Creates an account. A non-zero `openingBalance` records an *opening* transaction dated
+        `openingDate` through the ledger; a zero one records nothing. The opening balance is
+        signed and may be negative (a card that already owes money).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountCreateRequest" }
+      responses:
+        "201":
+          description: The created account, balance included.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409": { $ref: "#/components/responses/DuplicateName" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /accounts/{id}:
+    patch:
+      operationId: updateAccount
+      tags: [accounts]
+      summary: Edit an account
+      description: >
+        Renames the account or changes its kind, opening balance or opening date. Opening
+        balance and date edit the account's *opening* transaction through the ledger: zero to
+        non-zero creates it, non-zero to zero deletes it, any other change rebalances it.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountUpdateRequest" }
+      responses:
+        "200":
+          description: The updated account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/DuplicateName" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /accounts/{id}/archive:
+    post:
+      operationId: archiveAccount
+      tags: [accounts]
+      summary: Archive an account
+      description: >
+        Hides the account from pickers and dashboard totals. Its history stays readable and no
+        transaction is altered. Reversible with `unarchiveAccount`.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: The archived account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /accounts/{id}/unarchive:
+    post:
+      operationId: unarchiveAccount
+      tags: [accounts]
+      summary: Unarchive an account
+      description: Restores the account to pickers and totals with its balance and history intact.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: The unarchived account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /accounts/{id}/balance:
+    get:
+      operationId: getAccountBalanceAsOf
+      tags: [accounts]
+      summary: Balance of an account as of a date
+      description: >
+        The sum of the account's non-deleted entries dated on or before `asOf`. A date before
+        the first transaction answers `"0"`. Correct on every read, cached values present or not.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: asOf
+          in: query
+          required: true
+          description: The date to compute the balance at, inclusive.
+          schema: { type: string, format: date }
+          example: "2026-09-12"
+      responses:
+        "200":
+          description: The balance at that date.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BalanceResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List categories
+      description: >
+        Returns every category (archived ones only when `includeArchived=true`). Not paginated.
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          description: Include archived categories. Defaults to false.
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: The categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CategoryResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create a category
+      description: >
+        Creates a category typed *expense* or *income*. The ledger-side backing it is created
+        in the same atomic write and is never exposed here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryCreateRequest" }
+      responses:
+        "201":
+          description: The created category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409": { $ref: "#/components/responses/DuplicateName" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /categories/{id}:
+    patch:
+      operationId: updateCategory
+      tags: [categories]
+      summary: Rename a category
+      description: Renames the category. Its type is fixed at creation; renaming touches no transaction.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryUpdateRequest" }
+      responses:
+        "200":
+          description: The renamed category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/DuplicateName" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /categories/{id}/archive:
+    post:
+      operationId: archiveCategory
+      tags: [categories]
+      summary: Archive a category
+      description: >
+        Hides the category from pickers. History and reports keep showing it. Reversible.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: The archived category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /categories/{id}/unarchive:
+    post:
+      operationId: unarchiveCategory
+      tags: [categories]
+      summary: Unarchive a category
+      description: Restores the category to pickers with its history intact.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: The unarchived category.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [transactions]
+      summary: List transactions
+      description: >
+        Lists transactions globally or filtered by account, kind, category, project and date
+        range, ordered by `date` descending, ties broken by `id` descending (stable across
+        pages). Paginated by `limit`/`offset`; the response carries the total match count. An
+        offset past the last row returns an empty page with the correct total. A date range
+        must start on or before its end and span at most 24 months.
+      parameters:
+        - name: accountId
+          in: query
+          required: false
+          description: Only transactions touching this account.
+          schema: { $ref: "#/components/schemas/Id" }
+        - name: kind
+          in: query
+          required: false
+          description: Only this kind.
+          schema: { $ref: "#/components/schemas/TransactionKind" }
+        - name: categoryId
+          in: query
+          required: false
+          description: Only this category.
+          schema: { $ref: "#/components/schemas/Id" }
+        - name: projectId
+          in: query
+          required: false
+          description: Only this project.
+          schema: { $ref: "#/components/schemas/Id" }
+        - $ref: "#/components/parameters/FromParam"
+        - $ref: "#/components/parameters/ToParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: One page of transactions plus the total match count.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedTransactions" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      operationId: createTransaction
+      tags: [transactions]
+      summary: Record a transaction
+      description: >
+        Records an expense, income or transfer (an *opening* transaction is created only
+        through the account endpoints). The intent is translated into exactly two balanced
+        ledger entries in one atomic write. Rejected with a structured error: non-positive
+        amounts, future dates, archived or non-existent accounts/categories, category types
+        that do not match the kind, transfers between the same account, projects on anything
+        but an expense, closed projects.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransactionRequest" }
+      responses:
+        "201":
+          description: The recorded transaction.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /transactions/{id}:
+    put:
+      operationId: updateTransaction
+      tags: [transactions]
+      summary: Edit a transaction
+      description: >
+        Replaces the transaction with a complete new intent — kind included, so an expense may
+        become an income or a transfer and back — validated exactly like a newly recorded one.
+        All entries are regenerated in one atomic write. An *opening* transaction is not
+        editable here (it stays *opening*, edited through the account form).
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransactionRequest" }
+      responses:
+        "200":
+          description: The updated transaction.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      operationId: deleteTransaction
+      tags: [transactions]
+      summary: Delete a transaction
+      description: >
+        Soft-deletes the transaction: it disappears from every list, balance and report, and
+        the ledger still sums to zero. An *opening* transaction is deleted by setting its
+        account's opening balance to zero, not here.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted; no content.
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /scheduled-items:
+    get:
+      operationId: listScheduledItems
+      tags: [scheduled-items]
+      summary: List upcoming scheduled items
+      description: >
+        Returns every *active* scheduled item ordered by next due date ascending. Overdue
+        items (due date passed, never confirmed) stay listed and flagged; items on an archived
+        account stay listed and flagged. Completed items are gone. Not paginated.
+      responses:
+        "200":
+          description: Active scheduled items, soonest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ScheduledItemResponse" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      operationId: createScheduledItem
+      tags: [scheduled-items]
+      summary: Create a scheduled item
+      description: >
+        Creates a future bill or income. The next due date must be today or later on
+        creation. A monthly recurrence anchored on the 29th–31st falls on the last day of
+        shorter months. The category's type must match the kind (bill → expense category,
+        income → income category).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduledItemRequest" }
+      responses:
+        "201":
+          description: The created item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduledItemResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /scheduled-items/{id}:
+    put:
+      operationId: updateScheduledItem
+      tags: [scheduled-items]
+      summary: Edit a scheduled item
+      description: >
+        Replaces the item's fields. Unlike creation, an edit may set the next due date in the
+        past, which makes the item overdue. Transactions already recorded from this item are
+        unaffected.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduledItemRequest" }
+      responses:
+        "200":
+          description: The updated item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduledItemResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      operationId: deleteScheduledItem
+      tags: [scheduled-items]
+      summary: Delete a scheduled item
+      description: >
+        Removes the item from the upcoming list and the projection. Transactions already
+        recorded from it are unaffected.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted; no content.
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /scheduled-items/{id}/confirm:
+    post:
+      operationId: confirmScheduledItem
+      tags: [scheduled-items]
+      summary: Mark a scheduled occurrence as paid or received
+      description: >
+        Records a real transaction with the confirmed values (amount, date, account, category
+        and description — pre-filled from the item in the UI, all changeable here) and, in the
+        same atomic write, advances the item one period or completes it (*once* items, or
+        items whose next due date would pass their end date). The confirmed values pass
+        exactly the validation of a new transaction, so a confirmation on an archived account
+        is rejected. The item's own amount and recurrence are never altered. The recorded
+        transaction keeps no link to the item.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfirmScheduledItemRequest" }
+      responses:
+        "201":
+          description: The recorded transaction and the item's new state.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/ConfirmScheduledItemResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /projection:
+    get:
+      operationId: getProjection
+      tags: [projection]
+      summary: Project the total balance to a horizon
+      description: >
+        Starts from the current total across non-archived accounts and applies every scheduled
+        occurrence between today and `horizon` (at most 24 months ahead), expanded from the
+        active items' recurrences. Occurrences already overdue come first, marked, one per
+        missed period for recurring items. The response is a running series; the UI flags any
+        occurrence whose running balance is negative.
+      parameters:
+        - name: horizon
+          in: query
+          required: true
+          description: Last date included, at most 24 months after today.
+          schema: { type: string, format: date }
+          example: "2026-11-30"
+      responses:
+        "200":
+          description: The projected series and final balance.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectionResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List projects with spend figures
+      description: >
+        Every project (closed ones included), each with total spent, remaining budget and
+        over-budget flag when a budget exists. Not paginated.
+      responses:
+        "200":
+          description: The projects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProjectResponse" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectCreateRequest" }
+      responses:
+        "201":
+          description: The created project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409": { $ref: "#/components/responses/DuplicateName" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /projects/{id}:
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Edit a project
+      description: "Renames the project or sets/changes/removes its budget (a `null` budget removes it)."
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectUpdateRequest" }
+      responses:
+        "200":
+          description: The updated project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/DuplicateName" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete an unused project
+      description: >
+        Deletes the project only if no transaction references it; otherwise answers
+        `422 DOMAIN_RULE_VIOLATION` telling the user to close it instead.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted; no content.
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/DomainRuleViolation" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /projects/{id}/close:
+    post:
+      operationId: closeProject
+      tags: [projects]
+      summary: Close a project
+      description: >
+        Stops the project being offered on new transactions and edits. Its report stays
+        readable. Reversible with `reopenProject`.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: The closed project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /projects/{id}/reopen:
+    post:
+      operationId: reopenProject
+      tags: [projects]
+      summary: Reopen a closed project
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: The reopened project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /projects/{id}/transactions:
+    get:
+      operationId: listProjectTransactions
+      tags: [projects]
+      summary: List a project's expenses
+      description: The expenses tagged with this project, ordered and paginated like `listTransactions`.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/OffsetParam"
+      responses:
+        "200":
+          description: One page of the project's expenses.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedTransactions" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /reports/monthly:
+    get:
+      operationId: getMonthlyReport
+      tags: [reports]
+      summary: Monthly expenses by category
+      description: >
+        For one calendar month: total spent per expense category (only categories with
+        activity), the grand total, and the transactions behind each category. Income and
+        transfers never appear. A month with no expenses answers an empty category list and a
+        `"0"` total.
+      parameters:
+        - name: month
+          in: query
+          required: true
+          description: The calendar month, `YYYY-MM`.
+          schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+          example: "2026-09"
+      responses:
+        "200":
+          description: The month's report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MonthlyReportResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /reports/similar:
+    get:
+      operationId: getSimilarReport
+      tags: [reports]
+      summary: Group similar transactions in a date range
+      description: >
+        Deterministic, locally computed grouping by normalised description (lower-cased,
+        whitespace-collapsed, one trailing digit run stripped; a description that normalises
+        to nothing groups by its trimmed original). Groups are ordered by total descending.
+        Also returns the five most expensive individual transactions of the period and the
+        most expensive group's key. The range must start on or before its end and span at
+        most 24 months. An empty period answers an empty report.
+      parameters:
+        - $ref: "#/components/parameters/FromRequiredParam"
+        - $ref: "#/components/parameters/ToRequiredParam"
+      responses:
+        "200":
+          description: The grouped report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimilarReportResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /reports/similar/narrative:
+    post:
+      operationId: generateSimilarNarrative
+      tags: [reports]
+      summary: AI narrative over the similar-transaction report
+      description: >
+        Sends the same grouped data to the configured LLM provider and returns a short
+        natural-language summary. Requires `LLM_API_KEY`; without it the answer is
+        `422 AI_NOT_CONFIGURED` and the UI keeps the button disabled. The provider call is
+        bounded by `LLM_TIMEOUT_MS` (default 10 s) and never retried; a timeout answers
+        `504 AI_TIMEOUT`, a provider rate limit `503 AI_RATE_LIMITED`, any other provider
+        failure `502 AI_PROVIDER_ERROR`. The deterministic report on screen is never affected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NarrativeRequest" }
+      responses:
+        "200":
+          description: The narrative.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NarrativeResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "422": { $ref: "#/components/responses/AiNotConfigured" }
+        "502": { $ref: "#/components/responses/AiProviderError" }
+        "503": { $ref: "#/components/responses/AiRateLimited" }
+        "504": { $ref: "#/components/responses/AiTimeout" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: The entity's id.
+      schema: { $ref: "#/components/schemas/Id" }
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      description: Page size, 1–200. Above 200 is rejected with `VALIDATION_FAILED`.
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    OffsetParam:
+      name: offset
+      in: query
+      required: false
+      description: Rows to skip. An offset past the last row returns an empty page with the correct total.
+      schema: { type: integer, minimum: 0, default: 0 }
+    FromParam:
+      name: from
+      in: query
+      required: false
+      description: Range start, inclusive. With `to`, must not start after it nor span more than 24 months.
+      schema: { type: string, format: date }
+      example: "2026-09-01"
+    ToParam:
+      name: to
+      in: query
+      required: false
+      description: Range end, inclusive.
+      schema: { type: string, format: date }
+      example: "2026-09-30"
+    FromRequiredParam:
+      name: from
+      in: query
+      required: true
+      description: Range start, inclusive. Must not start after `to` nor span more than 24 months.
+      schema: { type: string, format: date }
+      example: "2026-09-01"
+    ToRequiredParam:
+      name: to
+      in: query
+      required: true
+      description: Range end, inclusive.
+      schema: { type: string, format: date }
+      example: "2026-09-30"
+
+  headers:
+    XCorrelationId:
+      description: The request's correlation id; matches the `correlationId` in the body and the stdout log line.
+      schema: { type: string, format: uuid }
+
+  responses:
+    ValidationError:
+      description: The request's shape, a field's format, the money guard, a date rule or a pagination bound failed (`VALIDATION_FAILED`).
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: VALIDATION_FAILED
+            message: Validation failed
+            details:
+              [
+                {
+                  field: amount,
+                  message: "amount must be a string of integer cents with absolute value at most 10^15",
+                },
+              ]
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    NotFound:
+      description: The id in the URL path does not exist or is deleted (`NOT_FOUND`).
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: NOT_FOUND
+            message: Transaction 42 does not exist
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    DuplicateName:
+      description: Another account, category or project (archived and closed rows included) already holds this name, compared case- and whitespace-insensitively (`DUPLICATE_NAME`).
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: DUPLICATE_NAME
+            message: An account named "Checking" already exists
+            details: [{ field: name, message: "name is already in use" }]
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    DomainRuleViolation:
+      description: >
+        A domain rule rejected the request (`DOMAIN_RULE_VIOLATION`): archived account or
+        category, category type mismatch, transfer between the same account, closed or
+        non-existent referenced entity, project on a non-expense, delete of a used project,
+        end date before due date, and similar.
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: DOMAIN_RULE_VIOLATION
+            message: A transfer cannot use the same account as source and destination
+            details:
+              [
+                {
+                  field: counterAccountId,
+                  message: "must differ from accountId",
+                },
+              ]
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    AiNotConfigured:
+      description: "`LLM_API_KEY` is empty: the AI narrative is not configured (`AI_NOT_CONFIGURED`)."
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: AI_NOT_CONFIGURED
+            message: No LLM provider key is configured
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    AiProviderError:
+      description: The LLM provider returned an error (`AI_PROVIDER_ERROR`). Not retried.
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: AI_PROVIDER_ERROR
+            message: The LLM provider answered with an error
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    AiRateLimited:
+      description: The LLM provider rate-limited the call (`AI_RATE_LIMITED`). Not retried.
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: AI_RATE_LIMITED
+            message: The LLM provider rate limit was hit
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    AiTimeout:
+      description: The LLM provider did not answer within `LLM_TIMEOUT_MS` (`AI_TIMEOUT`). Not retried.
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: AI_TIMEOUT
+            message: The LLM provider timed out after 10000 ms
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+    InternalError:
+      description: Unhandled error (`INTERNAL_ERROR`); logged with stack trace under the same correlation id.
+      headers:
+        X-Correlation-Id: { $ref: "#/components/headers/XCorrelationId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            code: INTERNAL_ERROR
+            message: Something went wrong
+            correlationId: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+
+  schemas:
+    Id:
+      type: string
+      pattern: "^[0-9]+$"
+      description: Entity id, a BIGINT serialized as a decimal string.
+      example: "42"
+    Money:
+      type: string
+      pattern: "^-?[0-9]{1,16}$"
+      description: >
+        Integer cents as a decimal string; never a JSON number. The ±10^15-cent guard is
+        validated after bigint conversion, not by this pattern.
+      example: "4250"
+    DateOnly:
+      type: string
+      format: date
+      description: Calendar date, `YYYY-MM-DD`, no time component.
+      example: "2026-09-10"
+    AccountKind:
+      type: string
+      enum: [bank, cash, card]
+      description: The user-facing kind of an account.
+      example: bank
+    CategoryType:
+      type: string
+      enum: [expense, income]
+      description: Whether the category classifies expenses or income.
+      example: expense
+    TransactionKind:
+      type: string
+      enum: [expense, income, transfer, opening]
+      description: >
+        The intent a transaction expresses. `opening` appears only in responses; it is created
+        and edited through the account endpoints.
+      example: expense
+    ScheduledItemKind:
+      type: string
+      enum: [bill, income]
+      description: A future payment (bill) or a future receipt (income).
+      example: bill
+    Recurrence:
+      type: string
+      enum: [once, weekly, monthly]
+      description: Monthly anchored on the 29th–31st clamps to the last day of shorter months.
+      example: monthly
+    ScheduledItemStatus:
+      type: string
+      enum: [active, completed]
+      example: active
+    ProjectStatus:
+      type: string
+      enum: [active, closed]
+      example: active
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_FAILED
+        - NOT_FOUND
+        - DUPLICATE_NAME
+        - DOMAIN_RULE_VIOLATION
+        - AI_NOT_CONFIGURED
+        - AI_PROVIDER_ERROR
+        - AI_RATE_LIMITED
+        - AI_TIMEOUT
+        - INTERNAL_ERROR
+      description: Every error code the API can answer with. One code per failure class.
+    ErrorDetail:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: The offending request field, dot-separated for nesting.
+          example: amount
+        message:
+          type: string
+          description: What is wrong with it.
+          example: amount must be a positive integer number of cents
+    ErrorResponse:
+      type: object
+      required: [code, message, correlationId]
+      properties:
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        message:
+          type: string
+          description: Human-readable summary, safe to show the user.
+          example: Validation failed
+        details:
+          type: array
+          items: { $ref: "#/components/schemas/ErrorDetail" }
+          description: Field-level details when a field is nameable; absent otherwise.
+        correlationId:
+          type: string
+          format: uuid
+          description: Matches the `X-Correlation-Id` header and exactly one stdout log line.
+          example: 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10
+
+    AccountCreateRequest:
+      type: object
+      required: [name, kind, openingBalance, openingDate]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 1–60 characters after trimming; unique among accounts, archived included.
+          example: Checking
+        kind: { $ref: "#/components/schemas/AccountKind" }
+        openingBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Signed cents; may be negative (existing debt) or `"0"` (no opening transaction).
+          example: "150000"
+        openingDate:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: The opening transaction's date; not in the future.
+          example: "2026-09-01"
+    AccountUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          example: Everyday Checking
+        kind: { $ref: "#/components/schemas/AccountKind" }
+        openingBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: New signed opening balance; `"0"` deletes the opening transaction.
+          example: "175000"
+        openingDate: { $ref: "#/components/schemas/DateOnly" }
+    AccountResponse:
+      type: object
+      required: [id, name, kind, openingBalance, openingDate, archived, balance]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string, example: Checking }
+        kind: { $ref: "#/components/schemas/AccountKind" }
+        openingBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Signed cents of the opening transaction; `"0"` when there is none.
+          example: "150000"
+        openingDate: { $ref: "#/components/schemas/DateOnly" }
+        archived: { type: boolean, example: false }
+        balance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Current balance, signed cents.
+          example: "445750"
+    AccountListResponse:
+      type: object
+      required: [items, totalBalance]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AccountResponse" }
+        totalBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Sum of current balances across non-archived accounts, signed cents.
+          example: "395750"
+    BalanceResponse:
+      type: object
+      required: [accountId, asOf, balance]
+      properties:
+        accountId: { $ref: "#/components/schemas/Id" }
+        asOf: { $ref: "#/components/schemas/DateOnly" }
+        balance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Sum of the account's non-deleted entries dated on or before `asOf`.
+          example: "145750"
+
+    CategoryCreateRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 1–60 characters after trimming; unique among categories, archived included.
+          example: Pets
+        type: { $ref: "#/components/schemas/CategoryType" }
+    CategoryUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          example: Pets & Vet
+    CategoryResponse:
+      type: object
+      required: [id, name, type, archived]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string, example: Groceries }
+        type: { $ref: "#/components/schemas/CategoryType" }
+        archived: { type: boolean, example: false }
+
+    ExpenseIntent:
+      type: object
+      required: [kind, date, description, amount, accountId, categoryId]
+      properties:
+        kind: { type: string, enum: [expense], example: expense }
+        date:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: Not in the future.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: 1–120 characters after trimming; whitespace-only is rejected.
+          example: Market
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Positive cents.
+          example: "4250"
+        accountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: The non-archived account the money leaves.
+        categoryId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: A non-archived category of type `expense`.
+        projectId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Optional; an active project. Only expenses may carry one.
+    IncomeIntent:
+      type: object
+      required: [kind, date, description, amount, accountId, categoryId]
+      properties:
+        kind: { type: string, enum: [income], example: income }
+        date:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: Not in the future.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: September salary
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Positive cents.
+          example: "300000"
+        accountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: The non-archived account the money enters.
+        categoryId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: A non-archived category of type `income`.
+    TransferIntent:
+      type: object
+      required: [kind, date, description, amount, accountId, counterAccountId]
+      properties:
+        kind: { type: string, enum: [transfer], example: transfer }
+        date:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: Not in the future.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: To savings
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Positive cents.
+          example: "50000"
+        accountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Source account, non-archived.
+        counterAccountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Destination account, non-archived, different from `accountId`. Transfers carry no category and no project.
+    TransactionRequest:
+      oneOf:
+        - $ref: "#/components/schemas/ExpenseIntent"
+        - $ref: "#/components/schemas/IncomeIntent"
+        - $ref: "#/components/schemas/TransferIntent"
+      discriminator:
+        propertyName: kind
+        mapping:
+          expense: "#/components/schemas/ExpenseIntent"
+          income: "#/components/schemas/IncomeIntent"
+          transfer: "#/components/schemas/TransferIntent"
+      description: >
+        A complete intent, discriminated by `kind`. Used for recording and for editing (an
+        edit replaces the whole intent, kind included).
+    TransactionResponse:
+      type: object
+      required: [id, kind, date, description, amount, accountId]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        kind: { $ref: "#/components/schemas/TransactionKind" }
+        date: { $ref: "#/components/schemas/DateOnly" }
+        description: { type: string, example: Market }
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: >
+            Positive cents for expense, income and transfer; signed cents for `opening`.
+          example: "4250"
+        accountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: The account (transfer — the source).
+        counterAccountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Transfer destination; absent on other kinds.
+        categoryId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Present on expense and income; absent on transfer and opening.
+        projectId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Present when the expense is tagged with a project.
+    PaginatedTransactions:
+      type: object
+      required: [items, total, limit, offset]
+      description: The shared paginated shape — `items`, `total`, `limit`, `offset`.
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TransactionResponse" }
+        total:
+          type: integer
+          minimum: 0
+          description: Total matching transactions across all pages.
+          example: 87
+        limit: { type: integer, example: 50 }
+        offset: { type: integer, example: 0 }
+
+    ScheduledItemRequest:
+      type: object
+      required:
+        [
+          kind,
+          description,
+          amount,
+          accountId,
+          categoryId,
+          nextDueDate,
+          recurrence,
+        ]
+      properties:
+        kind: { $ref: "#/components/schemas/ScheduledItemKind" }
+        description:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Rent
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Positive cents; what is expected, not what will necessarily be paid.
+          example: "120000"
+        accountId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: The non-archived account the money will leave or enter.
+        categoryId:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Type must match `kind` (bill → expense, income → income).
+        nextDueDate:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: Today or later on creation; an edit may set the past (item becomes overdue).
+          example: "2026-10-01"
+        recurrence: { $ref: "#/components/schemas/Recurrence" }
+        endDate:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: Optional; not before `nextDueDate`. No occurrence after it counts.
+    ScheduledItemResponse:
+      type: object
+      required:
+        [
+          id,
+          kind,
+          description,
+          amount,
+          accountId,
+          categoryId,
+          nextDueDate,
+          recurrence,
+          status,
+          overdue,
+          overdueCount,
+          accountArchived,
+        ]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        kind: { $ref: "#/components/schemas/ScheduledItemKind" }
+        description: { type: string, example: Rent }
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          example: "120000"
+        accountId: { $ref: "#/components/schemas/Id" }
+        categoryId: { $ref: "#/components/schemas/Id" }
+        nextDueDate: { $ref: "#/components/schemas/DateOnly" }
+        recurrence: { $ref: "#/components/schemas/Recurrence" }
+        endDate: { $ref: "#/components/schemas/DateOnly" }
+        status: { $ref: "#/components/schemas/ScheduledItemStatus" }
+        overdue:
+          type: boolean
+          description: The next due date has passed without a confirmation.
+          example: false
+        overdueCount:
+          type: integer
+          minimum: 0
+          description: Missed periods since the next due date; `0` when not overdue.
+          example: 0
+        accountArchived:
+          type: boolean
+          description: The item's account is archived; the item stays listed, flagged, and a confirmation on it is rejected.
+          example: false
+    ConfirmScheduledItemRequest:
+      type: object
+      required: [amount, date, accountId, categoryId, description]
+      description: >
+        The confirmed values; the UI pre-fills them from the item, all are changeable and all
+        pass exactly the validation of a new transaction.
+      properties:
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Positive cents actually paid or received.
+          example: "125000"
+        date:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: The real transaction's date; not in the future.
+          example: "2026-10-03"
+        accountId: { $ref: "#/components/schemas/Id" }
+        categoryId: { $ref: "#/components/schemas/Id" }
+        description:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Rent
+    ConfirmScheduledItemResponse:
+      type: object
+      required: [transaction, item]
+      properties:
+        transaction:
+          allOf: [{ $ref: "#/components/schemas/TransactionResponse" }]
+          description: The recorded expense or income.
+        item:
+          allOf: [{ $ref: "#/components/schemas/ScheduledItemResponse" }]
+          description: The item after advancing or completing; `status` says which.
+
+    ProjectionOccurrence:
+      type: object
+      required:
+        [
+          date,
+          scheduledItemId,
+          description,
+          kind,
+          amount,
+          runningBalance,
+          overdue,
+        ]
+      properties:
+        date:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: The occurrence's due date (for an overdue one, the missed date).
+          example: "2026-10-01"
+        scheduledItemId: { $ref: "#/components/schemas/Id" }
+        description: { type: string, example: Rent }
+        kind: { $ref: "#/components/schemas/ScheduledItemKind" }
+        amount:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Positive cents; bills subtract, income adds.
+          example: "120000"
+        runningBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Projected total after this occurrence, signed cents. Negative means shortfall.
+          example: "325750"
+        overdue:
+          type: boolean
+          description: This occurrence was due before today and is placed at the start of the series.
+          example: false
+    ProjectionResponse:
+      type: object
+      required: [horizon, startingBalance, finalBalance, occurrences]
+      properties:
+        horizon: { $ref: "#/components/schemas/DateOnly" }
+        startingBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Current total across non-archived accounts, signed cents.
+          example: "445750"
+        finalBalance:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Running balance after the last occurrence.
+          example: "545750"
+        occurrences:
+          type: array
+          items: { $ref: "#/components/schemas/ProjectionOccurrence" }
+          description: Overdue occurrences first, then chronological up to the horizon.
+
+    ProjectCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 1–60 characters after trimming; unique among projects, closed included.
+          example: Trip to France
+        budget:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Optional positive cents. Absent means no budget (distinct from zero).
+          example: "500000"
+    ProjectUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          example: Trip to France 2027
+        budget:
+          oneOf:
+            - $ref: "#/components/schemas/Money"
+            - type: "null"
+          description: New positive budget in cents, or `null` to remove the budget.
+          example: "600000"
+    ProjectResponse:
+      type: object
+      required: [id, name, status, spent, overBudget]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        name: { type: string, example: Trip to France }
+        status: { $ref: "#/components/schemas/ProjectStatus" }
+        budget:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Absent when the project has no budget.
+          example: "500000"
+        spent:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Sum of the project's non-deleted expenses, in cents.
+          example: "110000"
+        remaining:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: "`budget − spent`, signed; absent when there is no budget."
+          example: "390000"
+        overBudget:
+          type: boolean
+          description: "`spent > budget`; always `false` without a budget."
+          example: false
+
+    MonthlyReportCategory:
+      type: object
+      required: [categoryId, categoryName, total, transactions]
+      properties:
+        categoryId: { $ref: "#/components/schemas/Id" }
+        categoryName: { type: string, example: Groceries }
+        total:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: The month's expenses in this category, positive cents.
+          example: "7250"
+        transactions:
+          type: array
+          items: { $ref: "#/components/schemas/TransactionResponse" }
+          description: The expenses behind the total, date descending.
+    MonthlyReportResponse:
+      type: object
+      required: [month, grandTotal, categories]
+      properties:
+        month:
+          type: string
+          pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          example: "2026-09"
+        grandTotal:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Sum of every category total; `"0"` for a month with no expenses.
+          example: "19250"
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/MonthlyReportCategory" }
+          description: Only categories with activity, ordered by total descending.
+
+    SimilarGroup:
+      type: object
+      required: [key, count, total, transactions]
+      properties:
+        key:
+          type: string
+          description: The normalised description (or the trimmed original when normalisation empties it).
+          example: uber
+        count: { type: integer, minimum: 1, example: 3 }
+        total:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Sum of the group's amounts, positive cents.
+          example: "8700"
+        transactions:
+          type: array
+          items: { $ref: "#/components/schemas/TransactionResponse" }
+          description: The group's members, date descending.
+    SimilarReportResponse:
+      type: object
+      required: [from, to, groups, topTransactions, topGroupKey]
+      properties:
+        from: { $ref: "#/components/schemas/DateOnly" }
+        to: { $ref: "#/components/schemas/DateOnly" }
+        groups:
+          type: array
+          items: { $ref: "#/components/schemas/SimilarGroup" }
+          description: Ordered by total descending. Empty for a period without transactions.
+        topTransactions:
+          type: array
+          maxItems: 5
+          items: { $ref: "#/components/schemas/TransactionResponse" }
+          description: The five most expensive individual transactions of the period.
+        topGroupKey:
+          type: ["string", "null"]
+          description: "`key` of the most expensive group; `null` for an empty report."
+          example: uber
+    NarrativeRequest:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          allOf: [{ $ref: "#/components/schemas/DateOnly" }]
+          description: Same bounds as the similar report (start ≤ end, at most 24 months).
+          example: "2026-09-01"
+        to:
+          {
+            allOf: [{ $ref: "#/components/schemas/DateOnly" }],
+            example: "2026-09-30",
+          }
+    NarrativeResponse:
+      type: object
+      required: [narrative]
+      properties:
+        narrative:
+          type: string
+          description: A short natural-language summary of the grouped report.
+          example: Ride-hailing was your biggest recurring cost this month, with Uber appearing three times for $87.00 in total.
