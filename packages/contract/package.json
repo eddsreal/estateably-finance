@@ -1,0 +1,11 @@
+{
+  "name": "contract",
+  "private": true,
+  "scripts": {
+    "contract:generate": "openapi-typescript ../../specs/001-personal-finance-manager/contracts/openapi.yaml -o src/types.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "6.0.3"
+  }
+}

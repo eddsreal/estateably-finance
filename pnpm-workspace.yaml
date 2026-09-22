@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+minimumReleaseAgeExclude:
+  - '@nestjs/common@12.1.0'
+  - '@nestjs/core@12.1.0'
+  - '@nestjs/platform-express@12.1.0'
+  - prettier@3.9.9

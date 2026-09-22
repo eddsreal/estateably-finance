@@ -1,0 +1,30 @@
+{
+  "name": "estateably-finance",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "engines": {
+    "node": "24"
+  },
+  "scripts": {
+    "dev": "pnpm --recursive --parallel --if-present run dev",
+    "build": "pnpm --recursive --if-present run build",
+    "lint": "oxlint --type-aware",
+    "typecheck": "pnpm --recursive --if-present run typecheck",
+    "test": "pnpm --recursive --if-present run test",
+    "test:e2e": "pnpm --filter api run test:e2e",
+    "test:ui": "pnpm --filter e2e run test",
+    "db:migrate": "pnpm --filter api run db:migrate",
+    "db:seed": "pnpm --filter api run db:seed",
+    "db:generate-perf": "pnpm --filter api run db:generate-perf",
+    "ledger:check": "pnpm --filter api run ledger:check",
+    "ledger:rebuild": "pnpm --filter api run ledger:rebuild",
+    "contract:check": "pnpm --filter api run contract:check",
+    "contract:generate": "pnpm --filter contract run contract:generate",
+    "perf:measure": "node scripts/perf-measure.mjs"
+  },
+  "devDependencies": {
+    "oxlint": "1.85.0",
+    "oxlint-tsgolint": "7.0.2002",
+    "prettier": "3.9.9"
+  }
+}

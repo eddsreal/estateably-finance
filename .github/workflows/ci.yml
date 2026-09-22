@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: finance
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d finance"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/finance
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate contract types
+        run: pnpm contract:generate
+
+      - name: Lint (oxlint, type-aware)
+        run: pnpm lint
+
+      - name: Typecheck (tsc, TS7)
+        run: pnpm typecheck
+
+      - name: Contract drift check
+        run: pnpm contract:check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: API e2e (real Postgres)
+        run: pnpm db:migrate && pnpm db:seed && pnpm test:e2e
+
+      - name: Integrity + reconciliation
+        run: pnpm ledger:check
+
+      - name: Compose stack for UI e2e
+        run: docker compose up --build --detach --wait
+
+      - name: Playwright (Chromium)
+        run: pnpm --filter e2e exec playwright install --with-deps chromium && pnpm test:ui
+
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
