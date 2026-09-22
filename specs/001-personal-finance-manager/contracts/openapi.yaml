@@ -229,8 +229,11 @@ paths:
     patch:
       operationId: updateCategory
       tags: [categories]
-      summary: Rename a category
-      description: Renames the category. Its type is fixed at creation; renaming touches no transaction.
+      summary: Update a category
+      description: >-
+        Renames the category; renaming touches no transaction. May also change its type, but
+        only while no transaction (soft-deleted included) references the category — once used,
+        the type is immutable and a change is rejected with the structured error.
       parameters:
         - $ref: "#/components/parameters/IdParam"
       requestBody:
@@ -1103,6 +1106,12 @@ components:
           minLength: 1
           maxLength: 60
           example: Pets & Vet
+        type:
+          allOf: [{ $ref: "#/components/schemas/CategoryType" }]
+          description: >-
+            Optional. Accepted only while no transaction (soft-deleted included) references
+            the category; on a used category a type change is rejected with the structured
+            error. Omitted means the type is unchanged.
     CategoryResponse:
       type: object
       required: [id, name, type, archived]

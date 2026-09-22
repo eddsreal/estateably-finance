@@ -16,7 +16,9 @@ that doubles as the served documentation. Money is integer cents: `BIGINT` in th
 JSON strings on the wire, `bigint` arithmetic, dollars only in the UI presentation layer.
 **The contract is frozen with this plan**: [`contracts/openapi.yaml`](contracts/openapi.yaml)
 and [`contracts/schema.prisma`](contracts/schema.prisma). Any change to either goes back
-through this plan (Principle IV).
+through this plan (Principle IV). Amendments so far: 2026-09-22 (analysis, approved) —
+`CategoryUpdateRequest` gains an optional `type`, accepted only while the category is unused
+(spec FR-003 amendment of the same date).
 
 All research decisions are closed and approved, HSTS included (R-006, approved 2026-09-20:
 derived from `NODE_ENV` — helmet emits it only when `NODE_ENV === 'production'`).
@@ -53,8 +55,8 @@ SPA and API are separate origins, no proxy, strict CORS allowlist (research R-00
 
 **Constraints**: money as strings of integer cents with a ±10^15-cent edge guard (FR-022);
 read-after-write balance freshness with no push/polling (FR-028); calendar dates with "today"
-from `APP_TIMEZONE` (FR-029); env vars closed to the FR-035 seven (incl. `CORS_ORIGINS` and
-`LLM_BASE_URL`, amended 2026-09-20 and 2026-09-21); structured errors with
+from `APP_TIMEZONE` (FR-029); env vars closed to the FR-035 seven (incl. `CORS_ORIGINS`,
+`LLM_BASE_URL` and `NODE_ENV`, amended 2026-09-20, 2026-09-21 and 2026-09-22); structured errors with
 correlation id everywhere (FR-023/FR-033); WCAG-AA-level keyboard/label/focus floor (FR-034).
 
 **Scale/Scope**: single user, single currency, 8 screens, 23 API paths / 31 operations,
