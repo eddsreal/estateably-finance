@@ -14,7 +14,7 @@ No application code exists yet; the stack is fixed by the constitution.
 
 The constitution is the authority; these are the ones that get code rejected.
 
-1. Entries sum to zero, enforced in the domain *and* by a database constraint, both inside one
+1. Entries sum to zero, enforced in the domain _and_ by a database constraint, both inside one
    database transaction.
 2. Money is an integer number of cents — `BIGINT` in the database, JSON strings of integer
    cents on the wire (`"4250"`, never a JSON number), `bigint`/`BigInt` arithmetic, never a
@@ -56,9 +56,13 @@ The constitution is the authority; these are the ones that get code rejected.
 **Formatting.** Format every file you save with Prettier using this project's configuration. Do
 not reformat files you did not touch.
 
+**Comments.** Do not write comments of any kind in code or config files — no explanations, no
+ceiling notes, no markers, nothing. Rationale, ceilings and upgrade paths are recorded in
+`plan.md` (Complexity Tracking) or the feature's spec documents, never in the code.
+
 **Git.**
 
-- Commit only when I ask. Plain imperative subject line, optional body explaining *why*. I am the
+- Commit only when I ask. Plain imperative subject line, optional body explaining _why_. I am the
   only author.
 - Nothing about the assistant goes into the repository: no co-author trailers, no "generated
   with" footers, no mention of AI in commit messages, pull request descriptions or code comments.
