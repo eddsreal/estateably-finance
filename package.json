@@ -10,7 +10,7 @@
     "build": "pnpm --recursive --if-present run build",
     "lint": "oxlint --type-aware",
     "typecheck": "pnpm --recursive --if-present run typecheck",
-    "test": "pnpm --recursive --if-present run test",
+    "test": "pnpm --recursive --filter=!e2e --if-present run test",
     "test:e2e": "pnpm --filter api run test:e2e",
     "test:ui": "pnpm --filter e2e run test",
     "db:migrate": "pnpm --filter api run db:migrate",

@@ -54,5 +54,11 @@
       }
     }
   ],
-  "ignorePatterns": ["**/node_modules", "**/dist", "design/**", "packages/contract/src/types.ts"]
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/dist",
+    "design/**",
+    "packages/contract/src/types.ts",
+    "apps/web/public/docs/**"
+  ]
 }

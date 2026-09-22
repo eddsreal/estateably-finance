@@ -7,7 +7,7 @@ RUN pnpm install --frozen-lockfile --filter api
 COPY tsconfig.base.json ./
 COPY apps/api apps/api
 COPY specs/001-personal-finance-manager/contracts specs/001-personal-finance-manager/contracts
-RUN pnpm --filter api run build
+RUN pnpm --filter api exec prisma generate && pnpm --filter api run build
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["sh", "-c", "pnpm --filter api run db:migrate && pnpm --filter api run db:seed && node apps/api/dist/main.js"]

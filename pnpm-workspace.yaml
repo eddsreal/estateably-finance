@@ -4,6 +4,7 @@ packages:
   - e2e
 allowBuilds:
   '@prisma/engines': true
+  '@scarf/scarf': false
   prisma: true
 minimumReleaseAgeExclude:
   - '@nestjs/common@12.1.0'

@@ -39,6 +39,9 @@ jobs:
       - name: Generate contract types
         run: pnpm contract:generate
 
+      - name: Generate Prisma client
+        run: pnpm --filter api exec prisma generate
+
       - name: Lint (oxlint, type-aware)
         run: pnpm lint
 
