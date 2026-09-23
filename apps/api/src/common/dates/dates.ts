@@ -16,6 +16,12 @@ export function appToday(): string {
   return todayIn(process.env.APP_TIMEZONE ?? 'UTC');
 }
 
+export function addDays(date: string, days: number): string {
+  const base = toDate(date);
+  base.setUTCDate(base.getUTCDate() + days);
+  return toDateOnly(base);
+}
+
 export function addMonthsClamped(date: string, months: number): string {
   const base = toDate(date);
   const day = base.getUTCDate();

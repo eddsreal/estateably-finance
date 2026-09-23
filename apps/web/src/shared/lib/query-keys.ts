@@ -13,6 +13,8 @@ export const queryKeys = {
   reports: ['reports'] as const,
   reportMonthly: (month: string) => ['reports', 'monthly', month] as const,
   projection: ['projection'] as const,
+  projectionAt: (horizon: string) => ['projection', horizon] as const,
+  scheduledItems: ['scheduled-items'] as const,
 };
 
 const ENTRY_DERIVED = [
@@ -21,6 +23,7 @@ const ENTRY_DERIVED = [
   queryKeys.reports,
   queryKeys.projection,
   queryKeys.projects,
+  queryKeys.scheduledItems,
 ];
 
 export function invalidateEntryDerived(queryClient: QueryClient): Promise<void> {

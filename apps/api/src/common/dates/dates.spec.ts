@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMonthsClamped, spanExceedsMonths, toDate, toDateOnly, todayIn } from './dates';
+import { addDays, addMonthsClamped, spanExceedsMonths, toDate, toDateOnly, todayIn } from './dates';
 
 describe('dates', () => {
   it('round-trips a date-only string through Date', () => {
@@ -11,6 +11,8 @@ describe('dates', () => {
   });
 
   it('adds months clamping to the last day of shorter months', () => {
+    expect(addDays('2026-09-28', 7)).toBe('2026-10-05');
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
     expect(addMonthsClamped('2026-01-31', 1)).toBe('2026-02-28');
     expect(addMonthsClamped('2026-01-15', 1)).toBe('2026-02-15');
     expect(addMonthsClamped('2024-12-31', 2)).toBe('2025-02-28');

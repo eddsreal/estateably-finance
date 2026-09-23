@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  ArchivedAccountError,
+  DomainRuleViolationError,
   DuplicateNameError,
   NotFoundError,
   ValidationFailedError,
@@ -201,6 +203,22 @@ describe('AccountsService', () => {
 
     mocks.accounts.findById.mockResolvedValue(null);
     await expect(service.balanceAsOf(9n, '2026-09-12')).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('rejects a missing or archived account through assertUsable', async () => {
+    mocks.accounts.findById.mockResolvedValue(null);
+    await expect(service.assertUsable(9n, 'accountId')).rejects.toBeInstanceOf(
+      DomainRuleViolationError,
+    );
+
+    mocks.accounts.findById.mockResolvedValue({ id: 1n, archived: true });
+    await expect(service.assertUsable(1n, 'accountId')).rejects.toBeInstanceOf(
+      ArchivedAccountError,
+    );
+
+    mocks.accounts.findById.mockResolvedValue({ id: 1n, archived: false });
+    await expect(service.assertUsable(1n, 'accountId', fakeTx)).resolves.toBeUndefined();
+    expect(mocks.accounts.findById).toHaveBeenLastCalledWith(1n, fakeTx);
   });
 
   it('sums the total across non-archived accounts only', async () => {

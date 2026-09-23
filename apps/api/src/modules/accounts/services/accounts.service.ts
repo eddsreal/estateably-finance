@@ -2,11 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { Account, AccountKind } from '@prisma/client';
 import { toDateOnly } from '../../../common/dates/dates';
 import {
+  ArchivedAccountError,
+  DomainRuleViolationError,
   DuplicateNameError,
   NotFoundError,
   ValidationFailedError,
 } from '../../../common/domain-errors/domain-errors';
-import { isUniqueViolation, PrismaService } from '../../../common/prisma.service/prisma.service';
+import {
+  isUniqueViolation,
+  PrismaService,
+  TransactionClient,
+} from '../../../common/prisma.service/prisma.service';
 import { LedgerService, TransactionWithEntries } from '../../ledger/services/ledger.service';
 import { AccountsRepository } from '../repositories/accounts.repository';
 
@@ -130,6 +136,16 @@ export class AccountsService {
         };
       }),
     );
+  }
+
+  async assertUsable(id: bigint, field: string, tx?: TransactionClient): Promise<void> {
+    const row = await this.accounts.findById(id, tx);
+    if (!row) {
+      throw new DomainRuleViolationError(`Account ${id} does not exist`, [
+        { field, message: 'account does not exist' },
+      ]);
+    }
+    if (row.archived) throw new ArchivedAccountError(field, id);
   }
 
   async balanceAsOf(id: bigint, asOf: string): Promise<bigint> {

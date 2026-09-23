@@ -1,5 +1,14 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { AccountKind, CategoryType, Prisma, PrismaClient, TransactionKind } from '@prisma/client';
+import {
+  AccountKind,
+  CategoryType,
+  Prisma,
+  PrismaClient,
+  Recurrence,
+  ScheduledItemKind,
+  TransactionKind,
+} from '@prisma/client';
+import { addDays, addMonthsClamped } from '../src/common/dates/dates.ts';
 import { toEntries, type LedgerIntent } from '../src/modules/ledger/domain/to-entries.ts';
 
 export const FIXED_CATEGORIES: { name: string; type: CategoryType }[] = [
@@ -325,6 +334,77 @@ const OLD_BANK_HISTORY: SeedTransaction[] = [
   },
 ];
 
+type SeedScheduledItem = {
+  kind: ScheduledItemKind;
+  description: string;
+  amount: bigint;
+  account: string;
+  category: string;
+  nextDueDate: string;
+  recurrence: Recurrence;
+  endDate?: string;
+};
+
+function next31st(today: string): string {
+  const [year, month] = today.split('-').map(Number);
+  for (let offset = 0; ; offset += 1) {
+    const last = new Date(Date.UTC(year, month + offset, 0));
+    const date = last.toISOString().slice(0, 10);
+    if (last.getUTCDate() === 31 && date >= today) return date;
+  }
+}
+
+function scheduledItems(today: string): SeedScheduledItem[] {
+  return [
+    {
+      kind: 'bill',
+      description: 'Property tax',
+      amount: 900000n,
+      account: 'Checking',
+      category: 'Utilities',
+      nextDueDate: addDays(today, 20),
+      recurrence: 'once',
+    },
+    {
+      kind: 'bill',
+      description: 'Storage rent',
+      amount: 7500n,
+      account: 'Checking',
+      category: 'Rent',
+      nextDueDate: next31st(today),
+      recurrence: 'monthly',
+    },
+    {
+      kind: 'income',
+      description: 'Dog walking',
+      amount: 4500n,
+      account: 'Cash',
+      category: 'Freelance',
+      nextDueDate: addDays(today, 3),
+      recurrence: 'weekly',
+    },
+    {
+      kind: 'bill',
+      description: 'Gym trial',
+      amount: 5000n,
+      account: 'Checking',
+      category: 'Health',
+      nextDueDate: addDays(today, 5),
+      recurrence: 'monthly',
+      endDate: addMonthsClamped(addDays(today, 5), 1),
+    },
+    {
+      kind: 'bill',
+      description: 'Water bill',
+      amount: 6050n,
+      account: 'Checking',
+      category: 'Utilities',
+      nextDueDate: addDays(today, -40),
+      recurrence: 'monthly',
+    },
+  ];
+}
+
 export function todayIn(timezone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: timezone, dateStyle: 'short' }).format(
     new Date(),
@@ -355,7 +435,10 @@ async function main(): Promise<void> {
       );
       const equity = await tx.systemAccount.create({ data: { kind: 'equity' } });
 
-      const categories = new Map<string, { type: CategoryType; systemAccountId: bigint }>();
+      const categories = new Map<
+        string,
+        { id: bigint; type: CategoryType; systemAccountId: bigint }
+      >();
       const allCategories = [
         ...FIXED_CATEGORIES,
         { name: 'Subscriptions', type: 'expense' as CategoryType, archived: true },
@@ -371,7 +454,11 @@ async function main(): Promise<void> {
         const systemAccount = await tx.systemAccount.create({
           data: { kind: 'category', categoryId: row.id },
         });
-        categories.set(category.name, { type: category.type, systemAccountId: systemAccount.id });
+        categories.set(category.name, {
+          id: row.id,
+          type: category.type,
+          systemAccountId: systemAccount.id,
+        });
       }
 
       const accounts = new Map<string, bigint>();
@@ -442,8 +529,24 @@ async function main(): Promise<void> {
       }
       await tx.balanceSnapshot.createMany({ data: snapshots });
 
+      const seedItems = scheduledItems(today);
+      for (const item of seedItems) {
+        await tx.scheduledItem.create({
+          data: {
+            kind: item.kind,
+            description: item.description,
+            amount: item.amount,
+            accountId: accounts.get(item.account)!,
+            categoryId: categories.get(item.category)!.id,
+            nextDueDate: new Date(`${item.nextDueDate}T00:00:00Z`),
+            recurrence: item.recurrence,
+            endDate: item.endDate === undefined ? null : new Date(`${item.endDate}T00:00:00Z`),
+          },
+        });
+      }
+
       console.log(
-        `db:seed OK: ${allCategories.length} categories, ${accounts.size} accounts, ${seedTransactions.length} transactions, run date ${today}`,
+        `db:seed OK: ${allCategories.length} categories, ${accounts.size} accounts, ${seedTransactions.length} transactions, ${seedItems.length} scheduled items, run date ${today}`,
       );
     });
   } finally {

@@ -5,6 +5,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ScheduledItemsModule } from './modules/scheduled-items/scheduled-items.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     CategoriesModule,
     ProjectsModule,
     AccountsModule,
+    ScheduledItemsModule,
     ReportsModule,
   ],
 })
