@@ -93,13 +93,8 @@ export class TransactionsRepository {
     await this.db(tx).transaction.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
-  async list(
-    filters: TransactionFilters,
-    limit: number,
-    offset: number,
-    tx?: TransactionClient,
-  ): Promise<{ items: TransactionWithEntries[]; total: number }> {
-    const where: Prisma.TransactionWhereInput = {
+  private whereFor(filters: TransactionFilters): Prisma.TransactionWhereInput {
+    return {
       deletedAt: null,
       ...(filters.kind ? { kind: filters.kind } : {}),
       ...(filters.projectId !== undefined ? { projectId: filters.projectId } : {}),
@@ -118,6 +113,23 @@ export class TransactionsRepository {
         ? { entries: { some: { systemAccount: { categoryId: filters.categoryId } } } }
         : {}),
     };
+  }
+
+  listAll(filters: TransactionFilters, tx?: TransactionClient): Promise<TransactionWithEntries[]> {
+    return this.db(tx).transaction.findMany({
+      where: this.whereFor(filters),
+      include: ENTRIES_INCLUDE,
+      orderBy: [{ date: 'desc' }, { id: 'desc' }],
+    });
+  }
+
+  async list(
+    filters: TransactionFilters,
+    limit: number,
+    offset: number,
+    tx?: TransactionClient,
+  ): Promise<{ items: TransactionWithEntries[]; total: number }> {
+    const where = this.whereFor(filters);
     const db = this.db(tx);
     const [items, total] = await Promise.all([
       db.transaction.findMany({

@@ -11,7 +11,7 @@ import {
   EditableTransaction,
   TransactionForm,
   TransactionKindChoice,
-} from '../TransactionForm/TransactionForm';
+} from '../../../../shared/ui/TransactionForm/TransactionForm';
 
 const PAGE_SIZE = 50;
 

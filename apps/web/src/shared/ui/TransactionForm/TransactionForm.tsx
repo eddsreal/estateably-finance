@@ -1,16 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import { api, unwrap } from '../../../../shared/lib/api';
-import { applyServerError } from '../../../../shared/lib/form-errors';
-import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
-import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
-import { AccountOption, AccountPicker } from '../../../../shared/ui/AccountPicker/AccountPicker';
-import {
-  CategoryOption,
-  CategoryPicker,
-} from '../../../../shared/ui/CategoryPicker/CategoryPicker';
-import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
+import { api, unwrap } from '../../lib/api';
+import { applyServerError } from '../../lib/form-errors';
+import { Cents, formatPlain, parseDollars } from '../../lib/money';
+import { invalidateEntryDerived } from '../../lib/query-keys';
+import { AccountOption, AccountPicker } from '../AccountPicker/AccountPicker';
+import { CategoryOption, CategoryPicker } from '../CategoryPicker/CategoryPicker';
+import { MoneyInput } from '../MoneyInput/MoneyInput';
 
 export type TransactionKindChoice = 'expense' | 'income' | 'transfer';
 

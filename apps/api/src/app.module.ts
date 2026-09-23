@@ -4,8 +4,16 @@ import { AccountsModule } from './modules/accounts/accounts.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
-  imports: [PrismaModule, LedgerModule, CategoriesModule, ProjectsModule, AccountsModule],
+  imports: [
+    PrismaModule,
+    LedgerModule,
+    CategoriesModule,
+    ProjectsModule,
+    AccountsModule,
+    ReportsModule,
+  ],
 })
 export class AppModule {}

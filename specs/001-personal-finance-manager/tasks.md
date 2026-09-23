@@ -142,11 +142,11 @@ and a transfer; each month's report shows correct per-category totals and grand 
 
 ### Implementation for User Story 3
 
-- [ ] T055 [US3] Create reports module `apps/api/src/modules/reports/` with `domain/monthly-report.ts` + `.spec.ts`: pure `bigint` grouping per expense-type category system account for a month, grand total = sum of category totals, categories without activity omitted, income/transfers absent by construction (FR-013, data-model.md derived reads)
-- [ ] T056 [US3] Create `reports.service.ts` + `.spec.ts`, `reports.module.ts` (imports ledger + categories, exports only the service), controller + DTOs for getMonthlyReport (`/reports/monthly`) incl. the transactions behind each category; out-DTO `from(...)` `.spec.ts`
-- [ ] T057 [P] [US3] Create `apps/api/test/reports-monthly.e2e-spec.ts` (ajv-validated): US3 scenarios — Groceries $72.50 / Rent $120.00 / total $192.50, empty month "0" total, drill-down rows, edit moving a transaction between months moves it between reports (SC-004)
-- [ ] T058 [US3] Create `apps/web/src/features/report/` + route: month switcher (no reload, month in page state), per-category rows expanding to their transactions, clicking a transaction opens its edit (plan interaction details), grand total, empty state; component tests assert dollars-only
-- [ ] T059 [US3] Create `e2e/specs/story-3-report.spec.ts`: keyboard-only — seeded month totals sum to grand total, drill-down, edit into last month moves both reports, month switch without reload
+- [x] T055 [US3] Create reports module `apps/api/src/modules/reports/` with `domain/monthly-report.ts` + `.spec.ts`: pure `bigint` grouping per expense-type category system account for a month, grand total = sum of category totals, categories without activity omitted, income/transfers absent by construction (FR-013, data-model.md derived reads)
+- [x] T056 [US3] Create `reports.service.ts` + `.spec.ts`, `reports.module.ts` (imports ledger + categories, exports only the service), controller + DTOs for getMonthlyReport (`/reports/monthly`) incl. the transactions behind each category; out-DTO `from(...)` `.spec.ts`
+- [x] T057 [P] [US3] Create `apps/api/test/reports-monthly.e2e-spec.ts` (ajv-validated): US3 scenarios — Groceries $72.50 / Rent $120.00 / total $192.50, empty month "0" total, drill-down rows, edit moving a transaction between months moves it between reports (SC-004)
+- [x] T058 [US3] Create `apps/web/src/features/report/` + route: month switcher (no reload, month in page state), per-category rows expanding to their transactions, clicking a transaction opens its edit (plan interaction details), grand total, empty state; component tests assert dollars-only
+- [x] T059 [US3] Create `e2e/specs/story-3-report.spec.ts`: keyboard-only — seeded month totals sum to grand total, drill-down, edit into last month moves both reports, month switch without reload
 
 **Checkpoint**: US1–US3 independently functional. Stop for approval.
 

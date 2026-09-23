@@ -52,6 +52,7 @@ select:focus-visible,
 textarea:focus-visible,
 .picker-trigger:focus-visible,
 .picker-option:focus-visible,
+.report-category summary:focus-visible,
 .page-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -419,6 +420,42 @@ textarea:focus-visible,
 .picker-option .note {
   color: var(--ink-3);
   margin-left: var(--space-1);
+}
+
+.month-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 600;
+}
+
+.report-category {
+  border-bottom: 1px solid var(--border);
+}
+
+.report-category:last-child {
+  border-bottom: none;
+}
+
+.report-category summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--h-row);
+  padding: var(--space-1) var(--space-3);
+  font: var(--text-table);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+}
+
+.report-category summary:hover {
+  background: var(--neutral-soft);
+}
+
+.report-category .table {
+  margin: var(--space-2) 0 var(--space-4);
 }
 
 .toolbar {

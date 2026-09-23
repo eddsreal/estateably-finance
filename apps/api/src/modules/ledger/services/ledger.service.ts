@@ -160,6 +160,10 @@ export class LedgerService {
     return { items, total, limit, offset };
   }
 
+  listAll(filters: TransactionFilters): Promise<TransactionWithEntries[]> {
+    return this.transactions.listAll(filters);
+  }
+
   findLive(id: bigint, tx?: TransactionClient): Promise<TransactionWithEntries | null> {
     return this.transactions.findLiveById(id, tx);
   }
