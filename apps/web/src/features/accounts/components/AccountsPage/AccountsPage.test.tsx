@@ -75,10 +75,36 @@ describe('AccountsPage', () => {
     await user.clear(screen.getByLabelText('Opening balance'));
     await user.type(screen.getByLabelText('Opening balance'), '12.345');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
-    expect(await screen.findByText('Enter a dollar amount like 1,234.50')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Enter a dollar amount like 1,234.50',
+    );
     const input = screen.getByLabelText('Opening balance');
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAttribute('aria-describedby', 'account-opening-balance-error');
+  });
+
+  it('ties a server error on the kind radio group to that group', async () => {
+    stubApi({
+      'GET /accounts': accounts,
+      'POST /accounts': () => ({
+        status: 400,
+        body: {
+          code: 'VALIDATION_FAILED',
+          message: 'Request validation failed',
+          details: [{ field: 'kind', message: 'kind must be bank, cash or card' }],
+          correlationId: 'c-1',
+        },
+      }),
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('$4,457.50');
+    await user.click(screen.getByRole('button', { name: 'New account' }));
+    await user.type(screen.getByLabelText('Name'), 'Cash box');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    const group = await screen.findByRole('radiogroup', { name: 'Kind' });
+    expect(group).toHaveAttribute('aria-invalid', 'true');
+    expect(group).toHaveAccessibleDescription('kind must be bank, cash or card');
   });
 
   it('shows an error state with retry instead of stale balances when the list cannot load', async () => {

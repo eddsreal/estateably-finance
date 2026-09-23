@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
@@ -18,6 +18,7 @@ const PAGE_SIZE = 50;
 export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
+  const navigate = useNavigate();
 
   const projectsQuery = useQuery({
     queryKey: queryKeys.projectsList,
@@ -128,6 +129,8 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           <EmptyState
             title="No expenses in this project yet"
             hint="Pick this project when recording an expense and it will be listed here."
+            actionLabel="Go to transactions"
+            onAction={() => void navigate('/transactions')}
           />
         ) : (
           <>

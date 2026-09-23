@@ -105,7 +105,7 @@ export function AccountForm({
           {...register('name', { required: 'name is required', maxLength: 60 })}
         />
         {errors.name && (
-          <p className="field-error" id="account-name-error">
+          <p className="field-error" role="alert" id="account-name-error">
             {errors.name.message || 'name must be at most 60 characters'}
           </p>
         )}
@@ -114,7 +114,13 @@ export function AccountForm({
         <span className="field-label" id="account-kind-label">
           Kind
         </span>
-        <div className="radio-group" role="radiogroup" aria-labelledby="account-kind-label">
+        <div
+          className="radio-group"
+          role="radiogroup"
+          aria-labelledby="account-kind-label"
+          aria-invalid={errors.kind ? true : undefined}
+          aria-describedby={errors.kind ? 'account-kind-error' : undefined}
+        >
           {KINDS.map((kind) => (
             <label key={kind.value}>
               <input type="radio" value={kind.value} {...register('kind')} />
@@ -122,6 +128,11 @@ export function AccountForm({
             </label>
           ))}
         </div>
+        {errors.kind && (
+          <p className="field-error" role="alert" id="account-kind-error">
+            {errors.kind.message}
+          </p>
+        )}
       </div>
       <div className="field">
         <label htmlFor="account-opening-balance">Opening balance</label>
@@ -146,7 +157,7 @@ export function AccountForm({
           )}
         />
         {errors.openingBalance && (
-          <p className="field-error" id="account-opening-balance-error">
+          <p className="field-error" role="alert" id="account-opening-balance-error">
             {errors.openingBalance.message}
           </p>
         )}
@@ -162,7 +173,7 @@ export function AccountForm({
           {...register('openingDate', { required: 'opening date is required' })}
         />
         {errors.openingDate && (
-          <p className="field-error" id="account-opening-date-error">
+          <p className="field-error" role="alert" id="account-opening-date-error">
             {errors.openingDate.message}
           </p>
         )}

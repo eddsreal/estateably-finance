@@ -75,7 +75,7 @@ export function CategoryForm({
           {...register('name', { required: 'name is required', maxLength: 60 })}
         />
         {errors.name && (
-          <p className="field-error" id="category-name-error">
+          <p className="field-error" role="alert" id="category-name-error">
             {errors.name.message || 'name must be at most 60 characters'}
           </p>
         )}
@@ -84,7 +84,13 @@ export function CategoryForm({
         <span className="field-label" id="category-type-label">
           Type
         </span>
-        <div className="radio-group" role="radiogroup" aria-labelledby="category-type-label">
+        <div
+          className="radio-group"
+          role="radiogroup"
+          aria-labelledby="category-type-label"
+          aria-invalid={errors.type ? true : undefined}
+          aria-describedby={errors.type ? 'category-type-error' : undefined}
+        >
           <label>
             <input type="radio" value="expense" {...register('type')} />
             Expense
@@ -94,7 +100,11 @@ export function CategoryForm({
             Income
           </label>
         </div>
-        {errors.type && <p className="field-error">{errors.type.message}</p>}
+        {errors.type && (
+          <p className="field-error" role="alert" id="category-type-error">
+            {errors.type.message}
+          </p>
+        )}
       </div>
       <div className="modal-actions">
         <button type="button" className="btn" onClick={onDone}>

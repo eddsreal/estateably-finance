@@ -10,14 +10,14 @@ const error = {
 };
 
 describe('applyServerError (SC-011)', () => {
-  it('maps field details onto the matching form fields', () => {
+  it('maps field details onto the matching fields and still names the correlation id', () => {
     const setError = vi.fn<UseFormSetError<Record<string, unknown>>>();
     const formLevel = applyServerError(error, setError, ['amount', 'date']);
     expect(setError).toHaveBeenCalledWith('amount', {
       type: 'server',
       message: 'amount must be a positive integer number of cents',
     });
-    expect(formLevel).toBeNull();
+    expect(formLevel).toBe(`VALIDATION_FAILED: Validation failed (ref ${error.correlationId})`);
   });
 
   it('surfaces field-less errors at form level with the correlation id', () => {

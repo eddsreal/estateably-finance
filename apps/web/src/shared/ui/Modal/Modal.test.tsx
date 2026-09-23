@@ -50,11 +50,29 @@ describe('Modal', () => {
       </Modal>,
     );
     await user.click(screen.getByRole('combobox', { name: 'Kind' }));
-    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toContainElement(screen.getByRole('listbox'));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns focus to the control that opened it when it closes', () => {
+    const tree = (open: boolean) => (
+      <>
+        <button type="button">Open</button>
+        <Modal title="Edit" open={open} onClose={() => {}}>
+          <input aria-label="Name" data-autofocus />
+        </Modal>
+      </>
+    );
+    const { rerender } = render(tree(false));
+    const opener = screen.getByRole('button', { name: 'Open' });
+    opener.focus();
+    rerender(tree(true));
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
+    rerender(tree(false));
+    expect(opener).toHaveFocus();
   });
 });

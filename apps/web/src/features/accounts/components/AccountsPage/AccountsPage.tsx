@@ -117,6 +117,7 @@ export function AccountsPage() {
                   <button
                     type="button"
                     className="row-action"
+                    aria-label={`Edit ${account.name}`}
                     onClick={() =>
                       setEditing({
                         id: account.id,
@@ -132,6 +133,7 @@ export function AccountsPage() {
                   <button
                     type="button"
                     className="row-action"
+                    aria-label={`${account.archived ? 'Unarchive' : 'Archive'} ${account.name}`}
                     onClick={() =>
                       archiveMutation.mutate({ id: account.id, archive: !account.archived })
                     }

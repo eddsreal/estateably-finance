@@ -9,6 +9,7 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.ts",
+    "db:generate-perf": "node prisma/generate-perf.ts",
     "ledger:check": "node src/modules/ledger/reconciliation.ts check",
     "ledger:rebuild": "node src/modules/ledger/reconciliation.ts rebuild",
     "contract:check": "tsc -p tsconfig.build.json && node dist/contract-check.js"

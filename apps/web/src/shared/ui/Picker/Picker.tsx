@@ -35,6 +35,7 @@ export function Picker({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+  const [panelHost, setPanelHost] = useState<Element>(document.body);
 
   const rows: PickerOption[] = [{ value: '', label: placeholder }, ...options];
   const selectedIndex = rows.findIndex((row) => row.value === (value ?? ''));
@@ -46,6 +47,7 @@ export function Picker({
 
   function openPanel() {
     setActive(selectedIndex >= 0 ? selectedIndex : 0);
+    setPanelHost(triggerRef.current?.closest('dialog') ?? document.body);
     setOpen(true);
   }
 
@@ -182,7 +184,7 @@ export function Picker({
               </li>
             ))}
           </ul>,
-          document.body,
+          panelHost,
         )}
     </div>
   );

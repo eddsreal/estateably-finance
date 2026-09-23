@@ -93,6 +93,7 @@ export function CategoriesPage() {
                   <button
                     type="button"
                     className="row-action"
+                    aria-label={`Edit ${category.name}`}
                     onClick={() =>
                       setEditing({ id: category.id, name: category.name, type: category.type })
                     }
@@ -102,6 +103,7 @@ export function CategoriesPage() {
                   <button
                     type="button"
                     className="row-action"
+                    aria-label={`${category.archived ? 'Unarchive' : 'Archive'} ${category.name}`}
                     onClick={() =>
                       archiveMutation.mutate({ id: category.id, archive: !category.archived })
                     }

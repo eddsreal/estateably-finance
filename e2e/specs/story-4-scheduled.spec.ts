@@ -3,6 +3,8 @@ import { expect, Locator, Page, test } from '@playwright/test';
 const run = Date.now();
 const billDesc = `Rent e2e ${run}`;
 const paidDesc = `Rent e2e paid ${run}`;
+const overdraftDesc = `Overdraft e2e ${run}`;
+const API = 'http://localhost:3000';
 
 function localDate(offsetDays: number): string {
   const now = new Date();
@@ -80,15 +82,36 @@ test('seeded items are listed by due date with relative labels and the overdue f
 test('the projection starts from the dashboard total and flags the below-zero occurrence (US4 #5, SC-005)', async ({
   page,
 }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
-  const dashboardTotal = await page.locator('.stat .value').first().innerText();
+  const accounts = await (await page.request.get(`${API}/accounts`)).json();
+  const categories = await (await page.request.get(`${API}/categories`)).json();
+  const created = await page.request.post(`${API}/scheduled-items`, {
+    data: {
+      kind: 'bill',
+      description: overdraftDesc,
+      amount: '100000000',
+      accountId: accounts.items.find((account: { name: string }) => account.name === 'Checking').id,
+      categoryId: categories.find((category: { name: string }) => category.name === 'Utilities').id,
+      nextDueDate: localDate(1),
+      recurrence: 'once',
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  try {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+    const dashboardTotal = await page.locator('.stat .value').first().innerText();
 
-  await press(page.getByRole('link', { name: 'Projection' }));
-  await expect(page.getByRole('heading', { name: 'Projection' })).toBeVisible();
-  await expect(page.locator('.stat .value').first()).toHaveText(dashboardTotal);
-  await expect(page.getByRole('row', { name: /Property tax/ })).toContainText('Below zero');
-  await expect(page.getByRole('row', { name: /Property tax/ })).toContainText('-$9,000.00');
+    await press(page.getByRole('link', { name: 'Projection' }));
+    await expect(page.getByRole('heading', { name: 'Projection' })).toBeVisible();
+    await expect(page.locator('.stat .value').first()).toHaveText(dashboardTotal);
+    await expect(page.getByRole('row', { name: new RegExp(overdraftDesc) })).toContainText(
+      'Below zero',
+    );
+    await expect(page.getByRole('row', { name: /Property tax/ })).toContainText('-$9,000.00');
+  } finally {
+    await page.request.delete(`${API}/scheduled-items/${id}`);
+  }
 });
 
 test('a bill can be created, marked paid with a changed amount and date, and everything updates (US4 #6, #7, #7a)', async ({

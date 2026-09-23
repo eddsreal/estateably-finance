@@ -432,7 +432,7 @@ function seedDate(today: string, month: 0 | 1 | 2, day: number): string {
   return target.toISOString().slice(0, 10);
 }
 
-async function main(): Promise<void> {
+export async function seed(): Promise<void> {
   try {
     process.loadEnvFile();
   } catch {}
@@ -572,5 +572,5 @@ async function main(): Promise<void> {
 }
 
 if (process.argv[1]?.endsWith('seed.ts')) {
-  void main();
+  void seed();
 }

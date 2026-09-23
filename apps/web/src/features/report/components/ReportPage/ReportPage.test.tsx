@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
@@ -93,7 +94,9 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ReportPage />
+      <MemoryRouter>
+        <ReportPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -129,6 +132,7 @@ describe('ReportPage', () => {
     await screen.findByText('$192.50');
     await userEvent.click(screen.getByRole('button', { name: 'Previous month' }));
     expect(await screen.findByText('No expenses this month')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to transactions' })).toBeInTheDocument();
     expect(screen.getByText('$0.00')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
     expect(await screen.findByText('$192.50')).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
@@ -31,6 +32,7 @@ function monthLabel(month: string): string {
 export function ReportPage() {
   const [month, setMonth] = useState(currentMonth());
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
+  const navigate = useNavigate();
 
   const reportQuery = useQuery({
     queryKey: queryKeys.reportMonthly(month),
@@ -104,6 +106,8 @@ export function ReportPage() {
           <EmptyState
             title="No expenses this month"
             hint={`Expenses dated in ${label} will show up here by category.`}
+            actionLabel="Go to transactions"
+            onAction={() => void navigate('/transactions')}
           />
         ) : (
           report.categories.map((category) => (

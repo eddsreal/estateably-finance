@@ -222,11 +222,11 @@ digits group correctly for a range; narrative endpoint answers the four AI codes
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T082 [P] Create `db:generate-perf` (FR-032) in `apps/api/prisma/generate-perf.ts`: ~5 000 transactions over 24 months, deterministic PRNG, explicit command only, never part of startup
-- [ ] T083 [P] Create `perf:measure` script `scripts/perf-measure.mjs` per research R-013: native fetch, 20-request warmup then 200 sequential per endpoint (account list, transaction list default page, balance as-of, monthly report, 12-month projection), p95 = `sorted[ceil(0.95·n)-1]`; run it once against the compose stack + perf dataset and record the numbers vs SC-008 targets
-- [ ] T084 [P] Write `README.md` per the quickstart.md content plan: what it is, `docker compose up` + three URLs + under-five-minutes claim, env table (the FR-035 seven + `DATABASE_URL`), scripts table, testing, performance, ten-line architecture, AI narrative note
-- [ ] T085 FR-034/SC-012 audit across all 8 screens: every control labelled, keyboard-only operability with visible focus, errors tied to fields and announced, WCAG AA contrast (negative amounts not colour-alone), every list/report has its design-system empty state; fix findings in place
-- [ ] T086 Final validation: cold `docker compose up` reviewer path (SC-007), quickstart walkthrough dry-run on the seed (SC-001), `ledger:check` corrupt→fail→`ledger:rebuild`→pass cycle, one deliberate UI error's correlation id found verbatim in exactly one stdout line with no amounts/descriptions logged (SC-011), full CI green, Prettier pass over every file this feature touched
+- [x] T082 [P] Create `db:generate-perf` (FR-032) in `apps/api/prisma/generate-perf.ts`: ~5 000 transactions over 24 months, deterministic PRNG, explicit command only, never part of startup
+- [x] T083 [P] Create `perf:measure` script `scripts/perf-measure.mjs` per research R-013: native fetch, 20-request warmup then 200 sequential per endpoint (account list, transaction list default page, balance as-of, monthly report, 12-month projection), p95 = `sorted[ceil(0.95·n)-1]`; run it once against the compose stack + perf dataset and record the numbers vs SC-008 targets
+- [x] T084 [P] Write `README.md` per the quickstart.md content plan: what it is, `docker compose up` + three URLs + under-five-minutes claim, env table (the FR-035 seven + `DATABASE_URL`), scripts table, testing, performance, ten-line architecture, AI narrative note
+- [x] T085 FR-034/SC-012 audit across all 8 screens: every control labelled, keyboard-only operability with visible focus, errors tied to fields and announced, WCAG AA contrast (negative amounts not colour-alone), every list/report has its design-system empty state; fix findings in place
+- [x] T086 Final validation: cold `docker compose up` reviewer path (SC-007), quickstart walkthrough dry-run on the seed (SC-001), `ledger:check` corrupt→fail→`ledger:rebuild`→pass cycle, one deliberate UI error's correlation id found verbatim in exactly one stdout line with no amounts/descriptions logged (SC-011), full CI green, Prettier pass over every file this feature touched
 
 ---
 

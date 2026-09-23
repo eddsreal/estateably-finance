@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { isApiError } from '../../../../shared/lib/form-errors';
 import { Cents, formatCents } from '../../../../shared/lib/money';
@@ -33,6 +34,7 @@ export function SimilarPage() {
   const [aiDisabled, setAiDisabled] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
+  const navigate = useNavigate();
 
   const reportQuery = useQuery({
     queryKey: queryKeys.reportSimilar(range?.from ?? '', range?.to ?? ''),
@@ -166,6 +168,8 @@ export function SimilarPage() {
           <EmptyState
             title="No expenses in this period"
             hint="Expenses dated between these two days will be grouped here."
+            actionLabel="Go to transactions"
+            onAction={() => void navigate('/transactions')}
           />
         </div>
       ) : (

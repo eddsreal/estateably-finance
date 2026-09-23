@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { Cents, formatCents, isNegative } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
@@ -35,6 +36,7 @@ function maxHorizon(today: string): string {
 
 export function ProjectionPage() {
   const today = localToday();
+  const navigate = useNavigate();
   const [horizon, setHorizon] = useState(() => endOfNextMonth(today));
 
   const projectionQuery = useQuery({
@@ -96,6 +98,8 @@ export function ProjectionPage() {
           <EmptyState
             title="Nothing scheduled before this date"
             hint="Scheduled bills and income due by the chosen date will appear here with a running balance."
+            actionLabel="Go to upcoming"
+            onAction={() => void navigate('/upcoming')}
           />
         ) : (
           <Table

@@ -162,7 +162,13 @@ export function ScheduledItemForm({
         <span className="field-label" id="scheduled-kind-label">
           Kind
         </span>
-        <div className="radio-group" role="radiogroup" aria-labelledby="scheduled-kind-label">
+        <div
+          className="radio-group"
+          role="radiogroup"
+          aria-labelledby="scheduled-kind-label"
+          aria-invalid={errors.kind ? true : undefined}
+          aria-describedby={errors.kind ? 'scheduled-kind-error' : undefined}
+        >
           {KINDS.map((choice) => (
             <label key={choice.value}>
               <input type="radio" value={choice.value} {...register('kind')} />
@@ -170,6 +176,11 @@ export function ScheduledItemForm({
             </label>
           ))}
         </div>
+        {errors.kind && (
+          <p className="field-error" role="alert" id="scheduled-kind-error">
+            {errors.kind.message}
+          </p>
+        )}
       </div>
       <div className="field">
         <label htmlFor="scheduled-description">Description</label>
@@ -185,7 +196,7 @@ export function ScheduledItemForm({
           })}
         />
         {errors.description && (
-          <p className="field-error" id="scheduled-description-error">
+          <p className="field-error" role="alert" id="scheduled-description-error">
             {errors.description.message}
           </p>
         )}
@@ -216,7 +227,7 @@ export function ScheduledItemForm({
           )}
         />
         {errors.amount && (
-          <p className="field-error" id="scheduled-amount-error">
+          <p className="field-error" role="alert" id="scheduled-amount-error">
             {errors.amount.message}
           </p>
         )}
@@ -239,7 +250,7 @@ export function ScheduledItemForm({
           )}
         />
         {errors.accountId && (
-          <p className="field-error" id="scheduled-account-error">
+          <p className="field-error" role="alert" id="scheduled-account-error">
             {errors.accountId.message}
           </p>
         )}
@@ -263,7 +274,7 @@ export function ScheduledItemForm({
           )}
         />
         {errors.categoryId && (
-          <p className="field-error" id="scheduled-category-error">
+          <p className="field-error" role="alert" id="scheduled-category-error">
             {errors.categoryId.message}
           </p>
         )}
@@ -283,7 +294,7 @@ export function ScheduledItemForm({
           })}
         />
         {errors.nextDueDate && (
-          <p className="field-error" id="scheduled-due-date-error">
+          <p className="field-error" role="alert" id="scheduled-due-date-error">
             {errors.nextDueDate.message}
           </p>
         )}
@@ -292,7 +303,13 @@ export function ScheduledItemForm({
         <span className="field-label" id="scheduled-recurrence-label">
           Repeats
         </span>
-        <div className="radio-group" role="radiogroup" aria-labelledby="scheduled-recurrence-label">
+        <div
+          className="radio-group"
+          role="radiogroup"
+          aria-labelledby="scheduled-recurrence-label"
+          aria-invalid={errors.recurrence ? true : undefined}
+          aria-describedby={errors.recurrence ? 'scheduled-recurrence-error' : undefined}
+        >
           {RECURRENCES.map((choice) => (
             <label key={choice.value}>
               <input type="radio" value={choice.value} {...register('recurrence')} />
@@ -300,6 +317,11 @@ export function ScheduledItemForm({
             </label>
           ))}
         </div>
+        {errors.recurrence && (
+          <p className="field-error" role="alert" id="scheduled-recurrence-error">
+            {errors.recurrence.message}
+          </p>
+        )}
       </div>
       <div className="field">
         <label htmlFor="scheduled-end-date">End date (optional)</label>
@@ -315,7 +337,7 @@ export function ScheduledItemForm({
           })}
         />
         {errors.endDate && (
-          <p className="field-error" id="scheduled-end-date-error">
+          <p className="field-error" role="alert" id="scheduled-end-date-error">
             {errors.endDate.message}
           </p>
         )}

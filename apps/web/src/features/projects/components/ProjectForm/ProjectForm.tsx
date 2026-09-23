@@ -91,7 +91,7 @@ export function ProjectForm({
           })}
         />
         {errors.name && (
-          <p className="field-error" id="project-name-error">
+          <p className="field-error" role="alert" id="project-name-error">
             {errors.name.message}
           </p>
         )}
@@ -124,7 +124,7 @@ export function ProjectForm({
           )}
         />
         {errors.budget && (
-          <p className="field-error" id="project-budget-error">
+          <p className="field-error" role="alert" id="project-budget-error">
             {errors.budget.message}
           </p>
         )}

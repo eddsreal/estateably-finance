@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
@@ -30,7 +31,9 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <ProjectionPage />
+      <MemoryRouter>
+        <ProjectionPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return { queryClient, ...utils };

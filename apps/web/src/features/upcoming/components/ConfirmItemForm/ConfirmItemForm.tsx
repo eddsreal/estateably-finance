@@ -120,7 +120,7 @@ export function ConfirmItemForm({
           )}
         />
         {errors.amount && (
-          <p className="field-error" id="confirm-amount-error">
+          <p className="field-error" role="alert" id="confirm-amount-error">
             {errors.amount.message}
           </p>
         )}
@@ -136,7 +136,7 @@ export function ConfirmItemForm({
           {...register('date', { required: 'date is required' })}
         />
         {errors.date && (
-          <p className="field-error" id="confirm-date-error">
+          <p className="field-error" role="alert" id="confirm-date-error">
             {errors.date.message}
           </p>
         )}
@@ -159,7 +159,7 @@ export function ConfirmItemForm({
           )}
         />
         {errors.accountId && (
-          <p className="field-error" id="confirm-account-error">
+          <p className="field-error" role="alert" id="confirm-account-error">
             {errors.accountId.message}
           </p>
         )}
@@ -183,7 +183,7 @@ export function ConfirmItemForm({
           )}
         />
         {errors.categoryId && (
-          <p className="field-error" id="confirm-category-error">
+          <p className="field-error" role="alert" id="confirm-category-error">
             {errors.categoryId.message}
           </p>
         )}
@@ -202,7 +202,7 @@ export function ConfirmItemForm({
           })}
         />
         {errors.description && (
-          <p className="field-error" id="confirm-description-error">
+          <p className="field-error" role="alert" id="confirm-description-error">
             {errors.description.message}
           </p>
         )}

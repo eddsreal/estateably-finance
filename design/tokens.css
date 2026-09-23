@@ -1,18 +1,19 @@
 :root {
-  --accent: #1f8a5e;
+  --accent: #1a7a53;
   --accent-hover: #166a48;
   --accent-soft: #e6f4ee;
   --negative: #b42318;
   --negative-soft: #fbeae7;
-  --transfer: #2f6fdb;
+  --transfer: #2a63c6;
   --transfer-soft: #e8effc;
   --warning: #b45309;
   --warning-soft: #fdf1e3;
   --ink: #111827;
   --ink-2: #5b6472;
-  --ink-3: #8a93a1;
+  --ink-3: #646c7a;
   --neutral-soft: #eef0f3;
   --border: #e4e7eb;
+  --border-control: #8a93a1;
   --canvas: #f6f7f9;
   --surface: #ffffff;
 

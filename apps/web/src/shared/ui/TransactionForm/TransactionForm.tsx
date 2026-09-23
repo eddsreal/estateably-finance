@@ -170,7 +170,13 @@ export function TransactionForm({
         <span className="field-label" id="transaction-kind-label">
           Kind
         </span>
-        <div className="radio-group" role="radiogroup" aria-labelledby="transaction-kind-label">
+        <div
+          className="radio-group"
+          role="radiogroup"
+          aria-labelledby="transaction-kind-label"
+          aria-invalid={errors.kind ? true : undefined}
+          aria-describedby={errors.kind ? 'transaction-kind-error' : undefined}
+        >
           {KINDS.map((choice) => (
             <label key={choice.value}>
               <input type="radio" value={choice.value} {...register('kind')} />
@@ -178,6 +184,11 @@ export function TransactionForm({
             </label>
           ))}
         </div>
+        {errors.kind && (
+          <p className="field-error" role="alert" id="transaction-kind-error">
+            {errors.kind.message}
+          </p>
+        )}
       </div>
       <div className="field">
         <label htmlFor="transaction-date">Date</label>
@@ -190,7 +201,7 @@ export function TransactionForm({
           {...register('date', { required: 'date is required' })}
         />
         {errors.date && (
-          <p className="field-error" id="transaction-date-error">
+          <p className="field-error" role="alert" id="transaction-date-error">
             {errors.date.message}
           </p>
         )}
@@ -209,7 +220,7 @@ export function TransactionForm({
           })}
         />
         {errors.description && (
-          <p className="field-error" id="transaction-description-error">
+          <p className="field-error" role="alert" id="transaction-description-error">
             {errors.description.message}
           </p>
         )}
@@ -240,7 +251,7 @@ export function TransactionForm({
           )}
         />
         {errors.amount && (
-          <p className="field-error" id="transaction-amount-error">
+          <p className="field-error" role="alert" id="transaction-amount-error">
             {errors.amount.message}
           </p>
         )}
@@ -265,7 +276,7 @@ export function TransactionForm({
           )}
         />
         {errors.accountId && (
-          <p className="field-error" id="transaction-account-error">
+          <p className="field-error" role="alert" id="transaction-account-error">
             {errors.accountId.message}
           </p>
         )}
@@ -290,7 +301,7 @@ export function TransactionForm({
             )}
           />
           {errors.categoryId && (
-            <p className="field-error" id="transaction-category-error">
+            <p className="field-error" role="alert" id="transaction-category-error">
               {errors.categoryId.message}
             </p>
           )}
@@ -316,7 +327,7 @@ export function TransactionForm({
             )}
           />
           {errors.projectId && (
-            <p className="field-error" id="transaction-project-error">
+            <p className="field-error" role="alert" id="transaction-project-error">
               {errors.projectId.message}
             </p>
           )}
@@ -349,7 +360,7 @@ export function TransactionForm({
             )}
           />
           {errors.counterAccountId && (
-            <p className="field-error" id="transaction-counter-account-error">
+            <p className="field-error" role="alert" id="transaction-counter-account-error">
               {errors.counterAccountId.message}
             </p>
           )}
