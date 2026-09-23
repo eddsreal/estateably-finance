@@ -15,6 +15,7 @@ export const queryKeys = {
     ['projects', 'transactions', id, offset] as const,
   reports: ['reports'] as const,
   reportMonthly: (month: string) => ['reports', 'monthly', month] as const,
+  reportSimilar: (from: string, to: string) => ['reports', 'similar', from, to] as const,
   projection: ['projection'] as const,
   projectionAt: (horizon: string) => ['projection', horizon] as const,
   scheduledItems: ['scheduled-items'] as const,

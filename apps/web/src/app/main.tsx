@@ -11,6 +11,7 @@ import { ProjectDetailRoute } from '../routes/project-detail';
 import { ProjectionRoute } from '../routes/projection';
 import { ProjectsRoute } from '../routes/projects';
 import { ReportRoute } from '../routes/report';
+import { SimilarRoute } from '../routes/similar';
 import { TransactionsRoute } from '../routes/transactions';
 import { UpcomingRoute } from '../routes/upcoming';
 
@@ -24,6 +25,7 @@ function Shell() {
         </NavLink>
         <NavLink to="/transactions">Transactions</NavLink>
         <NavLink to="/report">Report</NavLink>
+        <NavLink to="/similar">Similar</NavLink>
         <NavLink to="/upcoming">Upcoming</NavLink>
         <NavLink to="/projection">Projection</NavLink>
         <NavLink to="/projects">Projects</NavLink>
@@ -45,6 +47,7 @@ const router = createBrowserRouter([
       { path: 'accounts/:id', element: <AccountDetailRoute /> },
       { path: 'transactions', element: <TransactionsRoute /> },
       { path: 'report', element: <ReportRoute /> },
+      { path: 'similar', element: <SimilarRoute /> },
       { path: 'upcoming', element: <UpcomingRoute /> },
       { path: 'projection', element: <ProjectionRoute /> },
       { path: 'projects', element: <ProjectsRoute /> },

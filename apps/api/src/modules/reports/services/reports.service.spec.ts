@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DateRangeError } from '../../../common/domain-errors/domain-errors';
 import { CategoriesService } from '../../categories/services/categories.service';
 import { LedgerService, TransactionWithEntries } from '../../ledger/services/ledger.service';
 import { ReportsService } from './reports.service';
@@ -75,5 +76,35 @@ describe('ReportsService.monthly', () => {
     const { service } = build([]);
     const report = await service.monthly('2026-08');
     expect(report).toEqual({ month: '2026-08', grandTotal: 0n, categories: [] });
+  });
+});
+
+describe('ReportsService.similar', () => {
+  it('reads only expenses within the range and groups them', async () => {
+    const { service, ledger } = build([expenseRow(1n, 5n, 4250n), expenseRow(2n, 5n, 3000n)]);
+    const report = await service.similar('2026-09-01', '2026-09-30');
+    expect(ledger.listAll).toHaveBeenCalledWith({
+      kind: 'expense',
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    expect(report.from).toBe('2026-09-01');
+    expect(report.to).toBe('2026-09-30');
+    expect(report.groups.map((group) => [group.key, group.count, group.total])).toEqual([
+      ['expense', 2, 7250n],
+    ]);
+    expect(report.topGroupKey).toBe('expense');
+  });
+
+  it('rejects an inverted range or one longer than 24 months without reading', async () => {
+    const { service, ledger } = build([]);
+    await expect(service.similar('2026-09-10', '2026-09-01')).rejects.toBeInstanceOf(
+      DateRangeError,
+    );
+    await expect(service.similar('2024-01-01', '2026-01-02')).rejects.toBeInstanceOf(
+      DateRangeError,
+    );
+    await expect(service.similar('2024-01-01', '2026-01-01')).resolves.toBeDefined();
+    expect(ledger.listAll).toHaveBeenCalledTimes(1);
   });
 });

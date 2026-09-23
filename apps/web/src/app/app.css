@@ -497,3 +497,9 @@ textarea:focus-visible,
   font: var(--text-table);
   color: var(--ink-2);
 }
+
+.hint {
+  margin: var(--space-2) 0 0;
+  font: var(--text-caption);
+  color: var(--ink-2);
+}

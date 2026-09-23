@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { toDateOnly } from '../../../common/dates/dates';
+import { spanExceedsMonths, toDateOnly } from '../../../common/dates/dates';
+import { DateRangeError } from '../../../common/domain-errors/domain-errors';
 import { CategoriesService } from '../../categories/services/categories.service';
 import { LedgerService, TransactionWithEntries } from '../../ledger/services/ledger.service';
 import { monthlyReport } from '../domain/monthly-report';
+import { SimilarGroup, similarReport } from '../domain/similar-report';
 
 export type MonthlyReportCategory = {
   categoryId: bigint;
@@ -15,6 +17,14 @@ export type MonthlyReportData = {
   month: string;
   grandTotal: bigint;
   categories: MonthlyReportCategory[];
+};
+
+export type SimilarReportData = {
+  from: string;
+  to: string;
+  groups: SimilarGroup<TransactionWithEntries>[];
+  topTransactions: TransactionWithEntries[];
+  topGroupKey: string | null;
 };
 
 function monthEnd(month: string): string {
@@ -47,5 +57,14 @@ export class ReportsService {
         transactions: group.transactions,
       })),
     };
+  }
+
+  async similar(from: string, to: string): Promise<SimilarReportData> {
+    if (from > to) throw new DateRangeError('the range must start on or before its end');
+    if (spanExceedsMonths(from, to, 24)) {
+      throw new DateRangeError('the range must span at most 24 months');
+    }
+    const rows = await this.ledger.listAll({ kind: 'expense', from, to });
+    return { from, to, ...similarReport(rows) };
   }
 }

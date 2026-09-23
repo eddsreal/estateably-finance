@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './common/prisma.service/prisma.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
+import { AiModule } from './modules/ai/ai.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { ProjectsModule } from './modules/projects/projects.module';
@@ -16,6 +17,7 @@ import { ScheduledItemsModule } from './modules/scheduled-items/scheduled-items.
     AccountsModule,
     ScheduledItemsModule,
     ReportsModule,
+    AiModule,
   ],
 })
 export class AppModule {}
