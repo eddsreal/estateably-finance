@@ -44,9 +44,14 @@ export function ReportPage() {
     queryKey: queryKeys.categoriesList(true),
     queryFn: () => unwrap(api.GET('/categories', { params: { query: { includeArchived: true } } })),
   });
+  const projectsQuery = useQuery({
+    queryKey: queryKeys.projectsList,
+    queryFn: () => unwrap(api.GET('/projects')),
+  });
 
   const accounts = accountsQuery.data?.items ?? [];
   const categories = categoriesQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
   const accountName = (id: string) => accounts.find((account) => account.id === id)?.name ?? '';
   const report = reportQuery.data;
   const label = monthLabel(month);
@@ -132,6 +137,7 @@ export function ReportPage() {
                             amount: transaction.amount,
                             accountId: transaction.accountId,
                             categoryId: transaction.categoryId,
+                            projectId: transaction.projectId,
                           })
                         }
                       >
@@ -153,6 +159,7 @@ export function ReportPage() {
             transaction={editing}
             accounts={accounts}
             categories={categories}
+            projects={projects}
             onDone={() => setEditing(null)}
           />
         )}

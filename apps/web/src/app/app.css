@@ -201,6 +201,10 @@ textarea:focus-visible,
   color: var(--accent);
 }
 
+.amount.warning {
+  color: var(--warning);
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -244,6 +248,12 @@ textarea:focus-visible,
   letter-spacing: var(--tracking-caption);
   text-transform: uppercase;
   color: var(--ink-2);
+}
+
+.field .optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .field input[type='text'],

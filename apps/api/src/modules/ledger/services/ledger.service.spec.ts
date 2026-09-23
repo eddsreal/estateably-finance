@@ -18,11 +18,13 @@ type Mocks = {
     replaceIntent: ReturnType<typeof vi.fn>;
     softDelete: ReturnType<typeof vi.fn>;
     list: ReturnType<typeof vi.fn>;
+    existsForProject: ReturnType<typeof vi.fn>;
   };
   entries: {
     deleteByTransaction: ReturnType<typeof vi.fn>;
     existsForCategory: ReturnType<typeof vi.fn>;
     listForAccount: ReturnType<typeof vi.fn>;
+    spentByProject: ReturnType<typeof vi.fn>;
   };
   systemAccounts: {
     findEquity: ReturnType<typeof vi.fn>;
@@ -47,11 +49,13 @@ function build(): { service: LedgerService; mocks: Mocks } {
       replaceIntent: asyncMock().mockResolvedValue({ id: 100n, entries: [] }),
       softDelete: asyncMock(),
       list: asyncMock().mockResolvedValue({ items: [], total: 0 }),
+      existsForProject: asyncMock().mockResolvedValue(false),
     },
     entries: {
       deleteByTransaction: asyncMock(),
       existsForCategory: asyncMock().mockResolvedValue(false),
       listForAccount: asyncMock().mockResolvedValue([]),
+      spentByProject: asyncMock().mockResolvedValue(new Map()),
     },
     systemAccounts: {
       findEquity: asyncMock().mockResolvedValue({ id: 1n, kind: 'equity', categoryId: null }),
@@ -257,6 +261,15 @@ describe('LedgerService', () => {
     mocks.entries.existsForCategory.mockResolvedValue(true);
     expect(await service.hasEntriesForCategory(5n)).toBe(true);
     expect(mocks.entries.existsForCategory).toHaveBeenCalledWith(5n, undefined);
+  });
+
+  it('answers project reads from the transaction and entry repositories', async () => {
+    mocks.transactions.existsForProject.mockResolvedValue(true);
+    expect(await service.hasTransactionsForProject(7n, fakeTx)).toBe(true);
+    expect(mocks.transactions.existsForProject).toHaveBeenCalledWith(7n, fakeTx);
+
+    mocks.entries.spentByProject.mockResolvedValue(new Map([[7n, 110000n]]));
+    expect(await service.spentByProject()).toEqual(new Map([[7n, 110000n]]));
   });
 
   it('computes balanceAsOf from entries, not from the snapshot', async () => {

@@ -8,6 +8,7 @@ import { invalidateEntryDerived } from '../../lib/query-keys';
 import { AccountOption, AccountPicker } from '../AccountPicker/AccountPicker';
 import { CategoryOption, CategoryPicker } from '../CategoryPicker/CategoryPicker';
 import { MoneyInput } from '../MoneyInput/MoneyInput';
+import { ProjectOption, ProjectPicker } from '../ProjectPicker/ProjectPicker';
 
 export type TransactionKindChoice = 'expense' | 'income' | 'transfer';
 
@@ -20,6 +21,7 @@ export type EditableTransaction = {
   accountId: string;
   categoryId?: string;
   counterAccountId?: string;
+  projectId?: string;
 };
 
 type FormValues = {
@@ -30,6 +32,7 @@ type FormValues = {
   accountId: string | null;
   categoryId: string | null;
   counterAccountId: string | null;
+  projectId: string | null;
 };
 
 const FIELDS = [
@@ -40,6 +43,7 @@ const FIELDS = [
   'accountId',
   'categoryId',
   'counterAccountId',
+  'projectId',
 ] as const;
 
 const KINDS: { value: TransactionKindChoice; label: string }[] = [
@@ -56,11 +60,13 @@ export function TransactionForm({
   transaction,
   accounts,
   categories,
+  projects,
   onDone,
 }: {
   transaction: EditableTransaction | null;
   accounts: AccountOption[];
   categories: CategoryOption[];
+  projects: ProjectOption[];
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -81,6 +87,7 @@ export function TransactionForm({
           accountId: transaction.accountId,
           categoryId: transaction.categoryId ?? null,
           counterAccountId: transaction.counterAccountId ?? null,
+          projectId: transaction.projectId ?? null,
         }
       : {
           kind: 'expense',
@@ -90,6 +97,7 @@ export function TransactionForm({
           accountId: null,
           categoryId: null,
           counterAccountId: null,
+          projectId: null,
         },
   });
   const kind = useWatch({ control, name: 'kind' });
@@ -112,7 +120,12 @@ export function TransactionForm({
             }
           : values.kind === 'income'
             ? { kind: 'income' as const, ...common, categoryId: values.categoryId as string }
-            : { kind: 'expense' as const, ...common, categoryId: values.categoryId as string };
+            : {
+                kind: 'expense' as const,
+                ...common,
+                categoryId: values.categoryId as string,
+                ...(values.projectId === null ? {} : { projectId: values.projectId }),
+              };
       return transaction
         ? unwrap(api.PUT('/transactions/{id}', { params: { path: { id: transaction.id } }, body }))
         : unwrap(api.POST('/transactions', { body }));
@@ -279,6 +292,32 @@ export function TransactionForm({
           {errors.categoryId && (
             <p className="field-error" id="transaction-category-error">
               {errors.categoryId.message}
+            </p>
+          )}
+        </div>
+      )}
+      {kind === 'expense' && (
+        <div className="field">
+          <label htmlFor="transaction-project">
+            Project <span className="optional">optional</span>
+          </label>
+          <Controller
+            control={control}
+            name="projectId"
+            render={({ field }) => (
+              <ProjectPicker
+                id="transaction-project"
+                value={field.value}
+                onChange={field.onChange}
+                projects={projects}
+                invalid={!!errors.projectId}
+                describedBy={errors.projectId ? 'transaction-project-error' : undefined}
+              />
+            )}
+          />
+          {errors.projectId && (
+            <p className="field-error" id="transaction-project-error">
+              {errors.projectId.message}
             </p>
           )}
         </div>

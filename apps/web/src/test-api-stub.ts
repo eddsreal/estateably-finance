@@ -17,8 +17,12 @@ export function stubApi(routes: Routes): void {
       if (route === undefined) {
         return new Response(JSON.stringify({ message: `no stub for ${key}` }), { status: 500 });
       }
+      const requestInit =
+        init ??
+        (input instanceof Request ? { method, body: await input.clone().text() } : undefined);
       const result =
-        typeof route === 'function' ? (route as RouteHandler)(url, init) : { body: route };
+        typeof route === 'function' ? (route as RouteHandler)(url, requestInit) : { body: route };
+      if (result.status === 204) return new Response(null, { status: 204 });
       return new Response(JSON.stringify(result.body), {
         status: result.status ?? 200,
         headers: { 'content-type': 'application/json' },

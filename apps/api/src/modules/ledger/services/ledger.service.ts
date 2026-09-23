@@ -176,6 +176,14 @@ export class LedgerService {
     return this.entries.existsForCategory(categoryId, tx);
   }
 
+  hasTransactionsForProject(projectId: bigint, tx?: TransactionClient): Promise<boolean> {
+    return this.transactions.existsForProject(projectId, tx);
+  }
+
+  spentByProject(tx?: TransactionClient): Promise<Map<bigint, bigint>> {
+    return this.entries.spentByProject(tx);
+  }
+
   async currentBalance(accountId: bigint, tx?: TransactionClient): Promise<bigint> {
     return (await this.snapshots.get(accountId, tx)) ?? 0n;
   }

@@ -89,6 +89,14 @@ export class TransactionsRepository {
     });
   }
 
+  async existsForProject(projectId: bigint, tx?: TransactionClient): Promise<boolean> {
+    const row = await this.db(tx).transaction.findFirst({
+      where: { projectId },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
   async softDelete(id: bigint, tx?: TransactionClient): Promise<void> {
     await this.db(tx).transaction.update({ where: { id }, data: { deletedAt: new Date() } });
   }

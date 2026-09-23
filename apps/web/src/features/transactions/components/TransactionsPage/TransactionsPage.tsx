@@ -54,6 +54,10 @@ export function TransactionsPage() {
     queryKey: queryKeys.categoriesList(true),
     queryFn: () => unwrap(api.GET('/categories', { params: { query: { includeArchived: true } } })),
   });
+  const projectsQuery = useQuery({
+    queryKey: queryKeys.projectsList,
+    queryFn: () => unwrap(api.GET('/projects')),
+  });
   const transactionsQuery = useQuery({
     queryKey: queryKeys.transactionsList({ ...filters, offset }),
     queryFn: () =>
@@ -75,6 +79,7 @@ export function TransactionsPage() {
 
   const accounts = accountsQuery.data?.items ?? [];
   const categories = categoriesQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
   const accountName = (id?: string) => accounts.find((account) => account.id === id)?.name ?? '';
   const categoryName = (id?: string) =>
     categories.find((category) => category.id === id)?.name ?? '';
@@ -194,6 +199,7 @@ export function TransactionsPage() {
                     accountId: transaction.accountId,
                     categoryId: transaction.categoryId,
                     counterAccountId: transaction.counterAccountId,
+                    projectId: transaction.projectId,
                   });
                 return (
                   <tr
@@ -263,6 +269,7 @@ export function TransactionsPage() {
           transaction={null}
           accounts={accounts}
           categories={categories}
+          projects={projects}
           onDone={() => setCreating(false)}
         />
       </Modal>
@@ -272,6 +279,7 @@ export function TransactionsPage() {
             transaction={editing}
             accounts={accounts}
             categories={categories}
+            projects={projects}
             onDone={() => setEditing(null)}
           />
         )}

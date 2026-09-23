@@ -7,7 +7,9 @@ import { createBrowserRouter, NavLink, Outlet, RouterProvider } from 'react-rout
 import { AccountDetailRoute } from '../routes/account-detail';
 import { AccountsRoute } from '../routes/accounts';
 import { CategoriesRoute } from '../routes/categories';
+import { ProjectDetailRoute } from '../routes/project-detail';
 import { ProjectionRoute } from '../routes/projection';
+import { ProjectsRoute } from '../routes/projects';
 import { ReportRoute } from '../routes/report';
 import { TransactionsRoute } from '../routes/transactions';
 import { UpcomingRoute } from '../routes/upcoming';
@@ -24,6 +26,7 @@ function Shell() {
         <NavLink to="/report">Report</NavLink>
         <NavLink to="/upcoming">Upcoming</NavLink>
         <NavLink to="/projection">Projection</NavLink>
+        <NavLink to="/projects">Projects</NavLink>
         <NavLink to="/categories">Categories</NavLink>
       </nav>
       <main>
@@ -44,6 +47,8 @@ const router = createBrowserRouter([
       { path: 'report', element: <ReportRoute /> },
       { path: 'upcoming', element: <UpcomingRoute /> },
       { path: 'projection', element: <ProjectionRoute /> },
+      { path: 'projects', element: <ProjectsRoute /> },
+      { path: 'projects/:id', element: <ProjectDetailRoute /> },
       { path: 'categories', element: <CategoriesRoute /> },
     ],
   },

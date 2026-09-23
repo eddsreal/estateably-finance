@@ -27,7 +27,7 @@ export function Modal({ title, open, onClose, children }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
         event.preventDefault();
         onClose();
       }

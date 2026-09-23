@@ -44,6 +44,7 @@ const transactions = {
       amount: '4250',
       accountId: '1',
       categoryId: '1',
+      projectId: '5',
     },
     {
       id: '101',
@@ -69,11 +70,17 @@ function renderPage() {
   );
 }
 
-function stubAll() {
+const projects = [
+  { id: '5', name: 'Trip to France', status: 'active', spent: '4250', overBudget: false },
+];
+
+function stubAll(extra: Record<string, unknown> = {}) {
   stubApi({
     'GET /accounts': accounts,
     'GET /categories': categories,
+    'GET /projects': projects,
     'GET /transactions': transactions,
+    ...extra,
   });
 }
 
@@ -114,6 +121,26 @@ describe('TransactionsPage', () => {
     expect(screen.getByLabelText('Description')).toHaveValue('Market');
     expect(screen.getByLabelText('Amount')).toHaveValue('42.50');
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('offers a project only on expenses and keeps it on edit (FR-020)', async () => {
+    let sent: { projectId?: string } | undefined;
+    stubAll({
+      'PUT /transactions/100': (_url: URL, init?: RequestInit) => {
+        sent = JSON.parse(init?.body as string);
+        return { body: transactions.items[0] };
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Market' }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByRole('combobox', { name: /Project/ })).toHaveTextContent('Trip to France');
+    await user.click(dialog.getByRole('radio', { name: 'Income' }));
+    expect(dialog.queryByRole('combobox', { name: /Project/ })).not.toBeInTheDocument();
+    await user.click(dialog.getByRole('radio', { name: 'Expense' }));
+    await user.click(dialog.getByRole('button', { name: 'Save changes' }));
+    await vi.waitFor(() => expect(sent?.projectId).toBe('5'));
   });
 
   it('keeps the report honest on refetch failure: no stale rows, an explanation and a retry', async () => {

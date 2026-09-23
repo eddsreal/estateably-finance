@@ -81,6 +81,7 @@ function stubRoutes() {
       ],
       totalBalance: '445750',
     },
+    'GET /projects': [],
     'GET /categories': [
       { id: '5', name: 'Groceries', type: 'expense', archived: false },
       { id: '6', name: 'Rent', type: 'expense', archived: false },

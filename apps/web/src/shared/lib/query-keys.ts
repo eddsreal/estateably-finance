@@ -10,6 +10,9 @@ export const queryKeys = {
   categories: ['categories'] as const,
   categoriesList: (includeArchived: boolean) => ['categories', 'list', includeArchived] as const,
   projects: ['projects'] as const,
+  projectsList: ['projects', 'list'] as const,
+  projectTransactions: (id: string, offset: number) =>
+    ['projects', 'transactions', id, offset] as const,
   reports: ['reports'] as const,
   reportMonthly: (month: string) => ['reports', 'monthly', month] as const,
   projection: ['projection'] as const,

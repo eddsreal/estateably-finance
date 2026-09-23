@@ -4,6 +4,7 @@ import {
   CategoryType,
   Prisma,
   PrismaClient,
+  ProjectStatus,
   Recurrence,
   ScheduledItemKind,
   TransactionKind,
@@ -42,6 +43,7 @@ type SeedTransaction = {
   account: string;
   category?: string;
   counterAccount?: string;
+  project?: string;
   description: string;
 };
 
@@ -70,6 +72,11 @@ const OPENINGS: SeedTransaction[] = [
     account: 'Old Bank',
     description: 'Opening balance',
   },
+];
+
+const PROJECTS: { name: string; budget: bigint | null; status: ProjectStatus }[] = [
+  { name: 'Trip to France', budget: 500000n, status: 'active' },
+  { name: 'Home office', budget: 5000n, status: 'closed' },
 ];
 
 const UBER_DESCRIPTIONS = ['Uber 1234', 'UBER 5678', 'uber'];
@@ -174,6 +181,7 @@ function monthlyTransactions(month: 0 | 1 | 2): SeedTransaction[] {
       account: 'Visa',
       category: 'Travel',
       description: 'Train tickets',
+      project: 'Trip to France',
     },
     {
       month,
@@ -291,6 +299,7 @@ function monthlyTransactions(month: 0 | 1 | 2): SeedTransaction[] {
       account: 'Cash',
       category: 'Shopping',
       description: 'Bookstore',
+      project: 'Home office',
     },
     {
       month,
@@ -309,6 +318,7 @@ function monthlyTransactions(month: 0 | 1 | 2): SeedTransaction[] {
       account: 'Checking',
       category: 'Travel',
       description: 'Gas station',
+      project: 'Trip to France',
     },
   ];
 }
@@ -474,6 +484,12 @@ async function main(): Promise<void> {
         accounts.set(account.name, row.id);
       }
 
+      const projects = new Map<string, bigint>();
+      for (const project of PROJECTS) {
+        const row = await tx.project.create({ data: project });
+        projects.set(project.name, row.id);
+      }
+
       const balances = new Map<bigint, bigint>();
       const seedTransactions = [
         ...OPENINGS,
@@ -513,6 +529,7 @@ async function main(): Promise<void> {
             kind: item.kind,
             date: new Date(`${seedDate(today, item.month, item.day)}T00:00:00Z`),
             description: item.description,
+            projectId: item.project === undefined ? null : projects.get(item.project)!,
             entries: { create: entries },
           },
         });
@@ -546,7 +563,7 @@ async function main(): Promise<void> {
       }
 
       console.log(
-        `db:seed OK: ${allCategories.length} categories, ${accounts.size} accounts, ${seedTransactions.length} transactions, ${seedItems.length} scheduled items, run date ${today}`,
+        `db:seed OK: ${allCategories.length} categories, ${accounts.size} accounts, ${seedTransactions.length} transactions, ${seedItems.length} scheduled items, ${projects.size} projects, run date ${today}`,
       );
     });
   } finally {

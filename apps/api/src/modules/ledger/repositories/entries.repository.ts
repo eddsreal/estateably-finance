@@ -23,6 +23,20 @@ export class EntriesRepository {
     return row !== null;
   }
 
+  async spentByProject(tx?: TransactionClient): Promise<Map<bigint, bigint>> {
+    const rows = await this.db(tx).$queryRaw<{ projectId: bigint; spent: bigint }[]>`
+      SELECT t.project_id AS "projectId", (-SUM(e.amount))::bigint AS spent
+      FROM entries e
+      JOIN transactions t ON t.id = e.transaction_id
+      WHERE t.kind = 'expense'
+        AND t.deleted_at IS NULL
+        AND t.project_id IS NOT NULL
+        AND e.account_id IS NOT NULL
+      GROUP BY t.project_id
+    `;
+    return new Map(rows.map((row) => [row.projectId, row.spent]));
+  }
+
   async listForAccount(accountId: bigint, tx?: TransactionClient): Promise<DatedAmount[]> {
     const rows = await this.db(tx).entry.findMany({
       where: { accountId, transaction: { deletedAt: null } },

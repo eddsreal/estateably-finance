@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { Picker } from '../Picker/Picker';
 import { Modal } from './Modal';
 
 describe('Modal', () => {
@@ -31,5 +32,29 @@ describe('Modal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the dialog open when Escape only closes a picker inside it', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn<() => void>();
+    render(
+      <Modal title="Edit" open onClose={onClose}>
+        <label htmlFor="kind">Kind</label>
+        <Picker
+          id="kind"
+          value={null}
+          onChange={() => {}}
+          options={[{ value: 'a', label: 'A' }]}
+          placeholder="—"
+        />
+      </Modal>,
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Kind' }));
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
