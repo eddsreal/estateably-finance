@@ -132,6 +132,12 @@ export class AccountsService {
     );
   }
 
+  async balanceAsOf(id: bigint, asOf: string): Promise<bigint> {
+    const existing = await this.accounts.findById(id);
+    if (!existing) throw new NotFoundError('Account', id);
+    return this.ledger.balanceAsOf(id, asOf);
+  }
+
   async setArchived(id: bigint, archived: boolean): Promise<AccountView> {
     const existing = await this.accounts.findById(id);
     if (!existing) throw new NotFoundError('Account', id);

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { AccountView } from '../services/accounts.service';
-import { AccountListResponseDto, AccountResponseDto } from './account-response.dto';
+import {
+  AccountListResponseDto,
+  AccountResponseDto,
+  BalanceResponseDto,
+} from './account-response.dto';
 
 function view(overrides: Partial<AccountView> = {}): AccountView {
   return {
@@ -43,5 +47,23 @@ describe('AccountListResponseDto.from', () => {
     const dto = AccountListResponseDto.from({ items: [view()], totalBalance: -50000n });
     expect(dto.items).toHaveLength(1);
     expect(dto.totalBalance).toBe('-50000');
+  });
+});
+
+describe('BalanceResponseDto.from', () => {
+  it('serializes the account id, date and balance as strings', () => {
+    expect(
+      BalanceResponseDto.from({ accountId: 1n, asOf: '2026-09-12', balance: 145750n }),
+    ).toEqual({ accountId: '1', asOf: '2026-09-12', balance: '145750' });
+  });
+
+  it('keeps signed balances exact at the ±10^15 guard limits and answers "0" for zero', () => {
+    const limit = 10n ** 15n;
+    expect(
+      BalanceResponseDto.from({ accountId: 2n, asOf: '2026-08-15', balance: -limit }).balance,
+    ).toBe('-1000000000000000');
+    expect(
+      BalanceResponseDto.from({ accountId: 2n, asOf: '2026-08-15', balance: 0n }).balance,
+    ).toBe('0');
   });
 });

@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryKeys = {
   accounts: ['accounts'] as const,
   accountsList: (includeArchived: boolean) => ['accounts', 'list', includeArchived] as const,
+  accountBalanceAsOf: (id: string, asOf: string) => ['accounts', 'balance', id, asOf] as const,
   transactions: ['transactions'] as const,
   transactionsList: (filters: Record<string, string | number | undefined>) =>
     ['transactions', 'list', filters] as const,

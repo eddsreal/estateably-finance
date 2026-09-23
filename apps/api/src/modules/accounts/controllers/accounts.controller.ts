@@ -2,10 +2,15 @@ import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nes
 import {
   AccountCreateRequestDto,
   AccountUpdateRequestDto,
+  BalanceAsOfQueryDto,
   IdParamDto,
   IncludeArchivedQueryDto,
 } from '../dtos/account-request.dto';
-import { AccountListResponseDto, AccountResponseDto } from '../dtos/account-response.dto';
+import {
+  AccountListResponseDto,
+  AccountResponseDto,
+  BalanceResponseDto,
+} from '../dtos/account-response.dto';
 import { AccountsService } from '../services/accounts.service';
 
 @Controller('accounts')
@@ -27,6 +32,19 @@ export class AccountsController {
         openingDate: body.openingDate,
       }),
     );
+  }
+
+  @Get(':id/balance')
+  async balanceAsOf(
+    @Param() params: IdParamDto,
+    @Query() query: BalanceAsOfQueryDto,
+  ): Promise<BalanceResponseDto> {
+    const accountId = BigInt(params.id);
+    return BalanceResponseDto.from({
+      accountId,
+      asOf: query.asOf,
+      balance: await this.accounts.balanceAsOf(accountId, query.asOf),
+    });
   }
 
   @Patch(':id')

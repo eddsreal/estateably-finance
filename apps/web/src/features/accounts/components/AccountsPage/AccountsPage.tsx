@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { Cents, formatCents, isNegative } from '../../../../shared/lib/money';
 import { invalidateEntryDerived, queryKeys } from '../../../../shared/lib/query-keys';
@@ -103,7 +104,9 @@ export function AccountsPage() {
             {items.map((account) => (
               <tr key={account.id}>
                 <td>
-                  {account.name}
+                  <Link className="page-link" to={`/accounts/${account.id}`}>
+                    {account.name}
+                  </Link>
                   {account.archived && <span className="chip warning">archived</span>}
                 </td>
                 <td>{account.kind}</td>

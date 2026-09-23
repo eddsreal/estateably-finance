@@ -58,6 +58,17 @@ textarea:focus-visible,
   box-shadow: var(--focus-ring);
 }
 
+.page-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-control);
+}
+
+.page-link:hover {
+  text-decoration: underline;
+}
+
 .page {
   max-width: 960px;
   margin: 0 auto;

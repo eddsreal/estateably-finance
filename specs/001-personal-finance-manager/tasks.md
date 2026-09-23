@@ -124,10 +124,10 @@ before/between/on-date/today and match hand-computed values.
 
 ### Implementation for User Story 2
 
-- [ ] T051 [US2] Implement getAccountBalanceAsOf: controller route + query DTO (date validation) + out-DTO `static from(...)` + `.spec.ts` in `apps/api/src/modules/accounts/`, reading through LedgerService.balanceAt (computed from entries, R-007); before-opening dates answer "0"
-- [ ] T052 [P] [US2] Create `apps/api/test/balances.e2e-spec.ts` (ajv-validated): US2 scenarios — $4,457.50 current, $1,457.50 as of 09-12 and 09-10, $0.00 before opening, value identical with snapshot present, absent and deliberately wrong-then-rebuilt (SC-003), read immediately after create/edit/delete reflects the change (FR-028). The spec creates its own accounts and transactions (the exact US2 scenario) through the API; it never reads the demo seed's accounts, whose balances these figures cannot match
-- [ ] T053 [US2] Extend `apps/web/src/features/accounts/`: account detail with as-of-date balance view (`<input type="date">`), dashboard total across non-archived accounts; verify every balance on screen refetches after each mutation without reload via the query-keys families; component tests
-- [ ] T054 [US2] Create `e2e/specs/story-2-balances.spec.ts`: keyboard-only — hand-checkable as-of values on the seed, record a transaction and watch balances + total update without a full-page reload (FR-028)
+- [x] T051 [US2] Implement getAccountBalanceAsOf: controller route + query DTO (date validation) + out-DTO `static from(...)` + `.spec.ts` in `apps/api/src/modules/accounts/`, reading through LedgerService.balanceAt (computed from entries, R-007); before-opening dates answer "0"
+- [x] T052 [P] [US2] Create `apps/api/test/balances.e2e-spec.ts` (ajv-validated): US2 scenarios — $4,457.50 current, $1,457.50 as of 09-12 and 09-10, $0.00 before opening, value identical with snapshot present, absent and deliberately wrong-then-rebuilt (SC-003), read immediately after create/edit/delete reflects the change (FR-028). The spec creates its own accounts and transactions (the exact US2 scenario) through the API; it never reads the demo seed's accounts, whose balances these figures cannot match
+- [x] T053 [US2] Extend `apps/web/src/features/accounts/`: account detail with as-of-date balance view (`<input type="date">`), dashboard total across non-archived accounts; verify every balance on screen refetches after each mutation without reload via the query-keys families; component tests
+- [x] T054 [US2] Create `e2e/specs/story-2-balances.spec.ts`: keyboard-only — hand-checkable as-of values on the seed, record a transaction and watch balances + total update without a full-page reload (FR-028)
 
 **Checkpoint**: US1 + US2 independently functional. Stop for approval.
 

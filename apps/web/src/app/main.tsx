@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, NavLink, Outlet, RouterProvider } from 'react-router';
+import { AccountDetailRoute } from '../routes/account-detail';
 import { AccountsRoute } from '../routes/accounts';
 import { CategoriesRoute } from '../routes/categories';
 import { TransactionsRoute } from '../routes/transactions';
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
     element: <Shell />,
     children: [
       { index: true, element: <AccountsRoute /> },
+      { path: 'accounts/:id', element: <AccountDetailRoute /> },
       { path: 'transactions', element: <TransactionsRoute /> },
       { path: 'categories', element: <CategoriesRoute /> },
     ],

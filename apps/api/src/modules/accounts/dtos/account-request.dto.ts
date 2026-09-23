@@ -57,3 +57,8 @@ export class IdParamDto {
   @IsIdString()
   id!: string;
 }
+
+export class BalanceAsOfQueryDto {
+  @IsDateOnly()
+  asOf!: string;
+}

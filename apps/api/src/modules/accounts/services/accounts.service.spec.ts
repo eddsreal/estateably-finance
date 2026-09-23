@@ -45,6 +45,7 @@ function build() {
       softDelete: asyncMock(),
       findOpening: asyncMock().mockResolvedValue(null),
       currentBalance: asyncMock().mockResolvedValue(0n),
+      balanceAsOf: asyncMock().mockResolvedValue(0n),
     },
   };
   const service = new AccountsService(
@@ -190,6 +191,16 @@ describe('AccountsService', () => {
     await service.setArchived(1n, false);
     expect(mocks.accounts.setArchived).toHaveBeenCalledWith(1n, false);
     expect(mocks.ledger.record).not.toHaveBeenCalled();
+  });
+
+  it('answers the as-of balance from the ledger entries and 404s a missing account (US2)', async () => {
+    mocks.accounts.findById.mockResolvedValue({ id: 1n, name: 'Checking' });
+    mocks.ledger.balanceAsOf.mockResolvedValue(145750n);
+    expect(await service.balanceAsOf(1n, '2026-09-12')).toBe(145750n);
+    expect(mocks.ledger.balanceAsOf).toHaveBeenCalledWith(1n, '2026-09-12');
+
+    mocks.accounts.findById.mockResolvedValue(null);
+    await expect(service.balanceAsOf(9n, '2026-09-12')).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('sums the total across non-archived accounts only', async () => {
