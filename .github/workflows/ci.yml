@@ -42,6 +42,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
 
+      - name: Format check (prettier)
+        run: pnpm format:check
+
       - name: Lint (oxlint, type-aware)
         run: pnpm lint
 

@@ -12,6 +12,8 @@ import {
   TransactionWithEntries,
 } from '../repositories/transactions.repository';
 
+export type { TransactionFilters, TransactionWithEntries };
+
 export type TransactionIntentInput =
   | { kind: 'expense'; amount: bigint; accountId: bigint; categoryId: bigint; projectId?: bigint }
   | { kind: 'income'; amount: bigint; accountId: bigint; categoryId: bigint }
@@ -158,8 +160,20 @@ export class LedgerService {
     return { items, total, limit, offset };
   }
 
-  async currentBalance(accountId: bigint): Promise<bigint> {
-    return (await this.snapshots.get(accountId)) ?? 0n;
+  findLive(id: bigint, tx?: TransactionClient): Promise<TransactionWithEntries | null> {
+    return this.transactions.findLiveById(id, tx);
+  }
+
+  findOpening(accountId: bigint, tx?: TransactionClient): Promise<TransactionWithEntries | null> {
+    return this.transactions.findOpeningByAccount(accountId, tx);
+  }
+
+  hasEntriesForCategory(categoryId: bigint, tx?: TransactionClient): Promise<boolean> {
+    return this.entries.existsForCategory(categoryId, tx);
+  }
+
+  async currentBalance(accountId: bigint, tx?: TransactionClient): Promise<bigint> {
+    return (await this.snapshots.get(accountId, tx)) ?? 0n;
   }
 
   async balanceAsOf(accountId: bigint, asOf: string): Promise<bigint> {

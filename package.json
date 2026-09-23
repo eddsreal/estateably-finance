@@ -9,6 +9,8 @@
     "dev": "pnpm --recursive --parallel --if-present run dev",
     "build": "pnpm --recursive --if-present run build",
     "lint": "oxlint --type-aware",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "pnpm --recursive --if-present run typecheck",
     "test": "pnpm --recursive --filter=!e2e --if-present run test",
     "test:e2e": "pnpm --filter api run test:e2e",

@@ -1,6 +1,6 @@
 # Specification Quality Checklist: Personal Finance Manager
 
-**Purpose**: Requirements-quality review of `spec.md` before the `review-spec` gate and `/speckit.plan`. Every item interrogates what the specification *says*, not what the future implementation will do.
+**Purpose**: Requirements-quality review of `spec.md` before the `review-spec` gate and `/speckit.plan`. Every item interrogates what the specification _says_, not what the future implementation will do.
 **Created**: 2026-09-19
 **Feature**: [spec.md](../spec.md) · **Governing document**: [constitution.md](../../../.specify/memory/constitution.md) v1.0.0
 

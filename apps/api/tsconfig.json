@@ -5,6 +5,7 @@
     "moduleResolution": "nodenext",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": [

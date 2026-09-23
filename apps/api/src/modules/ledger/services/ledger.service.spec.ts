@@ -14,12 +14,14 @@ type Mocks = {
   transactions: {
     create: ReturnType<typeof vi.fn>;
     findLiveById: ReturnType<typeof vi.fn>;
+    findOpeningByAccount: ReturnType<typeof vi.fn>;
     replaceIntent: ReturnType<typeof vi.fn>;
     softDelete: ReturnType<typeof vi.fn>;
     list: ReturnType<typeof vi.fn>;
   };
   entries: {
     deleteByTransaction: ReturnType<typeof vi.fn>;
+    existsForCategory: ReturnType<typeof vi.fn>;
     listForAccount: ReturnType<typeof vi.fn>;
   };
   systemAccounts: {
@@ -41,12 +43,14 @@ function build(): { service: LedgerService; mocks: Mocks } {
     transactions: {
       create: asyncMock().mockResolvedValue({ id: 100n, entries: [] }),
       findLiveById: asyncMock(),
+      findOpeningByAccount: asyncMock().mockResolvedValue(null),
       replaceIntent: asyncMock().mockResolvedValue({ id: 100n, entries: [] }),
       softDelete: asyncMock(),
       list: asyncMock().mockResolvedValue({ items: [], total: 0 }),
     },
     entries: {
       deleteByTransaction: asyncMock(),
+      existsForCategory: asyncMock().mockResolvedValue(false),
       listForAccount: asyncMock().mockResolvedValue([]),
     },
     systemAccounts: {
@@ -242,6 +246,17 @@ describe('LedgerService', () => {
     expect(await service.currentBalance(42n)).toBe(0n);
     mocks.snapshots.get.mockResolvedValue(445750n);
     expect(await service.currentBalance(1n)).toBe(445750n);
+  });
+
+  it('exposes the live opening transaction and category usage as reads', async () => {
+    const opening = { id: 7n, kind: 'opening', entries: [] };
+    mocks.transactions.findOpeningByAccount.mockResolvedValue(opening);
+    expect(await service.findOpening(3n)).toBe(opening);
+    expect(mocks.transactions.findOpeningByAccount).toHaveBeenCalledWith(3n, undefined);
+
+    mocks.entries.existsForCategory.mockResolvedValue(true);
+    expect(await service.hasEntriesForCategory(5n)).toBe(true);
+    expect(mocks.entries.existsForCategory).toHaveBeenCalledWith(5n, undefined);
   });
 
   it('computes balanceAsOf from entries, not from the snapshot', async () => {

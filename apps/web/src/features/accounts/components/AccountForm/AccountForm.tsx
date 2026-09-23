@@ -1,0 +1,180 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { api, unwrap } from '../../../../shared/lib/api';
+import { applyServerError } from '../../../../shared/lib/form-errors';
+import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
+import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
+import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
+
+export type AccountFormValues = {
+  name: string;
+  kind: 'bank' | 'cash' | 'card';
+  openingBalance: string;
+  openingDate: string;
+};
+
+export type EditableAccount = {
+  id: string;
+  name: string;
+  kind: 'bank' | 'cash' | 'card';
+  openingBalance: string;
+  openingDate: string;
+};
+
+const FIELDS = ['name', 'kind', 'openingBalance', 'openingDate'] as const;
+const KINDS: { value: AccountFormValues['kind']; label: string }[] = [
+  { value: 'bank', label: 'Bank' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+];
+
+function localToday(): string {
+  return new Intl.DateTimeFormat('en-CA').format(new Date());
+}
+
+export function AccountForm({
+  account,
+  onDone,
+}: {
+  account: EditableAccount | null;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<AccountFormValues>({
+    defaultValues: account
+      ? {
+          name: account.name,
+          kind: account.kind,
+          openingBalance: formatPlain(account.openingBalance as Cents),
+          openingDate: account.openingDate,
+        }
+      : { name: '', kind: 'bank', openingBalance: '0', openingDate: localToday() },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: AccountFormValues) => {
+      const body = {
+        name: values.name,
+        kind: values.kind,
+        openingBalance: parseDollars(values.openingBalance) as string,
+        openingDate: values.openingDate,
+      };
+      return account
+        ? unwrap(api.PATCH('/accounts/{id}', { params: { path: { id: account.id } }, body }))
+        : unwrap(api.POST('/accounts', { body }));
+    },
+    onSuccess: async () => {
+      await invalidateEntryDerived(queryClient);
+      onDone();
+    },
+    onError: (error) => {
+      setFormError(applyServerError(error, setError, FIELDS));
+    },
+  });
+
+  return (
+    <form
+      noValidate
+      onSubmit={(event) => {
+        void handleSubmit((values) => {
+          setFormError(null);
+          return mutation.mutateAsync(values).catch(() => undefined);
+        })(event);
+      }}
+    >
+      {formError && (
+        <div className="form-banner" role="alert">
+          {formError}
+        </div>
+      )}
+      <div className="field">
+        <label htmlFor="account-name">Name</label>
+        <input
+          id="account-name"
+          type="text"
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? 'account-name-error' : undefined}
+          {...register('name', { required: 'name is required', maxLength: 60 })}
+        />
+        {errors.name && (
+          <p className="field-error" id="account-name-error">
+            {errors.name.message || 'name must be at most 60 characters'}
+          </p>
+        )}
+      </div>
+      <div className="field">
+        <span className="field-label" id="account-kind-label">
+          Kind
+        </span>
+        <div className="radio-group" role="radiogroup" aria-labelledby="account-kind-label">
+          {KINDS.map((kind) => (
+            <label key={kind.value}>
+              <input type="radio" value={kind.value} {...register('kind')} />
+              {kind.label}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="account-opening-balance">Opening balance</label>
+        <Controller
+          control={control}
+          name="openingBalance"
+          rules={{
+            validate: (value) =>
+              parseDollars(value) !== null || 'Enter a dollar amount like 1,234.50',
+          }}
+          render={({ field }) => (
+            <MoneyInput
+              id="account-opening-balance"
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              autoFocus={!account}
+              invalid={!!errors.openingBalance}
+              describedBy={errors.openingBalance ? 'account-opening-balance-error' : undefined}
+              ref={field.ref}
+            />
+          )}
+        />
+        {errors.openingBalance && (
+          <p className="field-error" id="account-opening-balance-error">
+            {errors.openingBalance.message}
+          </p>
+        )}
+      </div>
+      <div className="field">
+        <label htmlFor="account-opening-date">Opening date</label>
+        <input
+          id="account-opening-date"
+          type="date"
+          max={localToday()}
+          aria-invalid={errors.openingDate ? true : undefined}
+          aria-describedby={errors.openingDate ? 'account-opening-date-error' : undefined}
+          {...register('openingDate', { required: 'opening date is required' })}
+        />
+        {errors.openingDate && (
+          <p className="field-error" id="account-opening-date-error">
+            {errors.openingDate.message}
+          </p>
+        )}
+      </div>
+      <div className="modal-actions">
+        <button type="button" className="btn" onClick={onDone}>
+          Cancel
+        </button>
+        <button type="submit" className="btn primary" disabled={isSubmitting}>
+          {account ? 'Save changes' : 'Create account'}
+        </button>
+      </div>
+    </form>
+  );
+}

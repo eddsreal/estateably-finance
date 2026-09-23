@@ -23,8 +23,8 @@
   --text-body: 400 15px/22px var(--font);
   --text-table: 400 14px/20px var(--font);
   --text-caption: 600 12px/16px var(--font);
-  --tracking-display: -.01em;
-  --tracking-caption: .06em;
+  --tracking-display: -0.01em;
+  --tracking-caption: 0.06em;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -44,6 +44,9 @@
   --h-compact: 32px;
 
   --focus-ring: 0 0 0 3px var(--accent-soft);
+  --scrim: rgb(17 24 39 / 0.4);
+  --shadow-panel: 0 8px 24px rgb(17 24 39 / 0.12);
+  --shadow-modal: 0 12px 40px rgb(17 24 39 / 0.18);
 }
 
 .amount {

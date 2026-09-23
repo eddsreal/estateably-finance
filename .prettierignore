@@ -4,5 +4,6 @@ build/
 coverage/
 pnpm-lock.yaml
 packages/contract/src/types.ts
+design/screens/
 apps/web/public/docs/
 apps/api/prisma/migrations/

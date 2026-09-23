@@ -4,6 +4,10 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 export type TransactionClient = Prisma.TransactionClient;
 
+export function isUniqueViolation(error: unknown, indexName: string): boolean {
+  return error instanceof Error && error.message.includes(indexName);
+}
+
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {

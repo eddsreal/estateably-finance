@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, TransactionKind } from '@prisma/client';
+import { toDate } from '../../../common/dates/dates';
 import { PrismaService, TransactionClient } from '../../../common/prisma.service/prisma.service';
 import { EntryDraft } from '../domain/to-entries';
 
-export function toDate(date: string): Date {
-  return new Date(`${date}T00:00:00Z`);
-}
-
-export function toDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+const ENTRIES_INCLUDE = {
+  entries: { include: { systemAccount: { select: { categoryId: true } } } },
+} satisfies Prisma.TransactionInclude;
 
 export type TransactionRow = {
   kind: TransactionKind;
@@ -27,7 +24,9 @@ export type TransactionFilters = {
   to?: string;
 };
 
-export type TransactionWithEntries = Prisma.TransactionGetPayload<{ include: { entries: true } }>;
+export type TransactionWithEntries = Prisma.TransactionGetPayload<{
+  include: typeof ENTRIES_INCLUDE;
+}>;
 
 @Injectable()
 export class TransactionsRepository {
@@ -50,14 +49,14 @@ export class TransactionsRepository {
         projectId: row.projectId ?? null,
         entries: { create: entries },
       },
-      include: { entries: true },
+      include: ENTRIES_INCLUDE,
     });
   }
 
   findLiveById(id: bigint, tx?: TransactionClient): Promise<TransactionWithEntries | null> {
     return this.db(tx).transaction.findFirst({
       where: { id, deletedAt: null },
-      include: { entries: true },
+      include: ENTRIES_INCLUDE,
     });
   }
 
@@ -76,7 +75,17 @@ export class TransactionsRepository {
         projectId: row.projectId ?? null,
         entries: { create: entries },
       },
-      include: { entries: true },
+      include: ENTRIES_INCLUDE,
+    });
+  }
+
+  findOpeningByAccount(
+    accountId: bigint,
+    tx?: TransactionClient,
+  ): Promise<TransactionWithEntries | null> {
+    return this.db(tx).transaction.findFirst({
+      where: { kind: 'opening', deletedAt: null, entries: { some: { accountId } } },
+      include: ENTRIES_INCLUDE,
     });
   }
 
@@ -113,7 +122,7 @@ export class TransactionsRepository {
     const [items, total] = await Promise.all([
       db.transaction.findMany({
         where,
-        include: { entries: true },
+        include: ENTRIES_INCLUDE,
         orderBy: [{ date: 'desc' }, { id: 'desc' }],
         skip: offset,
         take: limit,
