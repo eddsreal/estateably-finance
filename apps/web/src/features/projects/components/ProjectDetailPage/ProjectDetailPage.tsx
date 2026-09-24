@@ -4,14 +4,29 @@ import { Link, useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Stat } from '../../../../shared/ui/Stat/Stat';
 import { Table } from '../../../../shared/ui/Table/Table';
 import {
   EditableTransaction,
   TransactionForm,
 } from '../../../../shared/ui/TransactionForm/TransactionForm';
 import { OverBudgetChip, RemainingAmount } from '../ProjectFigures/ProjectFigures';
+import {
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  CARD,
+  CHIP_WARNING,
+  LINK,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  PAGINATION,
+  ROW_ACTION_TEXT,
+  TD_AMOUNT,
+} from '../../../../shared/lib/styles';
 
 const PAGE_SIZE = 50;
 
@@ -43,16 +58,16 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   });
 
   if (projectsQuery.isPending) {
-    return <p className="page">Loading project…</p>;
+    return <p className={PAGE}>Loading project…</p>;
   }
   if (projectsQuery.isError) {
     return (
-      <div className="page">
-        <div className="info-banner" role="alert">
+      <div className={PAGE}>
+        <div className={BANNER_WARNING} role="alert">
           <span>The project could not be loaded.</span>
           <button
             type="button"
-            className="btn compact"
+            className={BUTTON_COMPACT}
             onClick={() => void projectsQuery.refetch()}
           >
             Retry
@@ -66,10 +81,10 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const project = projects.find((item) => item.id === projectId);
   if (!project) {
     return (
-      <div className="page">
-        <div className="info-banner" role="alert">
+      <div className={PAGE}>
+        <div className={BANNER_WARNING} role="alert">
           <span>This project does not exist.</span>
-          <Link className="page-link" to="/projects">
+          <Link className={BUTTON_COMPACT} to="/projects">
             Back to projects
           </Link>
         </div>
@@ -85,46 +100,48 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const page = transactionsQuery.data;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>
           {project.name}
-          {project.status === 'closed' && <span className="chip warning">closed</span>}
+          {project.status === 'closed' && <span className={CHIP_WARNING}>closed</span>}
           {project.overBudget && <OverBudgetChip />}
         </h1>
-        <Link className="page-link" to="/projects">
+        <Link className={LINK} to="/projects">
           Back to projects
         </Link>
       </div>
-      <div className="card stat">
-        <span className="caption">Spent</span>
-        <span className="value">
-          <span className="amount">{formatCents(project.spent as Cents)}</span>
-        </span>
-        {project.budget !== undefined && (
-          <span>of a {formatCents(project.budget as Cents)} budget</span>
-        )}
-      </div>
-      <div className="card stat">
-        <span className="caption">Remaining</span>
-        <span className="value">
+      <div className="grid grid-cols-2 gap-14">
+        <Stat
+          caption="Spent"
+          detail={
+            project.budget !== undefined && (
+              <span className="text-13 text-text-2">
+                of a {formatCents(project.budget as Cents)} budget
+              </span>
+            )
+          }
+        >
+          <Amount cents={project.spent} size="large" />
+        </Stat>
+        <Stat caption="Remaining">
           <RemainingAmount project={project} />
-        </span>
+        </Stat>
       </div>
-      <div className="card">
+      <div className={CARD}>
         {transactionsQuery.isError ? (
-          <div className="info-banner" role="alert">
+          <div className={BANNER_WARNING} role="alert">
             <span>The project&apos;s expenses could not be loaded.</span>
             <button
               type="button"
-              className="btn compact"
+              className={BUTTON_COMPACT}
               onClick={() => void transactionsQuery.refetch()}
             >
               Retry
             </button>
           </div>
         ) : !page ? (
-          <p>Loading expenses…</p>
+          <p className="text-14 text-text-2">Loading expenses…</p>
         ) : page.items.length === 0 ? (
           <EmptyState
             title="No expenses in this project yet"
@@ -146,11 +163,11 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             >
               {page.items.map((transaction) => (
                 <tr key={transaction.id}>
-                  <td>{transaction.date}</td>
+                  <td className="font-mono text-12 text-text-2">{transaction.date}</td>
                   <td>
                     <button
                       type="button"
-                      className="row-action"
+                      className={ROW_ACTION_TEXT}
                       onClick={() =>
                         setEditing({
                           id: transaction.id,
@@ -169,22 +186,20 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
                   </td>
                   <td>{accountName(transaction.accountId)}</td>
                   <td>{categoryName(transaction.categoryId)}</td>
-                  <td className="amount">
-                    <span className="amount negative">
-                      -{formatCents(transaction.amount as Cents)}
-                    </span>
+                  <td className={TD_AMOUNT}>
+                    <Amount cents={`-${transaction.amount}`} />
                   </td>
                 </tr>
               ))}
             </Table>
-            <div className="pagination">
+            <div className={PAGINATION}>
               <span>
                 {`${page.offset + 1}–${Math.min(page.offset + PAGE_SIZE, page.total)} of ${page.total}`}
               </span>
               <span>
                 <button
                   type="button"
-                  className="btn compact"
+                  className={BUTTON_COMPACT}
                   disabled={offset === 0}
                   onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
                 >
@@ -192,7 +207,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
                 </button>{' '}
                 <button
                   type="button"
-                  className="btn compact"
+                  className={BUTTON_COMPACT}
                   disabled={page.offset + PAGE_SIZE >= page.total}
                   onClick={() => setOffset(offset + PAGE_SIZE)}
                 >

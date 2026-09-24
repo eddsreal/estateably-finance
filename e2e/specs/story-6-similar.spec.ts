@@ -21,7 +21,7 @@ test('groups the seeded Uber rides and highlights the top group and top 5, keybo
   page,
 }) => {
   await page.goto('/');
-  await press(page.getByRole('link', { name: 'Similar' }));
+  await press(page.getByRole('link', { name: 'Similar transactions', exact: true }));
   await expect(page.getByRole('heading', { name: 'Similar transactions' })).toBeVisible();
   await expect(page.getByText('No report yet')).toBeVisible();
 

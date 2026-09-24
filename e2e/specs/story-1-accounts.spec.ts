@@ -114,7 +114,7 @@ test('records an expense, an income and a transfer whose balances update without
   );
   expect(markerSurvived).toBe(true);
 
-  await press(page.getByRole('link', { name: 'Accounts' }));
+  await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
   await expect(page.getByRole('row', { name: new RegExp(checkingName) })).toContainText(
     '$3,957.50',
@@ -144,7 +144,7 @@ test('edits a transaction into another kind and sees both balances move (US1 #5,
   await press(modal.getByRole('button', { name: 'Save changes' }));
   await expect(dialog(page)).toHaveCount(0);
 
-  await press(page.getByRole('link', { name: 'Accounts' }));
+  await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
   await expect(page.getByRole('row', { name: new RegExp(savingsName) })).toContainText('$550.00');
   await expect(page.getByRole('row', { name: new RegExp(checkingName) })).toContainText(
@@ -182,7 +182,7 @@ test('a new category is immediately usable on an expense, and deleting removes i
   await press(dialog(page).getByRole('button', { name: 'Create category' }));
   await expect(page.getByRole('row', { name: new RegExp(categoryName) })).toBeVisible();
 
-  await press(page.getByRole('link', { name: 'Transactions' }));
+  await press(page.getByRole('link', { name: 'Transactions', exact: true }));
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible();
   await press(page.getByRole('button', { name: 'New transaction' }));
   const modal = dialog(page);
@@ -202,11 +202,13 @@ test('archives an account out of the list and totals, then restores it intact (U
   page,
 }) => {
   await page.goto('/');
-  const totalBefore = await page.locator('.stat .value').innerText();
+  const totalBefore = await page.getByRole('status', { name: 'Total across accounts' }).innerText();
   const cardRow = page.getByRole('row', { name: new RegExp(cardName) });
   await press(cardRow.getByRole('button', { name: 'Archive' }));
   await expect(page.getByRole('row', { name: new RegExp(cardName) })).toHaveCount(0);
-  await expect(page.locator('.stat .value')).not.toHaveText(totalBefore);
+  await expect(page.getByRole('status', { name: 'Total across accounts' })).not.toHaveText(
+    totalBefore,
+  );
 
   await press(page.getByLabel('Show archived accounts'), 'Space');
   const archivedRow = page.getByRole('row', { name: new RegExp(cardName) });
@@ -214,5 +216,5 @@ test('archives an account out of the list and totals, then restores it intact (U
   await press(archivedRow.getByRole('button', { name: 'Unarchive' }));
   await expect(page.getByRole('row', { name: new RegExp(cardName) })).toContainText('-$500.00');
   await press(page.getByLabel('Show archived accounts'), 'Space');
-  await expect(page.locator('.stat .value')).toHaveText(totalBefore);
+  await expect(page.getByRole('status', { name: 'Total across accounts' })).toHaveText(totalBefore);
 });

@@ -88,17 +88,17 @@ test('as-of balances match hand arithmetic before, between, on-date and today (U
   await press(modal.getByRole('button', { name: 'Create account' }));
   await expect(page.getByRole('row', { name: new RegExp(accountName) })).toContainText('$1,500.00');
 
-  await press(page.getByRole('link', { name: 'Transactions' }));
+  await press(page.getByRole('link', { name: 'Transactions', exact: true }));
   await recordTransaction(page, null, '42.50', expenseDesc, expenseDate, 'Groceries');
   await recordTransaction(page, 'Income', '3,000.00', incomeDesc, incomeDate, 'Salary');
 
-  await press(page.getByRole('link', { name: 'Accounts' }));
+  await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await press(page.getByRole('link', { name: accountName }));
   await expect(page.getByRole('heading', { name: accountName })).toBeVisible();
-  await expect(page.locator('.card.stat .value')).toHaveText('$4,457.50');
+  await expect(page.getByRole('status', { name: 'Current balance' })).toHaveText('$4,457.50');
 
   const asOfInput = page.getByLabel('Balance as of');
-  const asOfValue = page.locator('.card .stat .value');
+  const asOfValue = page.getByRole('status', { name: /^Balance on / });
 
   await asOfInput.fill(betweenDate);
   await expect(page.getByText(`Balance on ${betweenDate}`)).toBeVisible();
@@ -122,18 +122,20 @@ test('balances and the total update after a new transaction without a full-page 
   });
   const accountRow = page.getByRole('row', { name: new RegExp(accountName) });
   await expect(accountRow).toContainText('$4,457.50');
-  const totalBefore = await page.locator('.stat .value').innerText();
+  const totalBefore = await page.getByRole('status', { name: 'Total across accounts' }).innerText();
 
-  await press(page.getByRole('link', { name: 'Transactions' }));
+  await press(page.getByRole('link', { name: 'Transactions', exact: true }));
   await recordTransaction(page, 'Income', '100', lateIncomeDesc, null, 'Salary');
 
-  await press(page.getByRole('link', { name: 'Accounts' }));
+  await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
   await expect(page.getByRole('row', { name: new RegExp(accountName) })).toContainText('$4,557.50');
-  await expect(page.locator('.stat .value')).not.toHaveText(totalBefore);
+  await expect(page.getByRole('status', { name: 'Total across accounts' })).not.toHaveText(
+    totalBefore,
+  );
 
   await press(page.getByRole('link', { name: accountName }));
-  await expect(page.locator('.card.stat .value')).toHaveText('$4,557.50');
+  await expect(page.getByRole('status', { name: 'Current balance' })).toHaveText('$4,557.50');
 
   const markerSurvived = await page.evaluate(
     () => (globalThis as { __noReloadMarker?: boolean }).__noReloadMarker === true,

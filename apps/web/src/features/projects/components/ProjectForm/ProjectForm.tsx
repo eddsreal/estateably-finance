@@ -6,6 +6,18 @@ import { applyServerError } from '../../../../shared/lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
+import {
+  BANNER_ERROR,
+  BUTTON,
+  BUTTON_PRIMARY,
+  FIELD,
+  FIELD_ERROR,
+  FORM,
+  FORM_ACTIONS,
+  INPUT,
+  LABEL,
+  OPTIONAL,
+} from '../../../../shared/lib/styles';
 
 type FormValues = { name: string; budget: string };
 
@@ -60,6 +72,7 @@ export function ProjectForm({
 
   return (
     <form
+      className={FORM}
       noValidate
       onSubmit={(event) => {
         void handleSubmit((values) => {
@@ -69,15 +82,18 @@ export function ProjectForm({
       }}
     >
       {formError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className="field">
-        <label htmlFor="project-name">Name</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="project-name">
+          Name
+        </label>
         <input
           id="project-name"
           type="text"
+          className={INPUT}
           autoFocus
           data-autofocus
           aria-invalid={errors.name ? true : undefined}
@@ -91,14 +107,14 @@ export function ProjectForm({
           })}
         />
         {errors.name && (
-          <p className="field-error" role="alert" id="project-name-error">
+          <p className={FIELD_ERROR} role="alert" id="project-name-error">
             {errors.name.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="project-budget">
-          Budget <span className="optional">optional</span>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="project-budget">
+          Budget <span className={OPTIONAL}>optional</span>
         </label>
         <Controller
           control={control}
@@ -124,16 +140,16 @@ export function ProjectForm({
           )}
         />
         {errors.budget && (
-          <p className="field-error" role="alert" id="project-budget-error">
+          <p className={FIELD_ERROR} role="alert" id="project-budget-error">
             {errors.budget.message}
           </p>
         )}
       </div>
-      <div className="modal-actions">
-        <button type="button" className="btn" onClick={onDone}>
+      <div className={FORM_ACTIONS}>
+        <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn primary" disabled={isSubmitting}>
+        <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
           {project ? 'Save changes' : 'Create project'}
         </button>
       </div>

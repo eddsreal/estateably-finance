@@ -1,36 +1,50 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
-import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Picker } from '../../../../shared/ui/Picker/Picker';
+import { Kind, KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Table } from '../../../../shared/ui/Table/Table';
 import {
   EditableTransaction,
   TransactionForm,
   TransactionKindChoice,
 } from '../../../../shared/ui/TransactionForm/TransactionForm';
+import {
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  BUTTON_PRIMARY,
+  CARD,
+  CHIP_CATEGORY,
+  INPUT,
+  LABEL,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  PAGINATION,
+  ROW_ACTION_TEXT,
+  TD_AMOUNT,
+  TOOLBAR,
+  TOOLBAR_FIELD,
+  TRUNCATE,
+} from '../../../../shared/lib/styles';
 
 const PAGE_SIZE = 50;
 
-const KIND_META: Record<string, { glyph: string; chip: string; label: string }> = {
-  expense: { glyph: '↑', chip: 'expense', label: 'Expense' },
-  income: { glyph: '↓', chip: 'income', label: 'Income' },
-  transfer: { glyph: '⇄', chip: 'transfer', label: 'Transfer' },
-  opening: { glyph: '●', chip: '', label: 'Opening' },
+const KIND_LABEL: Record<Kind, string> = {
+  expense: 'Expense',
+  income: 'Income',
+  transfer: 'Transfer',
+  opening: 'Opening',
 };
 
 function TransactionAmount({ kind, amount }: { kind: string; amount: string }) {
-  const cents = amount as Cents;
-  if (kind === 'expense') {
-    return <span className="amount negative">-{formatCents(cents)}</span>;
-  }
-  if (kind === 'income') {
-    return <span className="amount positive">+{formatCents(cents)}</span>;
-  }
-  return <span className="amount">{formatCents(cents)}</span>;
+  if (kind === 'expense') return <Amount cents={`-${amount}`} />;
+  if (kind === 'income') return <Amount cents={amount} sign="always" />;
+  return <Amount cents={amount} />;
 }
 
 type Filters = {
@@ -93,48 +107,55 @@ export function TransactionsPage() {
   const hasFilters = Boolean(filters.from || filters.to || filters.kind || filters.categoryId);
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Transactions</h1>
-        <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Transactions</h1>
+        <button type="button" className={BUTTON_PRIMARY} onClick={() => setCreating(true)}>
           New transaction
         </button>
       </div>
-      <div className="card">
-        <div className="toolbar">
-          <div className="field">
-            <label htmlFor="filter-from">From</label>
+      <div className={CARD}>
+        <div className={TOOLBAR}>
+          <div className={TOOLBAR_FIELD}>
+            <label className={LABEL} htmlFor="filter-from">
+              From
+            </label>
             <input
               id="filter-from"
               type="date"
+              className={INPUT}
               value={filters.from ?? ''}
               onChange={(event) => setFilter({ from: event.target.value || undefined })}
             />
           </div>
-          <div className="field">
-            <label htmlFor="filter-to">To</label>
+          <div className={TOOLBAR_FIELD}>
+            <label className={LABEL} htmlFor="filter-to">
+              To
+            </label>
             <input
               id="filter-to"
               type="date"
+              className={INPUT}
               value={filters.to ?? ''}
               onChange={(event) => setFilter({ to: event.target.value || undefined })}
             />
           </div>
-          <div className="field">
-            <label htmlFor="filter-kind">Kind</label>
+          <div className={TOOLBAR_FIELD}>
+            <label className={LABEL} htmlFor="filter-kind">
+              Kind
+            </label>
             <Picker
               id="filter-kind"
               value={filters.kind ?? null}
               onChange={(value) => setFilter({ kind: value ?? undefined })}
-              options={Object.entries(KIND_META).map(([value, meta]) => ({
-                value,
-                label: meta.label,
-              }))}
+              options={Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))}
               placeholder="All kinds"
             />
           </div>
-          <div className="field">
-            <label htmlFor="filter-category">Category</label>
+          <div className={TOOLBAR_FIELD}>
+            <label className={LABEL} htmlFor="filter-category">
+              Category
+            </label>
             <Picker
               id="filter-category"
               value={filters.categoryId ?? null}
@@ -148,20 +169,20 @@ export function TransactionsPage() {
           </div>
         </div>
       </div>
-      <div className="card">
+      <div className={CARD}>
         {transactionsQuery.isError ? (
-          <div className="info-banner" role="alert">
+          <div className={BANNER_WARNING} role="alert">
             <span>The transaction list could not be refreshed, so it is not shown.</span>
             <button
               type="button"
-              className="btn compact"
+              className={BUTTON_COMPACT}
               onClick={() => void transactionsQuery.refetch()}
             >
               Retry
             </button>
           </div>
         ) : !page ? (
-          <p>Loading transactions…</p>
+          <p className="text-14 text-text-2">Loading transactions…</p>
         ) : page.items.length === 0 ? (
           <EmptyState
             title={hasFilters ? 'No transactions match these filters' : 'No transactions yet'}
@@ -187,7 +208,6 @@ export function TransactionsPage() {
               ]}
             >
               {page.items.map((transaction) => {
-                const meta = KIND_META[transaction.kind];
                 const editable = transaction.kind !== 'opening';
                 const open = () =>
                   setEditing({
@@ -204,23 +224,28 @@ export function TransactionsPage() {
                 return (
                   <tr
                     key={transaction.id}
-                    className={editable ? 'clickable' : undefined}
+                    className={
+                      editable
+                        ? 'cursor-pointer transition-colors duration-(--dur-hover) ease-(--ease-out) hover:bg-sand-50'
+                        : undefined
+                    }
                     onClick={editable ? open : undefined}
                   >
-                    <td>{transaction.date}</td>
+                    <td className="font-mono text-12 text-text-2">{transaction.date}</td>
                     <td>
-                      <span className={`chip ${meta.chip}`}>
-                        <span aria-hidden="true">{meta.glyph}</span>
-                        {meta.label}
-                      </span>
+                      <KindGlyph
+                        kind={transaction.kind as Kind}
+                        label={KIND_LABEL[transaction.kind as Kind]}
+                        showLabel
+                      />
                     </td>
                     <td>
                       {editable ? (
-                        <button type="button" className="row-action" onClick={open}>
+                        <button type="button" className={ROW_ACTION_TEXT} onClick={open}>
                           {transaction.description}
                         </button>
                       ) : (
-                        transaction.description
+                        <span className={TRUNCATE}>{transaction.description}</span>
                       )}
                     </td>
                     <td>
@@ -228,15 +253,21 @@ export function TransactionsPage() {
                         ? `${accountName(transaction.accountId)} → ${accountName(transaction.counterAccountId)}`
                         : accountName(transaction.accountId)}
                     </td>
-                    <td>{categoryName(transaction.categoryId)}</td>
-                    <td className="amount">
+                    <td>
+                      {transaction.categoryId && (
+                        <span className={CHIP_CATEGORY}>
+                          {categoryName(transaction.categoryId)}
+                        </span>
+                      )}
+                    </td>
+                    <td className={TD_AMOUNT}>
                       <TransactionAmount kind={transaction.kind} amount={transaction.amount} />
                     </td>
                   </tr>
                 );
               })}
             </Table>
-            <div className="pagination">
+            <div className={PAGINATION}>
               <span>
                 {page.total === 0
                   ? '0 of 0'
@@ -245,7 +276,7 @@ export function TransactionsPage() {
               <span>
                 <button
                   type="button"
-                  className="btn compact"
+                  className={BUTTON_COMPACT}
                   disabled={offset === 0}
                   onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
                 >
@@ -253,7 +284,7 @@ export function TransactionsPage() {
                 </button>{' '}
                 <button
                   type="button"
-                  className="btn compact"
+                  className={BUTTON_COMPACT}
                   disabled={page.offset + PAGE_SIZE >= page.total}
                   onClick={() => setOffset(offset + PAGE_SIZE)}
                 >

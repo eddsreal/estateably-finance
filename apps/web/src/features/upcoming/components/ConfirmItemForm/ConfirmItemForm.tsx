@@ -13,6 +13,17 @@ import {
 } from '../../../../shared/ui/CategoryPicker/CategoryPicker';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
 import { EditableScheduledItem } from '../ScheduledItemForm/ScheduledItemForm';
+import {
+  BANNER_ERROR,
+  BUTTON,
+  BUTTON_PRIMARY,
+  FIELD,
+  FIELD_ERROR,
+  FORM,
+  FORM_ACTIONS,
+  INPUT,
+  LABEL,
+} from '../../../../shared/lib/styles';
 
 type FormValues = {
   amount: string;
@@ -79,6 +90,7 @@ export function ConfirmItemForm({
 
   return (
     <form
+      className={FORM}
       noValidate
       onSubmit={(event) => {
         void handleSubmit((values) => {
@@ -88,12 +100,14 @@ export function ConfirmItemForm({
       }}
     >
       {formError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className="field">
-        <label htmlFor="confirm-amount">Amount</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="confirm-amount">
+          Amount
+        </label>
         <Controller
           control={control}
           name="amount"
@@ -117,29 +131,34 @@ export function ConfirmItemForm({
           )}
         />
         {errors.amount && (
-          <p className="field-error" role="alert" id="confirm-amount-error">
+          <p className={FIELD_ERROR} role="alert" id="confirm-amount-error">
             {errors.amount.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="confirm-date">Date</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="confirm-date">
+          Date
+        </label>
         <input
           id="confirm-date"
           type="date"
+          className={INPUT}
           max={today}
           aria-invalid={errors.date ? true : undefined}
           aria-describedby={errors.date ? 'confirm-date-error' : undefined}
           {...register('date', { required: 'date is required' })}
         />
         {errors.date && (
-          <p className="field-error" role="alert" id="confirm-date-error">
+          <p className={FIELD_ERROR} role="alert" id="confirm-date-error">
             {errors.date.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="confirm-account">Account</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="confirm-account">
+          Account
+        </label>
         <Controller
           control={control}
           name="accountId"
@@ -156,13 +175,15 @@ export function ConfirmItemForm({
           )}
         />
         {errors.accountId && (
-          <p className="field-error" role="alert" id="confirm-account-error">
+          <p className={FIELD_ERROR} role="alert" id="confirm-account-error">
             {errors.accountId.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="confirm-category">Category</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="confirm-category">
+          Category
+        </label>
         <Controller
           control={control}
           name="categoryId"
@@ -180,16 +201,19 @@ export function ConfirmItemForm({
           )}
         />
         {errors.categoryId && (
-          <p className="field-error" role="alert" id="confirm-category-error">
+          <p className={FIELD_ERROR} role="alert" id="confirm-category-error">
             {errors.categoryId.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="confirm-description">Description</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="confirm-description">
+          Description
+        </label>
         <input
           id="confirm-description"
           type="text"
+          className={INPUT}
           aria-invalid={errors.description ? true : undefined}
           aria-describedby={errors.description ? 'confirm-description-error' : undefined}
           {...register('description', {
@@ -199,16 +223,16 @@ export function ConfirmItemForm({
           })}
         />
         {errors.description && (
-          <p className="field-error" role="alert" id="confirm-description-error">
+          <p className={FIELD_ERROR} role="alert" id="confirm-description-error">
             {errors.description.message}
           </p>
         )}
       </div>
-      <div className="modal-actions">
-        <button type="button" className="btn" onClick={onDone}>
+      <div className={FORM_ACTIONS}>
+        <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn primary" disabled={isSubmitting}>
+        <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
           {item.kind === 'bill' ? 'Record payment' : 'Record receipt'}
         </button>
       </div>

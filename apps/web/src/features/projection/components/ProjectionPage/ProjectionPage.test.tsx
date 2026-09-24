@@ -59,8 +59,10 @@ describe('ProjectionPage', () => {
       ],
     });
     renderPage();
-    expect(await screen.findByText('$4,457.50')).toBeInTheDocument();
-    expect(screen.getByText('$5,457.50')).toBeInTheDocument();
+    expect(await screen.findByRole('status', { name: 'Current total' })).toHaveTextContent(
+      '$4,457.50',
+    );
+    expect(screen.getByRole('status', { name: /^Projected on / })).toHaveTextContent('$5,457.50');
     expect(screen.getByText('-$1,200.00')).toBeInTheDocument();
     expect(screen.getByText('$3,257.50')).toBeInTheDocument();
     expect(screen.getByText('$6,257.50')).toBeInTheDocument();

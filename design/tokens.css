@@ -43,6 +43,7 @@
   --color-warning-surface: #fdf6ec;
   --color-warning-line: #f0d9b8;
   --color-transfer: #2f6fdb;
+  --color-transfer-strong: #2860c0;
   --color-transfer-soft: #e8effc;
   --color-neutral-soft: #eef0f3;
   --color-scrim: rgb(15 23 32 / 0.42);
@@ -137,7 +138,10 @@
   --spacing-50: 50px;
   --spacing-52: 52px;
   --spacing-56: 56px;
+  --spacing-190: 190px;
   --spacing-232: 232px;
+  --spacing-280: 280px;
+  --spacing-440: 440px;
 
   --radius-xs: 5px;
   --radius-sm: 9px;
@@ -161,6 +165,16 @@
   --shadow-nav-active: inset 2px 0 0 #25a06d;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --animate-dialog: dialog-enter var(--dur-dialog) var(--ease-out);
+  --animate-enter-1: screen-enter var(--dur-enter) var(--ease-out) backwards;
+  --animate-enter-2: screen-enter var(--dur-enter) var(--ease-out) var(--stagger) backwards;
+  --animate-enter-3: screen-enter var(--dur-enter) var(--ease-out) calc(var(--stagger) * 2)
+    backwards;
+  --animate-enter-4: screen-enter var(--dur-enter) var(--ease-out) calc(var(--stagger) * 3)
+    backwards;
+  --animate-enter-5: screen-enter var(--dur-enter) var(--ease-out) calc(var(--stagger) * 4)
+    backwards;
 
   --breakpoint-md: 768px;
 }

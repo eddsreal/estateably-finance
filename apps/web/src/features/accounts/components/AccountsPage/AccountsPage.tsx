@@ -2,20 +2,28 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
-import { Cents, formatCents, isNegative } from '../../../../shared/lib/money';
 import { invalidateEntryDerived, queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Stat } from '../../../../shared/ui/Stat/Stat';
 import { Table } from '../../../../shared/ui/Table/Table';
 import { AccountForm, EditableAccount } from '../AccountForm/AccountForm';
-
-function Amount({ cents }: { cents: string }) {
-  return (
-    <span className={`amount ${isNegative(cents as Cents) ? 'negative' : ''}`}>
-      {formatCents(cents as Cents)}
-    </span>
-  );
-}
+import {
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  BUTTON_PRIMARY,
+  CARD,
+  CHECKBOX_LABEL,
+  CHIP_WARNING,
+  LINK,
+  PAGE,
+  PAGE_HEADER,
+  ROW_ACTION,
+  PAGE_TITLE,
+  TD_AMOUNT,
+  TRUNCATE,
+} from '../../../../shared/lib/styles';
 
 export function AccountsPage() {
   const queryClient = useQueryClient();
@@ -40,16 +48,16 @@ export function AccountsPage() {
   });
 
   if (accountsQuery.isPending) {
-    return <p className="page">Loading accounts…</p>;
+    return <p className={PAGE}>Loading accounts…</p>;
   }
   if (accountsQuery.isError) {
     return (
-      <div className="page">
-        <div className="info-banner" role="alert">
+      <div className={PAGE}>
+        <div className={BANNER_WARNING} role="alert">
           <span>The account balances could not be refreshed, so none are shown.</span>
           <button
             type="button"
-            className="btn compact"
+            className={BUTTON_COMPACT}
             onClick={() => void accountsQuery.refetch()}
           >
             Retry
@@ -62,22 +70,20 @@ export function AccountsPage() {
   const { items, totalBalance } = accountsQuery.data;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Accounts</h1>
-        <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Accounts</h1>
+        <button type="button" className={BUTTON_PRIMARY} onClick={() => setCreating(true)}>
           New account
         </button>
       </div>
-      <div className="card stat">
-        <span className="caption">Total across accounts</span>
-        <span className="value">
-          <Amount cents={totalBalance} />
-        </span>
-      </div>
-      <div className="card">
-        <label className="checkbox-label">
+      <Stat caption="Total across accounts">
+        <Amount cents={totalBalance} size="large" />
+      </Stat>
+      <div className={CARD}>
+        <label className={`${CHECKBOX_LABEL} mb-12`}>
           <input
+            className="accent-accent"
             type="checkbox"
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
@@ -104,19 +110,23 @@ export function AccountsPage() {
             {items.map((account) => (
               <tr key={account.id}>
                 <td>
-                  <Link className="page-link" to={`/accounts/${account.id}`}>
-                    {account.name}
-                  </Link>
-                  {account.archived && <span className="chip warning">archived</span>}
+                  <span className="flex items-center gap-8">
+                    <Link className={`${LINK} ${TRUNCATE}`} to={`/accounts/${account.id}`}>
+                      {account.name}
+                    </Link>
+                    {account.archived && <span className={CHIP_WARNING}>archived</span>}
+                  </span>
                 </td>
-                <td>{account.kind}</td>
-                <td className="amount">
+                <td className="font-mono text-12 tracking-wide text-text-2 uppercase">
+                  {account.kind}
+                </td>
+                <td className={TD_AMOUNT}>
                   <Amount cents={account.balance} />
                 </td>
                 <td>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`Edit ${account.name}`}
                     onClick={() =>
                       setEditing({
@@ -132,7 +142,7 @@ export function AccountsPage() {
                   </button>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`${account.archived ? 'Unarchive' : 'Archive'} ${account.name}`}
                     onClick={() =>
                       archiveMutation.mutate({ id: account.id, archive: !account.archived })

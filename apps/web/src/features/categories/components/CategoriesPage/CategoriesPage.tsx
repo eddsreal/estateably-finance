@@ -3,9 +3,33 @@ import { useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Table } from '../../../../shared/ui/Table/Table';
 import { CategoryForm, EditableCategory } from '../CategoryForm/CategoryForm';
+
+const CATEGORY_COLORS = [
+  'bg-cat-1',
+  'bg-cat-2',
+  'bg-cat-3',
+  'bg-cat-4',
+  'bg-cat-5',
+  'bg-cat-6',
+  'bg-cat-7',
+];
+import {
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  BUTTON_PRIMARY,
+  CARD,
+  CHECKBOX_LABEL,
+  CHIP_WARNING,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  ROW_ACTION,
+  TRUNCATE,
+} from '../../../../shared/lib/styles';
 
 export function CategoriesPage() {
   const queryClient = useQueryClient();
@@ -30,16 +54,16 @@ export function CategoriesPage() {
   });
 
   if (categoriesQuery.isPending) {
-    return <p className="page">Loading categories…</p>;
+    return <p className={PAGE}>Loading categories…</p>;
   }
   if (categoriesQuery.isError) {
     return (
-      <div className="page">
-        <div className="info-banner" role="alert">
+      <div className={PAGE}>
+        <div className={BANNER_WARNING} role="alert">
           <span>The categories could not be loaded.</span>
           <button
             type="button"
-            className="btn compact"
+            className={BUTTON_COMPACT}
             onClick={() => void categoriesQuery.refetch()}
           >
             Retry
@@ -52,16 +76,17 @@ export function CategoriesPage() {
   const categories = categoriesQuery.data;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Categories</h1>
-        <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Categories</h1>
+        <button type="button" className={BUTTON_PRIMARY} onClick={() => setCreating(true)}>
           New category
         </button>
       </div>
-      <div className="card">
-        <label className="checkbox-label">
+      <div className={CARD}>
+        <label className={`${CHECKBOX_LABEL} mb-12`}>
           <input
+            className="accent-accent"
             type="checkbox"
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
@@ -80,19 +105,25 @@ export function CategoriesPage() {
             caption="Categories"
             columns={[{ label: 'Name' }, { label: 'Type' }, { label: 'Actions' }]}
           >
-            {categories.map((category) => (
+            {categories.map((category, index) => (
               <tr key={category.id}>
                 <td>
-                  {category.name}
-                  {category.archived && <span className="chip warning">archived</span>}
+                  <span className="flex items-center gap-8">
+                    <span
+                      aria-hidden="true"
+                      className={`size-10 flex-none rounded-pill ${CATEGORY_COLORS[index % CATEGORY_COLORS.length]}`}
+                    />
+                    <span className={TRUNCATE}>{category.name}</span>
+                    {category.archived && <span className={CHIP_WARNING}>archived</span>}
+                  </span>
                 </td>
                 <td>
-                  <span className={`chip ${category.type}`}>{category.type}</span>
+                  <KindGlyph kind={category.type} label={category.type} showLabel />
                 </td>
                 <td>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`Edit ${category.name}`}
                     onClick={() =>
                       setEditing({ id: category.id, name: category.name, type: category.type })
@@ -102,7 +133,7 @@ export function CategoriesPage() {
                   </button>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`${category.archived ? 'Unarchive' : 'Archive'} ${category.name}`}
                     onClick={() =>
                       archiveMutation.mutate({ id: category.id, archive: !category.archived })

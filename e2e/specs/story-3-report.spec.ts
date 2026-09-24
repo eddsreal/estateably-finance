@@ -56,7 +56,7 @@ async function pickOption(page: Page, combo: Locator, optionText: string): Promi
 }
 
 function groceriesSummary(page: Page): Locator {
-  return page.locator('.report-category summary').filter({ hasText: 'Groceries' });
+  return page.locator('summary').filter({ hasText: 'Groceries' });
 }
 
 test('category totals sum to the grand total and drill down shows the expenses behind them (US3 #1, #3)', async ({
@@ -73,12 +73,16 @@ test('category totals sum to the grand total and drill down shows the expenses b
   await press(modal.getByRole('button', { name: 'Record transaction' }));
   await expect(page.getByRole('button', { name: expenseDesc })).toBeVisible();
 
-  await press(page.getByRole('link', { name: 'Report' }));
+  await press(page.getByRole('link', { name: 'Monthly expenses', exact: true }));
   await expect(page.getByRole('heading', { name: 'Monthly report' })).toBeVisible();
   await expect(page.getByText(monthLabel(0)).first()).toBeVisible();
 
-  const grandTotal = parseDollars(await page.locator('.card.stat .value').innerText());
-  const categoryTotals = await page.locator('.report-category summary .amount').allInnerTexts();
+  const grandTotal = parseDollars(
+    await page.getByRole('status', { name: /^Spent in / }).innerText(),
+  );
+  const categoryTotals = (await page.locator('summary').allInnerTexts()).map((text) =>
+    text.match(/-?\$[\d,]+\.\d{2}/g)!.at(-1)!,
+  );
   expect(categoryTotals.length).toBeGreaterThan(0);
   const summed = categoryTotals.reduce((sum, text) => sum + parseDollars(text), 0n);
   expect(summed).toBe(grandTotal);

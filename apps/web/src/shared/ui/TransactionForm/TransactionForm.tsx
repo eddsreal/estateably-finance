@@ -8,8 +8,24 @@ import { Cents, formatPlain, parseDollars } from '../../lib/money';
 import { invalidateEntryDerived } from '../../lib/query-keys';
 import { AccountOption, AccountPicker } from '../AccountPicker/AccountPicker';
 import { CategoryOption, CategoryPicker } from '../CategoryPicker/CategoryPicker';
+import { KindGlyph } from '../KindGlyph/KindGlyph';
 import { MoneyInput } from '../MoneyInput/MoneyInput';
 import { ProjectOption, ProjectPicker } from '../ProjectPicker/ProjectPicker';
+import {
+  BANNER_ERROR,
+  BUTTON,
+  BUTTON_DANGER,
+  BUTTON_PRIMARY,
+  FIELD,
+  FIELD_ERROR,
+  FORM,
+  FORM_ACTIONS,
+  INPUT,
+  LABEL,
+  OPTIONAL,
+  SEGMENT,
+  SEGMENTED,
+} from '../../lib/styles';
 
 export type TransactionKindChoice = 'expense' | 'income' | 'transfer';
 
@@ -47,11 +63,7 @@ const FIELDS = [
   'projectId',
 ] as const;
 
-const KINDS: { value: TransactionKindChoice; label: string }[] = [
-  { value: 'expense', label: 'Expense' },
-  { value: 'income', label: 'Income' },
-  { value: 'transfer', label: 'Transfer' },
-];
+const KINDS: TransactionKindChoice[] = ['expense', 'income', 'transfer'];
 
 export function TransactionForm({
   transaction,
@@ -150,6 +162,7 @@ export function TransactionForm({
 
   return (
     <form
+      className={FORM}
       noValidate
       onSubmit={(event) => {
         void handleSubmit((values) => {
@@ -159,55 +172,61 @@ export function TransactionForm({
       }}
     >
       {formError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className="field">
-        <span className="field-label" id="transaction-kind-label">
+      <div className={FIELD}>
+        <span className={LABEL} id="transaction-kind-label">
           Kind
         </span>
         <div
-          className="radio-group"
+          className={SEGMENTED}
           role="radiogroup"
           aria-labelledby="transaction-kind-label"
           aria-invalid={errors.kind ? true : undefined}
           aria-describedby={errors.kind ? 'transaction-kind-error' : undefined}
         >
           {KINDS.map((choice) => (
-            <label key={choice.value}>
-              <input type="radio" value={choice.value} {...register('kind')} />
-              {choice.label}
+            <label key={choice} className={SEGMENT}>
+              <input className="sr-only" type="radio" value={choice} {...register('kind')} />
+              <KindGlyph kind={choice} showLabel />
             </label>
           ))}
         </div>
         {errors.kind && (
-          <p className="field-error" role="alert" id="transaction-kind-error">
+          <p className={FIELD_ERROR} role="alert" id="transaction-kind-error">
             {errors.kind.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="transaction-date">Date</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="transaction-date">
+          Date
+        </label>
         <input
           id="transaction-date"
           type="date"
+          className={INPUT}
           max={localToday()}
           aria-invalid={errors.date ? true : undefined}
           aria-describedby={errors.date ? 'transaction-date-error' : undefined}
           {...register('date', { required: 'date is required' })}
         />
         {errors.date && (
-          <p className="field-error" role="alert" id="transaction-date-error">
+          <p className={FIELD_ERROR} role="alert" id="transaction-date-error">
             {errors.date.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="transaction-description">Description</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="transaction-description">
+          Description
+        </label>
         <input
           id="transaction-description"
           type="text"
+          className={INPUT}
           aria-invalid={errors.description ? true : undefined}
           aria-describedby={errors.description ? 'transaction-description-error' : undefined}
           {...register('description', {
@@ -217,13 +236,15 @@ export function TransactionForm({
           })}
         />
         {errors.description && (
-          <p className="field-error" role="alert" id="transaction-description-error">
+          <p className={FIELD_ERROR} role="alert" id="transaction-description-error">
             {errors.description.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="transaction-amount">Amount</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="transaction-amount">
+          Amount
+        </label>
         <Controller
           control={control}
           name="amount"
@@ -248,13 +269,13 @@ export function TransactionForm({
           )}
         />
         {errors.amount && (
-          <p className="field-error" role="alert" id="transaction-amount-error">
+          <p className={FIELD_ERROR} role="alert" id="transaction-amount-error">
             {errors.amount.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="transaction-account">
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="transaction-account">
           {kind === 'transfer' ? 'From account' : 'Account'}
         </label>
         <Controller
@@ -273,14 +294,16 @@ export function TransactionForm({
           )}
         />
         {errors.accountId && (
-          <p className="field-error" role="alert" id="transaction-account-error">
+          <p className={FIELD_ERROR} role="alert" id="transaction-account-error">
             {errors.accountId.message}
           </p>
         )}
       </div>
       {kind !== 'transfer' && (
-        <div className="field">
-          <label htmlFor="transaction-category">Category</label>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="transaction-category">
+            Category
+          </label>
           <Controller
             control={control}
             name="categoryId"
@@ -298,16 +321,16 @@ export function TransactionForm({
             )}
           />
           {errors.categoryId && (
-            <p className="field-error" role="alert" id="transaction-category-error">
+            <p className={FIELD_ERROR} role="alert" id="transaction-category-error">
               {errors.categoryId.message}
             </p>
           )}
         </div>
       )}
       {kind === 'expense' && (
-        <div className="field">
-          <label htmlFor="transaction-project">
-            Project <span className="optional">optional</span>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="transaction-project">
+            Project <span className={OPTIONAL}>optional</span>
           </label>
           <Controller
             control={control}
@@ -324,15 +347,17 @@ export function TransactionForm({
             )}
           />
           {errors.projectId && (
-            <p className="field-error" role="alert" id="transaction-project-error">
+            <p className={FIELD_ERROR} role="alert" id="transaction-project-error">
               {errors.projectId.message}
             </p>
           )}
         </div>
       )}
       {kind === 'transfer' && (
-        <div className="field">
-          <label htmlFor="transaction-counter-account">To account</label>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="transaction-counter-account">
+            To account
+          </label>
           <Controller
             control={control}
             name="counterAccountId"
@@ -357,27 +382,27 @@ export function TransactionForm({
             )}
           />
           {errors.counterAccountId && (
-            <p className="field-error" role="alert" id="transaction-counter-account-error">
+            <p className={FIELD_ERROR} role="alert" id="transaction-counter-account-error">
               {errors.counterAccountId.message}
             </p>
           )}
         </div>
       )}
-      <div className="modal-actions">
+      <div className={FORM_ACTIONS}>
         {transaction && (
           <button
             type="button"
-            className="btn danger"
+            className={BUTTON_DANGER}
             disabled={deleteMutation.isPending}
             onClick={() => deleteMutation.mutate()}
           >
             Delete
           </button>
         )}
-        <button type="button" className="btn" onClick={onDone}>
+        <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn primary" disabled={isSubmitting}>
+        <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
           {transaction ? 'Save changes' : 'Record transaction'}
         </button>
       </div>

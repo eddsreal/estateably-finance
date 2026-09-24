@@ -86,7 +86,7 @@ function sourceFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return sourceFiles(path);
-    return /\.(css|tsx)$/.test(entry.name) ? [path] : [];
+    return /\.(css|tsx?)$/.test(entry.name) ? [path] : [];
   });
 }
 
@@ -94,7 +94,7 @@ function main() {
   const tokens = definedTokens(readFileSync(repoFile('../../../design/tokens.css'), 'utf8'));
   const failures = [];
   for (const path of sourceFiles(repoFile('../src'))) {
-    const kind = path.endsWith('.tsx') ? 'tsx' : 'css';
+    const kind = path.endsWith('.css') ? 'css' : 'tsx';
     for (const problem of scanSource(readFileSync(path, 'utf8'), tokens, kind)) {
       failures.push(`${relative(process.cwd(), path)}:${problem.line}  ${problem.message}`);
     }

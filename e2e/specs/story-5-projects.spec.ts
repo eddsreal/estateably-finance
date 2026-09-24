@@ -93,7 +93,7 @@ test('the seeded projects show spend, remaining and the over-budget overrun (US5
   page,
 }) => {
   await page.goto('/');
-  await press(page.getByRole('link', { name: 'Projects' }));
+  await press(page.getByRole('link', { name: 'Projects', exact: true }));
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 
   const trip = projectRow(page, 'Trip to France');
@@ -127,7 +127,7 @@ test('expenses from two accounts and two categories add up; an untagged one does
   await recordExpense(page, hotel, '300.00', 'Savings', 'Dining', paris);
   await recordExpense(page, taxi, '50.00', 'Checking', 'Transport');
 
-  await press(page.getByRole('link', { name: 'Projects' }));
+  await press(page.getByRole('link', { name: 'Projects', exact: true }));
   const row = projectRow(page, paris);
   await expect(row).toContainText('$1,100.00');
   await expect(row).toContainText('$3,900.00');

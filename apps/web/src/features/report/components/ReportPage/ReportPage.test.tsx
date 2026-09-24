@@ -107,7 +107,8 @@ describe('ReportPage', () => {
   it('shows per-category totals and the grand total in dollars only (US3 #1, SC-009)', async () => {
     stubRoutes();
     renderPage();
-    expect(await screen.findByText('$192.50')).toBeInTheDocument();
+    expect(await screen.findByText('$72.50')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /^Spent in / })).toHaveTextContent('$192.50');
     expect(screen.getByText('Rent')).toBeInTheDocument();
     expect(screen.getAllByText('$120.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Groceries')).toBeInTheDocument();
@@ -129,13 +130,14 @@ describe('ReportPage', () => {
   it('switches month in page state and shows the empty state for a month without expenses (US3 #2, #4)', async () => {
     stubRoutes();
     renderPage();
-    await screen.findByText('$192.50');
+    await screen.findByText('$72.50');
     await userEvent.click(screen.getByRole('button', { name: 'Previous month' }));
     expect(await screen.findByText('No expenses this month')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Go to transactions' })).toBeInTheDocument();
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /^Spent in / })).toHaveTextContent('$0.00');
     await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
-    expect(await screen.findByText('$192.50')).toBeInTheDocument();
+    expect(await screen.findByText('$72.50')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /^Spent in / })).toHaveTextContent('$192.50');
   });
 
   it('opens the edit form when a drill-down expense is clicked', async () => {

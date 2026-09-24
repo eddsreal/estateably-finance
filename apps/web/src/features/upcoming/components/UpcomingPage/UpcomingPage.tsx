@@ -2,18 +2,31 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
-import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Table } from '../../../../shared/ui/Table/Table';
 import { ConfirmItemForm } from '../ConfirmItemForm/ConfirmItemForm';
 import { EditableScheduledItem, ScheduledItemForm } from '../ScheduledItemForm/ScheduledItemForm';
+import {
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  BUTTON_PRIMARY,
+  CARD,
+  CHIP_WARNING,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  ROW_ACTION_TEXT,
+  TD_AMOUNT,
+} from '../../../../shared/lib/styles';
 
-const KIND_META: Record<'bill' | 'income', { glyph: string; chip: string; label: string }> = {
-  bill: { glyph: '↑', chip: 'expense', label: 'Bill' },
-  income: { glyph: '↓', chip: 'income', label: 'Income' },
-};
+const KIND_META = {
+  bill: { kind: 'expense', label: 'Bill' },
+  income: { kind: 'income', label: 'Income' },
+} as const;
 
 const RECURRENCE_LABEL: Record<string, string> = {
   once: 'Once',
@@ -68,23 +81,27 @@ export function UpcomingPage() {
   });
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Upcoming</h1>
-        <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Upcoming</h1>
+        <button type="button" className={BUTTON_PRIMARY} onClick={() => setCreating(true)}>
           New scheduled item
         </button>
       </div>
-      <div className="card">
+      <div className={CARD}>
         {itemsQuery.isError ? (
-          <div className="info-banner" role="alert">
+          <div className={BANNER_WARNING} role="alert">
             <span>The upcoming list could not be loaded, so it is not shown.</span>
-            <button type="button" className="btn compact" onClick={() => void itemsQuery.refetch()}>
+            <button
+              type="button"
+              className={BUTTON_COMPACT}
+              onClick={() => void itemsQuery.refetch()}
+            >
               Retry
             </button>
           </div>
         ) : !itemsQuery.data ? (
-          <p>Loading scheduled items…</p>
+          <p className="text-14 text-text-2">Loading scheduled items…</p>
         ) : items.length === 0 ? (
           <EmptyState
             title="Nothing scheduled"
@@ -110,27 +127,29 @@ export function UpcomingPage() {
               return (
                 <tr key={item.id}>
                   <td>
-                    <span className={`chip ${meta.chip}`}>
-                      <span aria-hidden="true">{meta.glyph}</span> {meta.label}
-                    </span>
+                    <KindGlyph kind={meta.kind} label={meta.label} showLabel />
                   </td>
                   <td>
                     <button
                       type="button"
-                      className="row-action"
+                      className={ROW_ACTION_TEXT}
                       onClick={() => setEditing(toEditable(item))}
                     >
                       {item.description}
                     </button>
                   </td>
                   <td>
-                    {accountName(item.accountId)}
-                    {item.accountArchived && <span className="chip warning">Account archived</span>}
+                    <span className="flex items-center gap-8">
+                      {accountName(item.accountId)}
+                      {item.accountArchived && (
+                        <span className={CHIP_WARNING}>Account archived</span>
+                      )}
+                    </span>
                   </td>
-                  <td>
-                    {item.nextDueDate}{' '}
+                  <td className="text-13">
+                    <span className="font-mono text-12 text-text-2">{item.nextDueDate}</span>{' '}
                     {item.overdue ? (
-                      <span className="chip warning">
+                      <span className={CHIP_WARNING}>
                         {dueLabel(item.nextDueDate, today)}
                         {item.overdueCount > 1 ? ` · ${item.overdueCount} missed` : ''}
                       </span>
@@ -142,11 +161,13 @@ export function UpcomingPage() {
                     {RECURRENCE_LABEL[item.recurrence]}
                     {item.endDate ? ` until ${item.endDate}` : ''}
                   </td>
-                  <td className="amount">{formatCents(item.amount as Cents)}</td>
+                  <td className={TD_AMOUNT}>
+                    <Amount cents={item.amount} />
+                  </td>
                   <td>
                     <button
                       type="button"
-                      className="btn compact"
+                      className={BUTTON_COMPACT}
                       onClick={() => setConfirming(toEditable(item))}
                     >
                       {item.kind === 'bill' ? 'Mark paid' : 'Mark received'}

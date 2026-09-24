@@ -1,5 +1,6 @@
 import { CSSProperties, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { INPUT } from '../../lib/styles';
 
 export type PickerOption = {
   value: string;
@@ -135,12 +136,12 @@ export function Picker({
   }
 
   return (
-    <div className="picker">
+    <div className="relative">
       <button
         type="button"
         id={id}
         ref={triggerRef}
-        className="picker-trigger"
+        className={`${INPUT} flex cursor-pointer items-center justify-between gap-8 text-left`}
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
@@ -155,16 +156,24 @@ export function Picker({
         {selected ? (
           <span>
             {selected.label}
-            {selected.note && <span className="note">{selected.note}</span>}
+            {selected.note && <span className="ml-4 text-text-3">{selected.note}</span>}
           </span>
         ) : (
-          <span className="placeholder">{placeholder}</span>
+          <span className="text-text-2">{placeholder}</span>
         )}
-        <span aria-hidden="true">▾</span>
+        <span aria-hidden="true" className="text-text-2">
+          ▾
+        </span>
       </button>
       {open &&
         createPortal(
-          <ul id={listId} ref={panelRef} role="listbox" className="picker-panel" style={panelStyle}>
+          <ul
+            id={listId}
+            ref={panelRef}
+            role="listbox"
+            className="fixed z-50 max-h-280 min-w-190 list-none overflow-y-auto rounded-lg border border-sand-350 bg-sand-0 p-4 shadow-popover"
+            style={panelStyle}
+          >
             {rows.map((row, index) => (
               <li
                 key={`${row.value}-${index}`}
@@ -172,7 +181,7 @@ export function Picker({
                 role="option"
                 aria-selected={index === selectedIndex}
                 aria-disabled={row.disabled || undefined}
-                className={`picker-option${index === active ? ' active' : ''}`}
+                className={`flex h-32 cursor-pointer items-center rounded-sm px-12 text-15 aria-disabled:cursor-not-allowed aria-disabled:text-text-3 aria-selected:bg-accent-soft aria-selected:text-accent ${index === active ? 'bg-sand-100 shadow-focus' : 'text-text-1'}`}
                 onMouseDown={(event) => {
                   event.preventDefault();
                   select(index);
@@ -180,7 +189,7 @@ export function Picker({
                 onMouseEnter={() => setActive(index)}
               >
                 {row.label}
-                {row.note && <span className="note">{row.note}</span>}
+                {row.note && <span className="ml-4 text-text-3">{row.note}</span>}
               </li>
             ))}
           </ul>,

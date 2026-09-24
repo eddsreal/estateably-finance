@@ -3,15 +3,32 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
-import { Cents, formatCents, isNegative } from '../../../../shared/lib/money';
+import { Cents, isNegative } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
+import { Stat } from '../../../../shared/ui/Stat/Stat';
 import { Table } from '../../../../shared/ui/Table/Table';
+import {
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  CARD,
+  CHIP_WARNING,
+  INPUT,
+  LABEL,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  TD_AMOUNT,
+  TOOLBAR_FIELD,
+  TRUNCATE,
+} from '../../../../shared/lib/styles';
 
-const KIND_META: Record<'bill' | 'income', { glyph: string; chip: string; label: string }> = {
-  bill: { glyph: '↑', chip: 'expense', label: 'Bill' },
-  income: { glyph: '↓', chip: 'income', label: 'Income' },
-};
+const KIND_META = {
+  bill: { kind: 'expense', label: 'Bill' },
+  income: { kind: 'income', label: 'Income' },
+} as const;
 
 function shiftMonths(date: string, months: number): { year: number; month: number } {
   const [year, month] = date.split('-').map(Number);
@@ -44,14 +61,17 @@ export function ProjectionPage() {
   const projection = projectionQuery.data;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Projection</h1>
-        <div className="field">
-          <label htmlFor="projection-horizon">Project up to</label>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Projection</h1>
+        <div className={TOOLBAR_FIELD}>
+          <label className={LABEL} htmlFor="projection-horizon">
+            Project up to
+          </label>
           <input
             id="projection-horizon"
             type="date"
+            className={INPUT}
             value={horizon}
             min={today}
             max={maxHorizon(today)}
@@ -62,35 +82,29 @@ export function ProjectionPage() {
         </div>
       </div>
       {projection && (
-        <div className="toolbar">
-          <div className="card stat">
-            <span className="caption">Current total</span>
-            <span className="value">
-              <span className="amount">{formatCents(projection.startingBalance as Cents)}</span>
-            </span>
-          </div>
-          <div className="card stat">
-            <span className="caption">Projected on {projection.horizon}</span>
-            <span className="value">
-              <span className="amount">{formatCents(projection.finalBalance as Cents)}</span>
-            </span>
-          </div>
+        <div className="grid grid-cols-2 gap-14">
+          <Stat caption="Current total">
+            <Amount cents={projection.startingBalance} size="large" />
+          </Stat>
+          <Stat caption={`Projected on ${projection.horizon}`}>
+            <Amount cents={projection.finalBalance} size="large" />
+          </Stat>
         </div>
       )}
-      <div className="card">
+      <div className={CARD}>
         {projectionQuery.isError ? (
-          <div className="info-banner" role="alert">
+          <div className={BANNER_WARNING} role="alert">
             <span>The projection could not be loaded, so it is not shown.</span>
             <button
               type="button"
-              className="btn compact"
+              className={BUTTON_COMPACT}
               onClick={() => void projectionQuery.refetch()}
             >
               Retry
             </button>
           </div>
         ) : !projection ? (
-          <p>Loading projection…</p>
+          <p className="text-14 text-text-2">Loading projection…</p>
         ) : projection.occurrences.length === 0 ? (
           <EmptyState
             title="Nothing scheduled before this date"
@@ -115,25 +129,29 @@ export function ProjectionPage() {
               return (
                 <tr key={`${occurrence.scheduledItemId}-${occurrence.date}-${index}`}>
                   <td>
-                    {occurrence.date}
-                    {occurrence.overdue && <span className="chip warning">Overdue</span>}
-                  </td>
-                  <td>{occurrence.description}</td>
-                  <td>
-                    <span className={`chip ${meta.chip}`}>
-                      <span aria-hidden="true">{meta.glyph}</span> {meta.label}
+                    <span className="flex items-center gap-8 font-mono text-12 text-text-2">
+                      {occurrence.date}
+                      {occurrence.overdue && <span className={CHIP_WARNING}>Overdue</span>}
                     </span>
                   </td>
-                  <td className="amount">
-                    {formatCents(
-                      (occurrence.kind === 'bill'
-                        ? `-${occurrence.amount}`
-                        : occurrence.amount) as Cents,
-                    )}
+                  <td>
+                    <span className={TRUNCATE}>{occurrence.description}</span>
                   </td>
-                  <td className="amount">
-                    {formatCents(occurrence.runningBalance as Cents)}
-                    {belowZero && <span className="chip warning">Below zero</span>}
+                  <td>
+                    <KindGlyph kind={meta.kind} label={meta.label} showLabel />
+                  </td>
+                  <td className={TD_AMOUNT}>
+                    <Amount
+                      cents={
+                        occurrence.kind === 'bill' ? `-${occurrence.amount}` : occurrence.amount
+                      }
+                    />
+                  </td>
+                  <td className={TD_AMOUNT}>
+                    <span className="inline-flex items-center gap-8">
+                      <Amount cents={occurrence.runningBalance} />
+                      {belowZero && <span className={CHIP_WARNING}>Below zero</span>}
+                    </span>
                   </td>
                 </tr>
               );

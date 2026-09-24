@@ -3,13 +3,29 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { isApiError } from '../../../../shared/lib/form-errors';
-import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Table } from '../../../../shared/ui/Table/Table';
 import { OverBudgetChip, RemainingAmount } from '../ProjectFigures/ProjectFigures';
 import { EditableProject, ProjectForm } from '../ProjectForm/ProjectForm';
+import {
+  BANNER_ERROR,
+  BANNER_WARNING,
+  BUTTON_COMPACT,
+  BUTTON_PRIMARY,
+  CARD,
+  CHIP_NEUTRAL,
+  CHIP_WARNING,
+  LINK,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  ROW_ACTION,
+  TD_AMOUNT,
+  TRUNCATE,
+} from '../../../../shared/lib/styles';
 
 type ProjectAction = { id: string; action: 'close' | 'reopen' | 'delete' };
 
@@ -48,16 +64,16 @@ export function ProjectsPage() {
   });
 
   if (projectsQuery.isPending) {
-    return <p className="page">Loading projects…</p>;
+    return <p className={PAGE}>Loading projects…</p>;
   }
   if (projectsQuery.isError) {
     return (
-      <div className="page">
-        <div className="info-banner" role="alert">
+      <div className={PAGE}>
+        <div className={BANNER_WARNING} role="alert">
           <span>The projects could not be loaded.</span>
           <button
             type="button"
-            className="btn compact"
+            className={BUTTON_COMPACT}
             onClick={() => void projectsQuery.refetch()}
           >
             Retry
@@ -70,19 +86,19 @@ export function ProjectsPage() {
   const projects = projectsQuery.data;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Projects</h1>
-        <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Projects</h1>
+        <button type="button" className={BUTTON_PRIMARY} onClick={() => setCreating(true)}>
           New project
         </button>
       </div>
       {actionError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {actionError}
         </div>
       )}
-      <div className="card">
+      <div className={CARD}>
         {projects.length === 0 ? (
           <EmptyState
             title="No projects yet"
@@ -105,27 +121,31 @@ export function ProjectsPage() {
             {projects.map((project) => (
               <tr key={project.id}>
                 <td>
-                  <Link className="page-link" to={`/projects/${project.id}`}>
-                    {project.name}
-                  </Link>
-                  {project.overBudget && <OverBudgetChip />}
+                  <span className="flex items-center gap-8">
+                    <Link className={`${LINK} ${TRUNCATE}`} to={`/projects/${project.id}`}>
+                      {project.name}
+                    </Link>
+                    {project.overBudget && <OverBudgetChip />}
+                  </span>
                 </td>
                 <td>
-                  <span className={`chip ${project.status === 'closed' ? 'warning' : ''}`}>
+                  <span className={project.status === 'closed' ? CHIP_WARNING : CHIP_NEUTRAL}>
                     {project.status}
                   </span>
                 </td>
-                <td className="amount">
-                  {project.budget === undefined ? '—' : formatCents(project.budget as Cents)}
+                <td className={TD_AMOUNT}>
+                  {project.budget === undefined ? '—' : <Amount cents={project.budget} />}
                 </td>
-                <td className="amount">{formatCents(project.spent as Cents)}</td>
-                <td className="amount">
+                <td className={TD_AMOUNT}>
+                  <Amount cents={project.spent} />
+                </td>
+                <td className={TD_AMOUNT}>
                   <RemainingAmount project={project} />
                 </td>
                 <td>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`Edit ${project.name}`}
                     onClick={() =>
                       setEditing({ id: project.id, name: project.name, budget: project.budget })
@@ -135,7 +155,7 @@ export function ProjectsPage() {
                   </button>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`${project.status === 'closed' ? 'Reopen' : 'Close'} ${project.name}`}
                     onClick={() =>
                       actionMutation.mutate({
@@ -148,7 +168,7 @@ export function ProjectsPage() {
                   </button>
                   <button
                     type="button"
-                    className="row-action"
+                    className={ROW_ACTION}
                     aria-label={`Delete ${project.name}`}
                     onClick={() => actionMutation.mutate({ id: project.id, action: 'delete' })}
                   >

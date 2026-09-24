@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addCents,
   Cents,
+  change,
   compareCents,
   formatCents,
   formatPlain,
@@ -70,5 +71,16 @@ describe('bigint arithmetic only', () => {
     expect(compareCents('10' as Cents, '10' as Cents)).toBe(0);
     expect(isNegative('-1' as Cents)).toBe(true);
     expect(isNegative('0' as Cents)).toBe(false);
+  });
+});
+
+describe('change', () => {
+  it('subtracts in bigint, keeping the sign of the move', () => {
+    expect(change('100000' as Cents, '112000' as Cents)).toBe('12000');
+    expect(change('112000' as Cents, '100000' as Cents)).toBe('-12000');
+    expect(change('5' as Cents, '5' as Cents)).toBe('0');
+    expect(change('-900719925474099' as Cents, '900719925474100' as Cents)).toBe(
+      '1801439850948199',
+    );
   });
 });

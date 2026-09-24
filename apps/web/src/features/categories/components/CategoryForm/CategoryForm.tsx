@@ -4,6 +4,19 @@ import { useForm } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import {
+  BANNER_ERROR,
+  BUTTON,
+  BUTTON_PRIMARY,
+  FIELD,
+  FIELD_ERROR,
+  FORM,
+  FORM_ACTIONS,
+  INPUT,
+  LABEL,
+  SEGMENT,
+  SEGMENTED,
+} from '../../../../shared/lib/styles';
 
 export type CategoryFormValues = { name: string; type: 'expense' | 'income' };
 
@@ -50,6 +63,7 @@ export function CategoryForm({
 
   return (
     <form
+      className={FORM}
       noValidate
       onSubmit={(event) => {
         void handleSubmit((values) => {
@@ -59,15 +73,18 @@ export function CategoryForm({
       }}
     >
       {formError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className="field">
-        <label htmlFor="category-name">Name</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="category-name">
+          Name
+        </label>
         <input
           id="category-name"
           type="text"
+          className={INPUT}
           autoFocus
           data-autofocus
           aria-invalid={errors.name ? true : undefined}
@@ -75,42 +92,42 @@ export function CategoryForm({
           {...register('name', { required: 'name is required', maxLength: 60 })}
         />
         {errors.name && (
-          <p className="field-error" role="alert" id="category-name-error">
+          <p className={FIELD_ERROR} role="alert" id="category-name-error">
             {errors.name.message || 'name must be at most 60 characters'}
           </p>
         )}
       </div>
-      <div className="field">
-        <span className="field-label" id="category-type-label">
+      <div className={FIELD}>
+        <span className={LABEL} id="category-type-label">
           Type
         </span>
         <div
-          className="radio-group"
+          className={SEGMENTED}
           role="radiogroup"
           aria-labelledby="category-type-label"
           aria-invalid={errors.type ? true : undefined}
           aria-describedby={errors.type ? 'category-type-error' : undefined}
         >
-          <label>
-            <input type="radio" value="expense" {...register('type')} />
+          <label className={SEGMENT}>
+            <input className="sr-only" type="radio" value="expense" {...register('type')} />
             Expense
           </label>
-          <label>
-            <input type="radio" value="income" {...register('type')} />
+          <label className={SEGMENT}>
+            <input className="sr-only" type="radio" value="income" {...register('type')} />
             Income
           </label>
         </div>
         {errors.type && (
-          <p className="field-error" role="alert" id="category-type-error">
+          <p className={FIELD_ERROR} role="alert" id="category-type-error">
             {errors.type.message}
           </p>
         )}
       </div>
-      <div className="modal-actions">
-        <button type="button" className="btn" onClick={onDone}>
+      <div className={FORM_ACTIONS}>
+        <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn primary" disabled={isSubmitting}>
+        <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
           {category ? 'Save changes' : 'Create category'}
         </button>
       </div>

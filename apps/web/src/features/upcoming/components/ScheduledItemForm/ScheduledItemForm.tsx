@@ -12,6 +12,20 @@ import {
   CategoryPicker,
 } from '../../../../shared/ui/CategoryPicker/CategoryPicker';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
+import {
+  BANNER_ERROR,
+  BUTTON,
+  BUTTON_DANGER,
+  BUTTON_PRIMARY,
+  FIELD,
+  FIELD_ERROR,
+  FORM,
+  FORM_ACTIONS,
+  INPUT,
+  LABEL,
+  SEGMENT,
+  SEGMENTED,
+} from '../../../../shared/lib/styles';
 
 export type EditableScheduledItem = {
   id: string;
@@ -142,6 +156,7 @@ export function ScheduledItemForm({
 
   return (
     <form
+      className={FORM}
       noValidate
       onSubmit={(event) => {
         void handleSubmit((values) => {
@@ -151,39 +166,42 @@ export function ScheduledItemForm({
       }}
     >
       {formError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className="field">
-        <span className="field-label" id="scheduled-kind-label">
+      <div className={FIELD}>
+        <span className={LABEL} id="scheduled-kind-label">
           Kind
         </span>
         <div
-          className="radio-group"
+          className={SEGMENTED}
           role="radiogroup"
           aria-labelledby="scheduled-kind-label"
           aria-invalid={errors.kind ? true : undefined}
           aria-describedby={errors.kind ? 'scheduled-kind-error' : undefined}
         >
           {KINDS.map((choice) => (
-            <label key={choice.value}>
-              <input type="radio" value={choice.value} {...register('kind')} />
+            <label key={choice.value} className={SEGMENT}>
+              <input className="sr-only" type="radio" value={choice.value} {...register('kind')} />
               {choice.label}
             </label>
           ))}
         </div>
         {errors.kind && (
-          <p className="field-error" role="alert" id="scheduled-kind-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-kind-error">
             {errors.kind.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="scheduled-description">Description</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="scheduled-description">
+          Description
+        </label>
         <input
           id="scheduled-description"
           type="text"
+          className={INPUT}
           aria-invalid={errors.description ? true : undefined}
           aria-describedby={errors.description ? 'scheduled-description-error' : undefined}
           {...register('description', {
@@ -193,13 +211,15 @@ export function ScheduledItemForm({
           })}
         />
         {errors.description && (
-          <p className="field-error" role="alert" id="scheduled-description-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-description-error">
             {errors.description.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="scheduled-amount">Amount</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="scheduled-amount">
+          Amount
+        </label>
         <Controller
           control={control}
           name="amount"
@@ -224,13 +244,15 @@ export function ScheduledItemForm({
           )}
         />
         {errors.amount && (
-          <p className="field-error" role="alert" id="scheduled-amount-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-amount-error">
             {errors.amount.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="scheduled-account">Account</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="scheduled-account">
+          Account
+        </label>
         <Controller
           control={control}
           name="accountId"
@@ -247,13 +269,15 @@ export function ScheduledItemForm({
           )}
         />
         {errors.accountId && (
-          <p className="field-error" role="alert" id="scheduled-account-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-account-error">
             {errors.accountId.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="scheduled-category">Category</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="scheduled-category">
+          Category
+        </label>
         <Controller
           control={control}
           name="categoryId"
@@ -271,16 +295,19 @@ export function ScheduledItemForm({
           )}
         />
         {errors.categoryId && (
-          <p className="field-error" role="alert" id="scheduled-category-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-category-error">
             {errors.categoryId.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="scheduled-due-date">Next due date</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="scheduled-due-date">
+          Next due date
+        </label>
         <input
           id="scheduled-due-date"
           type="date"
+          className={INPUT}
           min={item ? undefined : localToday()}
           aria-invalid={errors.nextDueDate ? true : undefined}
           aria-describedby={errors.nextDueDate ? 'scheduled-due-date-error' : undefined}
@@ -291,40 +318,48 @@ export function ScheduledItemForm({
           })}
         />
         {errors.nextDueDate && (
-          <p className="field-error" role="alert" id="scheduled-due-date-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-due-date-error">
             {errors.nextDueDate.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <span className="field-label" id="scheduled-recurrence-label">
+      <div className={FIELD}>
+        <span className={LABEL} id="scheduled-recurrence-label">
           Repeats
         </span>
         <div
-          className="radio-group"
+          className={SEGMENTED}
           role="radiogroup"
           aria-labelledby="scheduled-recurrence-label"
           aria-invalid={errors.recurrence ? true : undefined}
           aria-describedby={errors.recurrence ? 'scheduled-recurrence-error' : undefined}
         >
           {RECURRENCES.map((choice) => (
-            <label key={choice.value}>
-              <input type="radio" value={choice.value} {...register('recurrence')} />
+            <label key={choice.value} className={SEGMENT}>
+              <input
+                className="sr-only"
+                type="radio"
+                value={choice.value}
+                {...register('recurrence')}
+              />
               {choice.label}
             </label>
           ))}
         </div>
         {errors.recurrence && (
-          <p className="field-error" role="alert" id="scheduled-recurrence-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-recurrence-error">
             {errors.recurrence.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="scheduled-end-date">End date (optional)</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="scheduled-end-date">
+          End date (optional)
+        </label>
         <input
           id="scheduled-end-date"
           type="date"
+          className={INPUT}
           min={nextDueDate || undefined}
           aria-invalid={errors.endDate ? true : undefined}
           aria-describedby={errors.endDate ? 'scheduled-end-date-error' : undefined}
@@ -334,26 +369,26 @@ export function ScheduledItemForm({
           })}
         />
         {errors.endDate && (
-          <p className="field-error" role="alert" id="scheduled-end-date-error">
+          <p className={FIELD_ERROR} role="alert" id="scheduled-end-date-error">
             {errors.endDate.message}
           </p>
         )}
       </div>
-      <div className="modal-actions">
+      <div className={FORM_ACTIONS}>
         {item && (
           <button
             type="button"
-            className="btn danger"
+            className={BUTTON_DANGER}
             disabled={deleteMutation.isPending}
             onClick={() => deleteMutation.mutate()}
           >
             Delete
           </button>
         )}
-        <button type="button" className="btn" onClick={onDone}>
+        <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn primary" disabled={isSubmitting}>
+        <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
           {item ? 'Save changes' : 'Create scheduled item'}
         </button>
       </div>

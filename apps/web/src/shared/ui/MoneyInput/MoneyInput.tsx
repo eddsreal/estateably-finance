@@ -1,5 +1,6 @@
 import type { Ref } from 'react';
 import { formatPlain, parseDollars } from '../../lib/money';
+import { INPUT } from '../../lib/styles';
 
 type MoneyInputProps = {
   id: string;
@@ -27,6 +28,7 @@ export function MoneyInput({
       id={id}
       ref={ref}
       type="text"
+      className={`${INPUT} font-mono`}
       inputMode="decimal"
       value={value}
       autoFocus={autoFocus}

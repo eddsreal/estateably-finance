@@ -1,4 +1,6 @@
 import { Cents, formatCents } from '../../../../shared/lib/money';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
+import { CHIP_WARNING } from '../../../../shared/lib/styles';
 
 export type ProjectFiguresData = {
   budget?: string;
@@ -8,17 +10,21 @@ export type ProjectFiguresData = {
 };
 
 export function RemainingAmount({ project }: { project: ProjectFiguresData }) {
-  if (project.remaining === undefined) return <span className="amount">No budget</span>;
+  if (project.remaining === undefined) return <span className="text-text-2">No budget</span>;
   if (project.overBudget) {
     const overrun = (-BigInt(project.remaining)).toString() as Cents;
-    return <span className="amount warning">{formatCents(overrun)} over</span>;
+    return (
+      <span className="font-mono font-medium text-warning tabular-nums">
+        {formatCents(overrun)} over
+      </span>
+    );
   }
-  return <span className="amount">{formatCents(project.remaining as Cents)}</span>;
+  return <Amount cents={project.remaining} />;
 }
 
 export function OverBudgetChip() {
   return (
-    <span className="chip warning">
+    <span className={CHIP_WARNING}>
       <span aria-hidden="true">▲</span>Over budget
     </span>
   );

@@ -70,8 +70,12 @@ describe('AccountDetailPage', () => {
   it('shows the current balance and the as-of balance for today in dollars only (SC-009)', async () => {
     stubRoutes();
     renderPage();
-    expect(await screen.findByText('Current balance')).toBeInTheDocument();
-    expect((await screen.findAllByText('$4,457.50')).length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByRole('status', { name: 'Current balance' })).toHaveTextContent(
+      '$4,457.50',
+    );
+    expect(await screen.findByRole('status', { name: /^Balance on / })).toHaveTextContent(
+      '$4,457.50',
+    );
     expect(screen.queryByText('445750')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Balance as of')).toHaveValue(
       new Intl.DateTimeFormat('en-CA').format(new Date()),
@@ -98,12 +102,17 @@ describe('AccountDetailPage', () => {
   it('refetches every balance on screen when the entry-derived families are invalidated (FR-028)', async () => {
     stubRoutes();
     const { queryClient } = renderPage();
-    expect((await screen.findAllByText('$4,457.50')).length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByRole('status', { name: /^Balance on / })).toHaveTextContent(
+      '$4,457.50',
+    );
+    expect(screen.getByRole('status', { name: 'Current balance' })).toHaveTextContent('$4,457.50');
 
     stubRoutes({ current: '345750', balance: '345750' });
     await invalidateEntryDerived(queryClient);
-    expect((await screen.findAllByText('$3,457.50')).length).toBeGreaterThanOrEqual(2);
-    expect(screen.queryByText('$4,457.50')).not.toBeInTheDocument();
+    expect(await screen.findByText('$3,457.50')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Current balance' })).toHaveTextContent('$3,457.50');
+    expect(screen.getByRole('status', { name: /^Balance on / })).toHaveTextContent('$3,457.50');
+    expect(document.body).not.toHaveTextContent('$4,457.50');
   });
 
   it('says so when the account does not exist', async () => {

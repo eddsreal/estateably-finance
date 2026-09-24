@@ -50,3 +50,7 @@ export function compareCents(a: Cents, b: Cents): -1 | 0 | 1 {
 export function isNegative(cents: Cents): boolean {
   return BigInt(cents) < 0n;
 }
+
+export function change(from: Cents, to: Cents): Cents {
+  return (BigInt(to) - BigInt(from)).toString() as Cents;
+}

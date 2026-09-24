@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
 import { isApiError } from '../../../../shared/lib/form-errors';
-import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Table } from '../../../../shared/ui/Table/Table';
@@ -13,6 +13,27 @@ import {
   EditableTransaction,
   TransactionForm,
 } from '../../../../shared/ui/TransactionForm/TransactionForm';
+import {
+  BANNER_ERROR,
+  BANNER_WARNING,
+  BUTTON,
+  BUTTON_COMPACT,
+  BUTTON_PRIMARY,
+  CARD,
+  CHIP_WARNING,
+  HINT,
+  INPUT,
+  LABEL,
+  PAGE,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  ROW_ACTION_TEXT,
+  SECTION_TITLE,
+  TD_AMOUNT,
+  TOOLBAR,
+  TOOLBAR_FIELD,
+  TRUNCATE,
+} from '../../../../shared/lib/styles';
 
 type Range = { from: string; to: string };
 
@@ -82,33 +103,39 @@ export function SimilarPage() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Similar transactions</h1>
+    <div className={PAGE}>
+      <div className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Similar transactions</h1>
       </div>
-      <div className="card">
-        <div className="toolbar">
-          <div className="field">
-            <label htmlFor="similar-from">From</label>
+      <div className={CARD}>
+        <div className={TOOLBAR}>
+          <div className={TOOLBAR_FIELD}>
+            <label className={LABEL} htmlFor="similar-from">
+              From
+            </label>
             <input
               id="similar-from"
               type="date"
+              className={INPUT}
               value={from}
               onChange={(event) => setFrom(event.target.value)}
             />
           </div>
-          <div className="field">
-            <label htmlFor="similar-to">To</label>
+          <div className={TOOLBAR_FIELD}>
+            <label className={LABEL} htmlFor="similar-to">
+              To
+            </label>
             <input
               id="similar-to"
               type="date"
+              className={INPUT}
               value={to}
               onChange={(event) => setTo(event.target.value)}
             />
           </div>
           <button
             type="button"
-            className="btn primary"
+            className={BUTTON_PRIMARY}
             disabled={from === '' || to === ''}
             onClick={generate}
           >
@@ -116,7 +143,7 @@ export function SimilarPage() {
           </button>
           <button
             type="button"
-            className="btn"
+            className={BUTTON}
             disabled={aiDisabled || !report || narrative.isPending}
             title={aiDisabled ? AI_DISABLED_REASON : undefined}
             aria-describedby={aiDisabled ? 'ai-disabled-reason' : undefined}
@@ -126,42 +153,42 @@ export function SimilarPage() {
           </button>
         </div>
         {aiDisabled && (
-          <p id="ai-disabled-reason" className="hint">
+          <p id="ai-disabled-reason" className={`${HINT} mt-8`}>
             {AI_DISABLED_REASON}
           </p>
         )}
       </div>
       {aiNotice && (
-        <div className="info-banner" role="alert">
+        <div className={BANNER_WARNING} role="alert">
           <span>The AI narrative failed; the report below is unaffected. {aiNotice}</span>
-          <button type="button" className="btn compact" onClick={() => setAiNotice(null)}>
+          <button type="button" className={BUTTON_COMPACT} onClick={() => setAiNotice(null)}>
             Dismiss
           </button>
         </div>
       )}
       {narrative.data && (
-        <div className="card">
-          <h2>Narrative</h2>
-          <p>{narrative.data.narrative}</p>
+        <div className={CARD}>
+          <h2 className={SECTION_TITLE}>Narrative</h2>
+          <p className="text-15 text-text-1">{narrative.data.narrative}</p>
         </div>
       )}
       {range === null ? (
-        <div className="card">
+        <div className={CARD}>
           <EmptyState
             title="No report yet"
             hint="Generate a report to group repeated merchants and surface the five most expensive transactions of the period."
           />
         </div>
       ) : reportQuery.isError ? (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {requestError(reportQuery.error)}
         </div>
       ) : !report ? (
-        <div className="card">
-          <p>Loading report…</p>
+        <div className={CARD}>
+          <p className="text-14 text-text-2">Loading report…</p>
         </div>
       ) : report.groups.length === 0 ? (
-        <div className="card">
+        <div className={CARD}>
           <EmptyState
             title="No expenses in this period"
             hint="Expenses dated between these two days will be grouped here."
@@ -171,8 +198,8 @@ export function SimilarPage() {
         </div>
       ) : (
         <>
-          <div className="card">
-            <h2>Groups by total, descending</h2>
+          <div className={CARD}>
+            <h2 className={SECTION_TITLE}>Groups by total, descending</h2>
             <Table
               caption={`Groups from ${report.from} to ${report.to}, by total descending`}
               columns={[
@@ -184,19 +211,23 @@ export function SimilarPage() {
               {report.groups.map((group) => (
                 <tr key={group.key}>
                   <td>
-                    {group.key}{' '}
-                    {group.key === report.topGroupKey && (
-                      <span className="chip warning">Most expensive group</span>
-                    )}
+                    <span className="flex items-center gap-8">
+                      <span className={TRUNCATE}>{group.key}</span>
+                      {group.key === report.topGroupKey && (
+                        <span className={CHIP_WARNING}>Most expensive group</span>
+                      )}
+                    </span>
                   </td>
-                  <td className="amount">{group.count}</td>
-                  <td className="amount">{formatCents(group.total as Cents)}</td>
+                  <td className={`${TD_AMOUNT} font-mono tabular-nums`}>{group.count}</td>
+                  <td className={TD_AMOUNT}>
+                    <Amount cents={group.total} />
+                  </td>
                 </tr>
               ))}
             </Table>
           </div>
-          <div className="card">
-            <h2>Top 5 most expensive</h2>
+          <div className={CARD}>
+            <h2 className={SECTION_TITLE}>Top 5 most expensive</h2>
             <Table
               caption="Top 5 most expensive"
               columns={[
@@ -208,11 +239,11 @@ export function SimilarPage() {
             >
               {report.topTransactions.map((transaction) => (
                 <tr key={transaction.id}>
-                  <td>{transaction.date}</td>
+                  <td className="font-mono text-12 text-text-2">{transaction.date}</td>
                   <td>
                     <button
                       type="button"
-                      className="row-action"
+                      className={ROW_ACTION_TEXT}
                       onClick={() =>
                         setEditing({
                           id: transaction.id,
@@ -230,7 +261,9 @@ export function SimilarPage() {
                     </button>
                   </td>
                   <td>{accountName(transaction.accountId)}</td>
-                  <td className="amount">{formatCents(transaction.amount as Cents)}</td>
+                  <td className={TD_AMOUNT}>
+                    <Amount cents={transaction.amount} />
+                  </td>
                 </tr>
               ))}
             </Table>

@@ -62,12 +62,12 @@ for its full 2.4 s without fading.
 Exactly four, matching the ledger intents (Constitution III). Never show debits, credits or
 system accounts.
 
-| Kind            | Glyph | Colour             | Chip background         |
-| --------------- | ----- | ------------------ | ----------------------- |
-| Expense         | `↑`   | `--color-negative` | `--color-negative-soft` |
-| Income          | `↓`   | `--color-accent`   | `--color-accent-soft`   |
-| Transfer        | `⇄`   | `--color-transfer` | `--color-transfer-soft` |
-| Opening balance | `●`   | `--color-text-2`   | `--color-neutral-soft`  |
+| Kind            | Glyph | Colour                    | Chip background         |
+| --------------- | ----- | ------------------------- | ----------------------- |
+| Expense         | `↑`   | `--color-negative`        | `--color-negative-soft` |
+| Income          | `↓`   | `--color-accent`          | `--color-accent-soft`   |
+| Transfer        | `⇄`   | `--color-transfer-strong` | `--color-transfer-soft` |
+| Opening balance | `●`   | `--color-text-2`          | `--color-neutral-soft`  |
 
 Balance changes use `▲` (up) and `▼` (down) with the signed amount, so they never collide with
 the kind arrows. Keep the glyphs rather than an icon set: kind has to read at a glance in a
@@ -176,3 +176,11 @@ be used.
 | `--color-warning-strong`  | `--color-warning-soft`     | body |
 | `--color-warning-ink`     | `--color-warning-surface`  | body |
 | `--color-transfer`        | `--color-sand-0`           | body |
+| `--color-text-3`          | `--color-sand-100`         | body |
+| `--color-text-strong`     | `--color-sand-200`         | body |
+| `--color-accent`          | `--color-sand-50`          | body |
+| `--color-accent-hover`    | `--color-sand-0`           | body |
+| `--color-accent-hover`    | `--color-sand-50`          | body |
+| `--color-accent-hover`    | `--color-sand-150`         | body |
+| `--color-negative`        | `--color-sand-50`          | body |
+| `--color-transfer-strong` | `--color-transfer-soft`    | body |

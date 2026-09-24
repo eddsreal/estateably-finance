@@ -100,11 +100,13 @@ test('the projection starts from the dashboard total and flags the below-zero oc
   try {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
-    const dashboardTotal = await page.locator('.stat .value').first().innerText();
+    const dashboardTotal = await page
+      .getByRole('status', { name: 'Total across accounts' })
+      .innerText();
 
-    await press(page.getByRole('link', { name: 'Projection' }));
+    await press(page.getByRole('link', { name: 'Projection', exact: true }));
     await expect(page.getByRole('heading', { name: 'Projection' })).toBeVisible();
-    await expect(page.locator('.stat .value').first()).toHaveText(dashboardTotal);
+    await expect(page.getByRole('status', { name: 'Current total' })).toHaveText(dashboardTotal);
     await expect(page.getByRole('row', { name: new RegExp(overdraftDesc) })).toContainText(
       'Below zero',
     );
@@ -130,13 +132,13 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
   await expect(billRow).toContainText('$1,200.00');
   await expect(billRow).toContainText(dueDate);
 
-  await press(page.getByRole('link', { name: 'Projection' }));
+  await press(page.getByRole('link', { name: 'Projection', exact: true }));
   await expect(page.getByRole('row', { name: new RegExp(billDesc) }).first()).toContainText(
     '-$1,200.00',
   );
-  const projectedBefore = await page.locator('.stat .value').first().innerText();
+  const projectedBefore = await page.getByRole('status', { name: 'Current total' }).innerText();
 
-  await press(page.getByRole('link', { name: 'Upcoming' }));
+  await press(page.getByRole('link', { name: 'Upcoming', exact: true }));
   await press(
     page
       .getByRole('row', { name: new RegExp(billDesc) })
@@ -153,18 +155,17 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
   await expect(advancedRow).toContainText(advancedDate);
   await expect(advancedRow).toContainText('$1,200.00');
 
-  await press(page.getByRole('link', { name: 'Transactions' }));
+  await press(page.getByRole('link', { name: 'Transactions', exact: true }));
   await expect(page.getByRole('row', { name: new RegExp(paidDesc) })).toContainText('$1,250.00');
 
-  await press(page.getByRole('link', { name: 'Projection' }));
-  await expect(page.locator('.stat .value').first()).not.toHaveText(projectedBefore);
+  await press(page.getByRole('link', { name: 'Projection', exact: true }));
+  await expect(page.getByRole('status', { name: 'Current total' })).not.toHaveText(projectedBefore);
 
-  await press(page.getByRole('link', { name: 'Report' }));
+  await press(page.getByRole('link', { name: 'Monthly expenses', exact: true }));
   await expect(page.getByRole('heading', { name: 'Monthly report' })).toBeVisible();
   if (confirmDate.slice(0, 7) !== localDate(0).slice(0, 7)) {
     await press(page.getByRole('button', { name: 'Previous month' }));
   }
-  const rentGroup = page.locator('.report-category', { hasText: 'Rent' });
-  await press(rentGroup.locator('summary'));
+  await press(page.locator('summary').filter({ hasText: 'Rent' }));
   await expect(page.getByRole('button', { name: paidDesc })).toBeVisible();
 });

@@ -49,7 +49,9 @@ describe('AccountsPage', () => {
     renderPage();
     expect(await screen.findByText('$4,457.50')).toBeInTheDocument();
     expect(screen.getByText('-$500.00')).toBeInTheDocument();
-    expect(screen.getByText('$3,957.50')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Total across accounts' })).toHaveTextContent(
+      '$3,957.50',
+    );
     expect(screen.queryByText('445750')).not.toBeInTheDocument();
     expect(screen.queryByText('395750')).not.toBeInTheDocument();
     expect(screen.queryByText('-50000')).not.toBeInTheDocument();

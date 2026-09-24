@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
@@ -53,10 +53,19 @@ describe('Sidebar', () => {
     expect(current).toHaveLength(1);
   });
 
-  it('marks Accounts on the index route only', () => {
+  it('marks Accounts on the index route and on an account, never on its siblings', () => {
     renderAt('/');
     expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Transactions' })).not.toHaveAttribute('aria-current');
+    cleanup();
+    renderAt('/accounts/7');
+    expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('marks Projects on a project but not Projection', () => {
+    renderAt('/projects/3');
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Projection' })).not.toHaveAttribute('aria-current');
   });
 
   it('shows the current date and the currency in the footer', () => {

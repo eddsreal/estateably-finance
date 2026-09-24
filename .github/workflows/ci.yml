@@ -45,6 +45,9 @@ jobs:
       - name: Format check (prettier)
         run: pnpm format:check
 
+      - name: Tokens and contrast
+        run: pnpm --filter web run check:tokens
+
       - name: Lint (oxlint, type-aware)
         run: pnpm lint
 

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { localToday } from '../../shared/lib/dates';
 
 type NavItem = { to: string; label: string; icon: string };
@@ -61,8 +61,13 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
 const LINK =
   'flex h-36 items-center gap-10 rounded-md px-10 text-14 font-medium transition-colors duration-(--dur-hover) ease-(--ease-out)';
 
-function linkClass({ isActive }: { isActive: boolean }): string {
-  return isActive
+function isActive(pathname: string, to: string): boolean {
+  if (to === '/') return pathname === '/' || pathname.startsWith('/accounts/');
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+function linkClass(active: boolean): string {
+  return active
     ? `${LINK} bg-ink-800 text-text-on-ink shadow-nav-active`
     : `${LINK} text-ink-300 hover:bg-ink-850 hover:text-text-on-ink`;
 }
@@ -93,6 +98,7 @@ function footerDate(): string {
 }
 
 export function Sidebar() {
+  const { pathname } = useLocation();
   return (
     <aside className="flex h-full w-232 flex-col gap-18 rounded-2xl bg-ink-900 px-12 py-18">
       <div className="flex items-center gap-10 px-8">
@@ -126,10 +132,14 @@ export function Sidebar() {
             >
               {group.items.map((item) => (
                 <li key={item.to}>
-                  <NavLink to={item.to} end={item.to === '/'} className={linkClass}>
+                  <Link
+                    to={item.to}
+                    aria-current={isActive(pathname, item.to) ? 'page' : undefined}
+                    className={linkClass(isActive(pathname, item.to))}
+                  >
                     <Icon path={item.icon} size="size-17" />
                     {item.label}
-                  </NavLink>
+                  </Link>
                 </li>
               ))}
             </ul>

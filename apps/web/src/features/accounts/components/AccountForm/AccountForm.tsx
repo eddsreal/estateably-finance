@@ -7,6 +7,19 @@ import { applyServerError } from '../../../../shared/lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
+import {
+  BANNER_ERROR,
+  BUTTON,
+  BUTTON_PRIMARY,
+  FIELD,
+  FIELD_ERROR,
+  FORM,
+  FORM_ACTIONS,
+  INPUT,
+  LABEL,
+  SEGMENT,
+  SEGMENTED,
+} from '../../../../shared/lib/styles';
 
 export type AccountFormValues = {
   name: string;
@@ -79,6 +92,7 @@ export function AccountForm({
 
   return (
     <form
+      className={FORM}
       noValidate
       onSubmit={(event) => {
         void handleSubmit((values) => {
@@ -88,51 +102,56 @@ export function AccountForm({
       }}
     >
       {formError && (
-        <div className="form-banner" role="alert">
+        <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className="field">
-        <label htmlFor="account-name">Name</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="account-name">
+          Name
+        </label>
         <input
           id="account-name"
           type="text"
+          className={INPUT}
           aria-invalid={errors.name ? true : undefined}
           aria-describedby={errors.name ? 'account-name-error' : undefined}
           {...register('name', { required: 'name is required', maxLength: 60 })}
         />
         {errors.name && (
-          <p className="field-error" role="alert" id="account-name-error">
+          <p className={FIELD_ERROR} role="alert" id="account-name-error">
             {errors.name.message || 'name must be at most 60 characters'}
           </p>
         )}
       </div>
-      <div className="field">
-        <span className="field-label" id="account-kind-label">
+      <div className={FIELD}>
+        <span className={LABEL} id="account-kind-label">
           Kind
         </span>
         <div
-          className="radio-group"
+          className={SEGMENTED}
           role="radiogroup"
           aria-labelledby="account-kind-label"
           aria-invalid={errors.kind ? true : undefined}
           aria-describedby={errors.kind ? 'account-kind-error' : undefined}
         >
           {KINDS.map((kind) => (
-            <label key={kind.value}>
-              <input type="radio" value={kind.value} {...register('kind')} />
+            <label key={kind.value} className={SEGMENT}>
+              <input className="sr-only" type="radio" value={kind.value} {...register('kind')} />
               {kind.label}
             </label>
           ))}
         </div>
         {errors.kind && (
-          <p className="field-error" role="alert" id="account-kind-error">
+          <p className={FIELD_ERROR} role="alert" id="account-kind-error">
             {errors.kind.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="account-opening-balance">Opening balance</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="account-opening-balance">
+          Opening balance
+        </label>
         <Controller
           control={control}
           name="openingBalance"
@@ -154,32 +173,35 @@ export function AccountForm({
           )}
         />
         {errors.openingBalance && (
-          <p className="field-error" role="alert" id="account-opening-balance-error">
+          <p className={FIELD_ERROR} role="alert" id="account-opening-balance-error">
             {errors.openingBalance.message}
           </p>
         )}
       </div>
-      <div className="field">
-        <label htmlFor="account-opening-date">Opening date</label>
+      <div className={FIELD}>
+        <label className={LABEL} htmlFor="account-opening-date">
+          Opening date
+        </label>
         <input
           id="account-opening-date"
           type="date"
+          className={INPUT}
           max={localToday()}
           aria-invalid={errors.openingDate ? true : undefined}
           aria-describedby={errors.openingDate ? 'account-opening-date-error' : undefined}
           {...register('openingDate', { required: 'opening date is required' })}
         />
         {errors.openingDate && (
-          <p className="field-error" role="alert" id="account-opening-date-error">
+          <p className={FIELD_ERROR} role="alert" id="account-opening-date-error">
             {errors.openingDate.message}
           </p>
         )}
       </div>
-      <div className="modal-actions">
-        <button type="button" className="btn" onClick={onDone}>
+      <div className={FORM_ACTIONS}>
+        <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn primary" disabled={isSubmitting}>
+        <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
           {account ? 'Save changes' : 'Create account'}
         </button>
       </div>

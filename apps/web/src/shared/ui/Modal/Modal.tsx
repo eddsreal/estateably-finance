@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useRef } from 'react';
+import { ROW_ACTION } from '../../lib/styles';
 
 type ModalProps = {
   title: string;
@@ -49,20 +50,20 @@ export function Modal({ title, open, onClose, children }: ModalProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="modal"
+      className="m-auto w-full max-w-440 rounded-4xl bg-sand-0 p-0 text-text-1 shadow-overlay backdrop:bg-scrim open:animate-dialog"
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
     >
-      <div className="modal-header">
-        <h2>{title}</h2>
-        <button type="button" className="row-action" aria-label="Close" onClick={onClose}>
+      <div className="flex items-center justify-between gap-12 px-22 pt-20">
+        <h2 className="text-17 font-semibold">{title}</h2>
+        <button type="button" className={ROW_ACTION} aria-label="Close" onClick={onClose}>
           ✕
         </button>
       </div>
-      <div className="modal-body">{children}</div>
+      <div className="px-22 pt-18 pb-20">{children}</div>
     </dialog>
   );
 }
