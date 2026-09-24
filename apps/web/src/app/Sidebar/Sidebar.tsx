@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { localToday } from '../../shared/lib/dates';
+import { Icon } from '../../shared/ui/Icon/Icon';
 
 type NavItem = { to: string; label: string; icon: string };
 
@@ -70,22 +71,6 @@ function linkClass(active: boolean): string {
   return active
     ? `${LINK} bg-ink-800 text-text-on-ink shadow-nav-active`
     : `${LINK} text-ink-300 hover:bg-ink-850 hover:text-text-on-ink`;
-}
-
-function Icon({ path, size }: { path: string; size: 'size-15' | 'size-17' }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={`${size} flex-none stroke-(length:--icon-stroke)`}
-    >
-      <path d={path} />
-    </svg>
-  );
 }
 
 function footerDate(): string {

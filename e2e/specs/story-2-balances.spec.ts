@@ -1,10 +1,19 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 
 const run = Date.now();
+const API = 'http://localhost:3000';
 const accountName = `US2 Checking ${run}`;
 const expenseDesc = `Market us2 ${run}`;
 const incomeDesc = `Salary us2 ${run}`;
 const lateIncomeDesc = `Bonus us2 ${run}`;
+
+async function expectRecorded(page: Page, description: string): Promise<void> {
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const response = await page.request.get(
+    `${API}/transactions?q=${encodeURIComponent(description)}`,
+  );
+  expect((await response.json()).total).toBe(1);
+}
 
 function isoDate(monthOffset: number, day: number): string {
   const now = new Date();
@@ -48,6 +57,19 @@ async function pickOption(page: Page, combo: Locator, optionText: string): Promi
   throw new Error(`option ${optionText} never became active`);
 }
 
+function accountCard(page: Page, name: string): Locator {
+  return page
+    .getByRole('list', { name: 'Accounts' })
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('link', { name, exact: true }) });
+}
+
+async function settledTotal(page: Page): Promise<string> {
+  const total = page.getByRole('status', { name: 'Total across accounts' });
+  await expect(total).toHaveAttribute('aria-busy', 'false');
+  return total.innerText();
+}
+
 function dialog(page: Page): Locator {
   return page.getByRole('dialog');
 }
@@ -73,7 +95,7 @@ async function recordTransaction(
   await pickOption(page, modal.getByRole('combobox', { name: 'Account' }), accountName);
   await pickOption(page, modal.getByRole('combobox', { name: 'Category' }), category);
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: description })).toBeVisible();
+  await expectRecorded(page, description);
 }
 
 test('as-of balances match hand arithmetic before, between, on-date and today (US2 #1–#5)', async ({
@@ -86,7 +108,7 @@ test('as-of balances match hand arithmetic before, between, on-date and today (U
   await typeInto(modal.getByLabel('Name'), accountName);
   await modal.getByLabel('Opening date').fill(openingDate);
   await press(modal.getByRole('button', { name: 'Create account' }));
-  await expect(page.getByRole('row', { name: new RegExp(accountName) })).toContainText('$1,500.00');
+  await expect(accountCard(page, accountName)).toContainText('$1,500.00');
 
   await press(page.getByRole('link', { name: 'Transactions', exact: true }));
   await recordTransaction(page, null, '42.50', expenseDesc, expenseDate, 'Groceries');
@@ -120,16 +142,15 @@ test('balances and the total update after a new transaction without a full-page 
   await page.evaluate(() => {
     (globalThis as { __noReloadMarker?: boolean }).__noReloadMarker = true;
   });
-  const accountRow = page.getByRole('row', { name: new RegExp(accountName) });
-  await expect(accountRow).toContainText('$4,457.50');
-  const totalBefore = await page.getByRole('status', { name: 'Total across accounts' }).innerText();
+  await expect(accountCard(page, accountName)).toContainText('$4,457.50');
+  const totalBefore = await settledTotal(page);
 
   await press(page.getByRole('link', { name: 'Transactions', exact: true }));
   await recordTransaction(page, 'Income', '100', lateIncomeDesc, null, 'Salary');
 
   await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
-  await expect(page.getByRole('row', { name: new RegExp(accountName) })).toContainText('$4,557.50');
+  await expect(accountCard(page, accountName)).toContainText('$4,557.50');
   await expect(page.getByRole('status', { name: 'Total across accounts' })).not.toHaveText(
     totalBefore,
   );

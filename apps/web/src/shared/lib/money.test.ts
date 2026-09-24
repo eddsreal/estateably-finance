@@ -4,11 +4,14 @@ import {
   Cents,
   change,
   compareCents,
+  countUpFrames,
   formatCents,
   formatPlain,
   isNegative,
   parseDollars,
   toCents,
+  toPlotNumber,
+  toPlotSeries,
 } from './money';
 
 describe('parseDollars (FR-027)', () => {
@@ -82,5 +85,53 @@ describe('change', () => {
     expect(change('-900719925474099' as Cents, '900719925474100' as Cents)).toBe(
       '1801439850948199',
     );
+  });
+});
+
+describe('countUpFrames', () => {
+  it('returns 61 integer frames whose endpoints are exact', () => {
+    const frames = countUpFrames('0' as Cents, '395750' as Cents);
+    expect(frames).toHaveLength(61);
+    expect(frames[0]).toBe('0');
+    expect(frames[60]).toBe('395750');
+    expect(frames.every((frame) => /^-?\d+$/.test(frame))).toBe(true);
+  });
+
+  it('counts down through negatives and stays flat on a zero range', () => {
+    const down = countUpFrames('1000' as Cents, '-50001' as Cents);
+    expect(down[0]).toBe('1000');
+    expect(down[60]).toBe('-50001');
+    expect(down.every((frame, k) => k === 0 || BigInt(frame) <= BigInt(down[k - 1]))).toBe(true);
+    expect(new Set(countUpFrames('-7' as Cents, '-7' as Cents))).toEqual(new Set(['-7']));
+  });
+
+  it('stays exact beyond Number.MAX_SAFE_INTEGER', () => {
+    const frames = countUpFrames('0' as Cents, '900719925474099300' as Cents);
+    expect(frames[30]).toBe('450359962737049650');
+    expect(frames[60]).toBe('900719925474099300');
+  });
+});
+
+describe('toPlotNumber', () => {
+  it('maps min to 0, max to the height and is monotonic between them', () => {
+    const values = ['-50000', '-1', '0', '1', '120000', '445750'] as Cents[];
+    const ys = values.map((value) =>
+      toPlotNumber(value, '-50000' as Cents, '445750' as Cents, 200),
+    );
+    expect(ys[0]).toBe(0);
+    expect(ys[ys.length - 1]).toBe(200);
+    expect(ys.every((y, i) => i === 0 || y > ys[i - 1])).toBe(true);
+  });
+
+  it('centres a flat series', () => {
+    expect(toPlotNumber('500' as Cents, '500' as Cents, '500' as Cents, 24)).toBe(12);
+  });
+});
+
+describe('toPlotSeries', () => {
+  it('scales a series into 0…1 by its own extremes, flat series in the middle', () => {
+    expect(toPlotSeries(['-100', '0', '300'] as Cents[])).toEqual([0, 0.25, 1]);
+    expect(toPlotSeries(['7', '7'] as Cents[])).toEqual([0.5, 0.5]);
+    expect(toPlotSeries(['42'] as Cents[])).toEqual([0.5]);
   });
 });

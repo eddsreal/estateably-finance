@@ -54,3 +54,25 @@ export function isNegative(cents: Cents): boolean {
 export function change(from: Cents, to: Cents): Cents {
   return (BigInt(to) - BigInt(from)).toString() as Cents;
 }
+
+export function toPlotNumber(cents: Cents, min: Cents, max: Cents, height: number): number {
+  const span = BigInt(max) - BigInt(min);
+  if (span === 0n) return height / 2;
+  return (Number(BigInt(cents) - BigInt(min)) / Number(span)) * height;
+}
+
+export function toPlotSeries(series: Cents[]): number[] {
+  const values = series.map((value) => BigInt(value));
+  const min = values.reduce((low, value) => (value < low ? value : low)).toString() as Cents;
+  const max = values.reduce((high, value) => (value > high ? value : high)).toString() as Cents;
+  return series.map((value) => toPlotNumber(value, min, max, 1));
+}
+
+export function countUpFrames(start: Cents, end: Cents): Cents[] {
+  const from = BigInt(start);
+  const distance = BigInt(end) - from;
+  return Array.from(
+    { length: 61 },
+    (_, k) => (from + (distance * BigInt(k)) / 60n).toString() as Cents,
+  );
+}

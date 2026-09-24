@@ -171,35 +171,40 @@ warning, transfer, cat-1…7}`, giving `bg-accent`, `text-text-2`, `border-sand-
 
 ## R-007 Charts, donut and sparklines (FR-006, FR-007, FR-009, FR-015)
 
-- **Decision**: hand-drawn inline SVG in `shared/ui/` (`LineChart`, `Sparkline`, `Donut`), with
-  no chart library, as the spec assumes.
+- **Decision** (user decision, 2026-09-24, replacing hand-drawn SVG): `recharts` 3.10.1 draws
+  the chart, the sparklines and the donut, wrapped by `shared/ui/` components (`LineChart`,
+  `Sparkline`, `Donut`) that own the data mapping, the tokens and the accessibility.
   - **Geometry**: the only place a cent value becomes a `number` is
-    `money.ts#toPlotNumber(cents)`, which scales it to pixels. The result is never displayed,
-    added or compared (see Complexity Tracking). Every label, tooltip and headline reads the
-    exact `bigint` string from the series.
-  - **Sampling**: the path is drawn from at most 180 points (min/max-preserving downsample).
-    Hovering or pressing an arrow key picks the exact day index in the full series (edge case
-    "All").
+    `money.ts#toPlotNumber(cents, min, max, height)`, which scales it into the chart's range
+    (0…1 for Recharts). The result is never displayed, added or compared (see Complexity
+    Tracking). Every label, tooltip and headline reads the exact `bigint` string from the series.
+  - **Styling**: colours and stroke widths are passed as `var(--token)` values, never Recharts'
+    defaults, so `check:tokens` still holds. Charts use the `responsive` prop.
+  - **Sampling**: Recharts receives every day of the series. Hovering, dragging or pressing a
+    key selects the exact day index (edge case "All").
   - **Ranges**: a range of N days ends on the "Balance as of" date and starts N − 1 days before
     it (30D is `to − 29` through `to`). 1Y is 365 days. The headline's change for day `i` is
     `total[i] − total[0]` in `bigint`.
-  - **Morph (400 ms)**: both series are resampled to the same 180 points and their y values are
-    interpolated with `requestAnimationFrame` and the `--ease-out` curve. CSS `d:` transitions
-    are not supported in Safari.
+  - **Morph (400 ms)**: Recharts' own data-change animation, with `animationDuration` read from
+    `--dur-morph` and `animationEasing` from `--ease-out`. Under reduced motion the duration
+    token is `0ms` and animation is turned off.
   - **Count-up (700 ms)**: interpolated in `bigint`: `start + (end − start) × k / 60n` for
     k = 0…60. No float touches a displayed amount.
-  - **Donut**: `stroke-dasharray` arcs. Shares are in tenths of a percent and add up to exactly
+  - **Donut**: a Recharts `Pie` with an inner radius. Shares are in tenths of a percent and add up to exactly
     1000: each is `total × 1000n / grandTotal` rounded down, then the remaining tenths go one
     each to the categories with the largest remainders (ties by category order). Shown with one
     decimal place. All in `bigint`. The donut is not drawn when `grandTotal` is zero: the empty
     state shows instead.
-  - **Keyboard and ARIA**: the chart is a `role="slider"` over the day index (`aria-valuemin` 0,
+  - **Keyboard and ARIA**: the `LineChart` wrapper, not Recharts, is a `role="slider"` over the day index (`aria-valuemin` 0,
     `aria-valuemax` the last index) with `aria-valuetext` such as "22 Sep 2026, $4,457.50, ▲
     $120.00". ←/→ move by one day, Home/End jump to the ends, and PageUp/PageDown move by 7 days,
     which matches the APG slider keys.
   - **Reduced motion**: `prefers-reduced-motion` sets every `--dur-*` token except `--dur-undo`
-    and `--dur-flash` to `0ms`, sets `--stagger` to `0ms` too (as in R-005), and the
-    rAF animations read `matchMedia` and jump straight to the final frame.
+    and `--dur-flash` to `0ms`, sets `--stagger` to `0ms` too (as in R-005). The count-up and
+    the Recharts animations read `matchMedia` and jump straight to the final frame.
+- **Alternatives considered**: hand-drawn inline SVG (the first plan): no dependency, but the
+  drawing, scaling, sampling and morph become project code; replaced at the user's request.
+  visx, Nivo and uPlot: offered with Recharts on 2026-09-24; the user chose Recharts.
 
 ## R-008 Feedback layer: toasts, Undo, refresh failure (FR-013, FR-017)
 

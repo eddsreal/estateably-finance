@@ -181,6 +181,9 @@
 
 :root {
   --icon-stroke: 1.7;
+  --chart-stroke: 2.5;
+  --spark-stroke: 1.8;
+  --cards-grid: repeat(auto-fill, minmax(var(--spacing-232), 1fr));
   --dur-press: 100ms;
   --dur-hover: 150ms;
   --dur-dialog: 200ms;

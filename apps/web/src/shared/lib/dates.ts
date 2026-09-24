@@ -25,3 +25,20 @@ export function upcomingGroup(due: string, today: string): UpcomingGroup {
   if (due.slice(0, 7) === today.slice(0, 7)) return 'later-this-month';
   return 'later-months';
 }
+
+export function addDays(date: string, days: number): string {
+  return new Date(new Date(`${date}T00:00:00Z`).getTime() + days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+export function formatDay(date: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).formatToParts(new Date(`${date}T00:00:00Z`));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value;
+  return `${part('day')} ${part('month')} ${part('year')}`;
+}

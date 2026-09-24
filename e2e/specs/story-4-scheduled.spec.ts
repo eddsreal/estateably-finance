@@ -100,13 +100,13 @@ test('the projection starts from the dashboard total and flags the below-zero oc
   try {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
-    const dashboardTotal = await page
-      .getByRole('status', { name: 'Total across accounts' })
-      .innerText();
+    const dashboardTotal = page.getByRole('status', { name: 'Total across accounts' });
+    await expect(dashboardTotal).toHaveAttribute('aria-busy', 'false');
+    const dashboardText = await dashboardTotal.innerText();
 
     await press(page.getByRole('link', { name: 'Projection', exact: true }));
     await expect(page.getByRole('heading', { name: 'Projection' })).toBeVisible();
-    await expect(page.getByRole('status', { name: 'Current total' })).toHaveText(dashboardTotal);
+    await expect(page.getByRole('status', { name: 'Current total' })).toHaveText(dashboardText);
     await expect(page.getByRole('row', { name: new RegExp(overdraftDesc) })).toContainText(
       'Below zero',
     );
@@ -155,8 +155,10 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
   await expect(advancedRow).toContainText(advancedDate);
   await expect(advancedRow).toContainText('$1,200.00');
 
-  await press(page.getByRole('link', { name: 'Transactions', exact: true }));
-  await expect(page.getByRole('row', { name: new RegExp(paidDesc) })).toContainText('$1,250.00');
+  const paid = await page.request.get(`${API}/transactions?q=${encodeURIComponent(paidDesc)}`);
+  const { items } = await paid.json();
+  expect(items).toHaveLength(1);
+  expect(items[0]).toMatchObject({ date: confirmDate, amount: '125000' });
 
   await press(page.getByRole('link', { name: 'Projection', exact: true }));
   await expect(page.getByRole('status', { name: 'Current total' })).not.toHaveText(projectedBefore);

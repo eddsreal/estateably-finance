@@ -150,6 +150,7 @@ test('removing the project from an expense drops it from the total (US5 #5)', as
   await expect(modal.getByRole('combobox', { name: /Project/ })).toContainText(paris);
   await pickOption(page, modal.getByRole('combobox', { name: /Project/ }), 'No project', 'ArrowUp');
   await press(modal.getByRole('button', { name: 'Save changes' }));
+  await expect(dialog(page)).toHaveCount(0);
 
   const expenses = page.getByRole('table', { name: `Expenses in ${paris}` });
   await expect(expenses.getByRole('button', { name: flights })).toHaveCount(0);

@@ -441,8 +441,8 @@ value is the feature 001 balance as of that date. It is never stored as a source
 - The daily balance series is derived from the feature 001 ledger. Whether it is computed on the
   server or assembled from existing balance reads is a plan decision. It adds no new entry path
   (Constitution I–III).
-- The chart and donut are drawn with inline SVG, as the design files do. No charting library is
-  assumed.
+- The chart, the sparklines and the donut are drawn with the Recharts library (user decision,
+  2026-09-24), styled from the design tokens.
 - Mark paid, projection, reports and project rules keep their feature 001 behaviour. The screens
   show them and do not redefine them.
 - Delivery follows the story priority order. The feature 001 deadline (2026-09-25) is tight, so

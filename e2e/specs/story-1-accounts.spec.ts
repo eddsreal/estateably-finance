@@ -39,6 +39,19 @@ async function pickOption(page: Page, combo: Locator, optionText: string): Promi
   throw new Error(`option ${optionText} never became active`);
 }
 
+function accountCard(page: Page, name: string): Locator {
+  return page
+    .getByRole('list', { name: 'Accounts' })
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('link', { name, exact: true }) });
+}
+
+async function settledTotal(page: Page): Promise<string> {
+  const total = page.getByRole('status', { name: 'Total across accounts' });
+  await expect(total).toHaveAttribute('aria-busy', 'false');
+  return total.innerText();
+}
+
 function dialog(page: Page): Locator {
   return page.getByRole('dialog');
 }
@@ -54,13 +67,12 @@ test('creates accounts with positive, zero and negative opening balances (US1 #1
   await typeInto(modal.getByLabel('Opening balance'), '1500');
   await typeInto(modal.getByLabel('Name'), checkingName);
   await press(modal.getByRole('button', { name: 'Create account' }));
-  const checkingRow = page.getByRole('row', { name: new RegExp(checkingName) });
-  await expect(checkingRow).toContainText('$1,500.00');
+  await expect(accountCard(page, checkingName)).toContainText('$1,500.00');
 
   await press(page.getByRole('button', { name: 'New account' }));
   await typeInto(dialog(page).getByLabel('Name'), savingsName);
   await press(dialog(page).getByRole('button', { name: 'Create account' }));
-  await expect(page.getByRole('row', { name: new RegExp(savingsName) })).toContainText('$0.00');
+  await expect(accountCard(page, savingsName)).toContainText('$0.00');
 
   await press(page.getByRole('button', { name: 'New account' }));
   const cardModal = dialog(page);
@@ -68,7 +80,7 @@ test('creates accounts with positive, zero and negative opening balances (US1 #1
   await typeInto(cardModal.getByLabel('Name'), cardName);
   await press(cardModal.getByRole('radio', { name: 'Card' }), 'Space');
   await press(cardModal.getByRole('button', { name: 'Create account' }));
-  await expect(page.getByRole('row', { name: new RegExp(cardName) })).toContainText('-$500.00');
+  await expect(accountCard(page, cardName)).toContainText('-$500.00');
 });
 
 test('records an expense, an income and a transfer whose balances update without a reload (US1 #2–#4)', async ({
@@ -116,17 +128,13 @@ test('records an expense, an income and a transfer whose balances update without
 
   await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
-  await expect(page.getByRole('row', { name: new RegExp(checkingName) })).toContainText(
-    '$3,957.50',
-  );
-  await expect(page.getByRole('row', { name: new RegExp(savingsName) })).toContainText('$500.00');
+  await expect(accountCard(page, checkingName)).toContainText('$3,957.50');
+  await expect(accountCard(page, savingsName)).toContainText('$500.00');
 });
 
 test('shows dollars, never raw cents, everywhere (SC-009)', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('row', { name: new RegExp(checkingName) })).toContainText(
-    '$3,957.50',
-  );
+  await expect(accountCard(page, checkingName)).toContainText('$3,957.50');
   await expect(page.locator('body')).not.toContainText('395750');
   await expect(page.locator('body')).not.toContainText('-50000');
 });
@@ -146,10 +154,8 @@ test('edits a transaction into another kind and sees both balances move (US1 #5,
 
   await press(page.getByRole('link', { name: 'Accounts', exact: true }));
   await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
-  await expect(page.getByRole('row', { name: new RegExp(savingsName) })).toContainText('$550.00');
-  await expect(page.getByRole('row', { name: new RegExp(checkingName) })).toContainText(
-    '$3,950.00',
-  );
+  await expect(accountCard(page, savingsName)).toContainText('$550.00');
+  await expect(accountCard(page, checkingName)).toContainText('$3,950.00');
 });
 
 test('rejects invalid input with errors tied to their fields (US1 #7)', async ({ page }) => {
@@ -202,19 +208,18 @@ test('archives an account out of the list and totals, then restores it intact (U
   page,
 }) => {
   await page.goto('/');
-  const totalBefore = await page.getByRole('status', { name: 'Total across accounts' }).innerText();
-  const cardRow = page.getByRole('row', { name: new RegExp(cardName) });
-  await press(cardRow.getByRole('button', { name: 'Archive' }));
-  await expect(page.getByRole('row', { name: new RegExp(cardName) })).toHaveCount(0);
+  const totalBefore = await settledTotal(page);
+  await press(accountCard(page, cardName).getByRole('button', { name: 'Archive' }));
+  await expect(accountCard(page, cardName)).toHaveCount(0);
   await expect(page.getByRole('status', { name: 'Total across accounts' })).not.toHaveText(
     totalBefore,
   );
 
-  await press(page.getByLabel('Show archived accounts'), 'Space');
-  const archivedRow = page.getByRole('row', { name: new RegExp(cardName) });
-  await expect(archivedRow).toContainText('archived');
-  await press(archivedRow.getByRole('button', { name: 'Unarchive' }));
-  await expect(page.getByRole('row', { name: new RegExp(cardName) })).toContainText('-$500.00');
-  await press(page.getByLabel('Show archived accounts'), 'Space');
+  await press(page.getByRole('switch', { name: 'Show archived' }), 'Space');
+  const archivedCard = accountCard(page, cardName);
+  await expect(archivedCard).toContainText('Archived');
+  await press(archivedCard.getByRole('button', { name: 'Unarchive' }));
+  await expect(accountCard(page, cardName)).toContainText('-$500.00');
+  await expect(accountCard(page, cardName)).not.toContainText('Archived');
   await expect(page.getByRole('status', { name: 'Total across accounts' })).toHaveText(totalBefore);
 });

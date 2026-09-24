@@ -16,6 +16,7 @@ export const BUTTON_PRIMARY = `inline-flex h-40 items-center justify-center gap-
 export const BUTTON_DANGER = `inline-flex h-40 items-center justify-center gap-8 rounded-lg border border-negative bg-sand-0 px-16 text-14 font-medium text-negative ${PRESSABLE}`;
 export const BUTTON_COMPACT = `inline-flex h-32 items-center justify-center gap-6 rounded-sm border border-sand-700 bg-sand-0 px-12 text-13 font-medium text-text-1 hover:bg-sand-50 ${PRESSABLE}`;
 const ROW_ACTION_BASE = `h-32 max-w-280 rounded-sm px-8 text-14 font-medium text-accent hover:text-accent-hover hover:underline ${PRESSABLE}`;
+export const ICON_BUTTON = `inline-flex size-32 items-center justify-center rounded-sm text-text-2 hover:bg-sand-200 hover:text-text-1 ${PRESSABLE}`;
 export const ROW_ACTION = `inline-flex items-center ${ROW_ACTION_BASE}`;
 export const ROW_ACTION_TEXT = `block truncate text-left leading-(--spacing-32) ${ROW_ACTION_BASE}`;
 export const LINK = `font-medium text-accent transition-colors ${EASE} hover:text-accent-hover hover:underline`;

@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
+    "test:perf": "playwright test --config perf/playwright.perf.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

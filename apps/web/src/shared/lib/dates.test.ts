@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { localToday, relativeDueLabel, upcomingGroup } from './dates';
+import { addDays, formatDay, localToday, relativeDueLabel, upcomingGroup } from './dates';
 
 describe('localToday', () => {
   afterEach(() => {
@@ -59,5 +59,22 @@ describe('upcomingGroup', () => {
   it('crosses a year end', () => {
     expect(upcomingGroup('2027-01-05', '2026-12-28')).toBe('overdue-and-2-weeks');
     expect(upcomingGroup('2027-01-20', '2026-12-28')).toBe('later-months');
+  });
+});
+
+describe('addDays', () => {
+  it('moves across month, year and leap-day boundaries', () => {
+    expect(addDays('2026-09-22', -29)).toBe('2026-08-24');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
+    expect(addDays('2026-09-22', -364)).toBe('2025-09-23');
+    expect(addDays('2026-09-22', 0)).toBe('2026-09-22');
+  });
+});
+
+describe('formatDay', () => {
+  it('names the day as "22 Sep 2026" whatever the browser zone', () => {
+    expect(formatDay('2026-09-22')).toBe('22 Sep 2026');
+    expect(formatDay('2027-01-01')).toBe('1 Jan 2027');
   });
 });

@@ -1,7 +1,16 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 
 const run = Date.now();
+const API = 'http://localhost:3000';
 const expenseDesc = `Report groceries us3 ${run}`;
+
+async function expectRecorded(page: Page, description: string): Promise<void> {
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const response = await page.request.get(
+    `${API}/transactions?q=${encodeURIComponent(description)}`,
+  );
+  expect((await response.json()).total).toBe(1);
+}
 
 function isoDate(monthOffset: number, day: number): string {
   const now = new Date();
@@ -71,15 +80,15 @@ test('category totals sum to the grand total and drill down shows the expenses b
   await pickOption(page, modal.getByRole('combobox', { name: 'Account' }), 'Checking');
   await pickOption(page, modal.getByRole('combobox', { name: 'Category' }), 'Groceries');
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: expenseDesc })).toBeVisible();
+  await expectRecorded(page, expenseDesc);
 
   await press(page.getByRole('link', { name: 'Monthly expenses', exact: true }));
   await expect(page.getByRole('heading', { name: 'Monthly report' })).toBeVisible();
   await expect(page.getByText(monthLabel(0)).first()).toBeVisible();
 
-  const grandTotal = parseDollars(
-    await page.getByRole('status', { name: /^Spent in / }).innerText(),
-  );
+  const spent = page.getByRole('status', { name: /^Spent in / });
+  await expect(spent).toHaveText(/^-?\$[\d,]+\.\d{2}$/);
+  const grandTotal = parseDollars(await spent.innerText());
   const categoryTotals = (await page.locator('summary').allInnerTexts()).map((text) =>
     text.match(/-?\$[\d,]+\.\d{2}/g)!.at(-1)!,
   );
