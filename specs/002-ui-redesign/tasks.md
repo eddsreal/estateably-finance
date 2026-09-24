@@ -45,9 +45,9 @@ and Design System v2 differ, Screens v2 wins.
 
 **Purpose**: the new build-time dependency and the vendored fonts.
 
-- [ ] T001 Add `tailwindcss` 4.3.3 and `@tailwindcss/vite` 4.3.3 as exact-pinned devDependencies in `apps/web/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-013). No runtime dependency is added
-- [ ] T002 Register the `tailwindcss()` plugin from `@tailwindcss/vite` in `apps/web/vite.config.ts`, next to the existing React plugin
-- [ ] T003 [P] Vendor the upstream Geist and Geist Mono **variable** `woff2` files and their `OFL.txt` (vercel/geist, SIL OFL 1.1) into `apps/web/src/app/fonts/` (research R-006). No npm package
+- [X] T001 Add `tailwindcss` 4.3.3 and `@tailwindcss/vite` 4.3.3 as exact-pinned devDependencies in `apps/web/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-013). No runtime dependency is added
+- [X] T002 Register the `tailwindcss()` plugin from `@tailwindcss/vite` in `apps/web/vite.config.ts`, next to the existing React plugin
+- [X] T003 [P] Vendor the upstream Geist and Geist Mono **variable** `woff2` files and their `OFL.txt` (vercel/geist, SIL OFL 1.1) into `apps/web/src/app/fonts/` (research R-006). No npm package
 
 **Checkpoint**: `pnpm install` and `pnpm --filter web build` pass with the plugin registered.
 
