@@ -13,7 +13,7 @@ import {
   EditableTransaction,
   TransactionForm,
 } from '../../../../shared/ui/TransactionForm/TransactionForm';
-import { OverBudgetChip, RemainingAmount } from '../ProjectFigures/ProjectFigures';
+import { OverBudgetChip, overBudgetBy, RemainingAmount } from '../ProjectFigures/ProjectFigures';
 import {
   BANNER_WARNING,
   BUTTON_COMPACT,
@@ -98,6 +98,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const categoryName = (id?: string) =>
     categories.find((category) => category.id === id)?.name ?? '';
   const page = transactionsQuery.data;
+  const over = overBudgetBy(project);
 
   return (
     <div className={PAGE}>
@@ -105,7 +106,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         <h1 className={PAGE_TITLE}>
           {project.name}
           {project.status === 'closed' && <span className={CHIP_WARNING}>closed</span>}
-          {project.overBudget && <OverBudgetChip />}
+          {over && <OverBudgetChip by={over} />}
         </h1>
         <Link className={LINK} to="/projects">
           Back to projects

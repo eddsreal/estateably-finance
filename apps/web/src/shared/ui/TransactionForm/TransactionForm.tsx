@@ -20,6 +20,7 @@ import {
   FIELD_ERROR,
   FORM,
   FORM_ACTIONS,
+  HINT,
   INPUT,
   LABEL,
   OPTIONAL,
@@ -64,6 +65,27 @@ const FIELDS = [
 ] as const;
 
 const KINDS: TransactionKindChoice[] = ['expense', 'income', 'transfer'];
+
+const DESCRIPTION_LIMIT = 120;
+
+function amountError(value: string): string | true {
+  const input = value.trim();
+  if (input === '') return 'Enter an amount, like 42.50.';
+  if (/^[-+]/.test(input)) return 'Leave out the sign. The type sets which way the money moves.';
+  if (/\.\d{3,}$/.test(input)) return 'Use at most 2 decimal places, like 250.50.';
+  const cents = parseDollars(input);
+  if (cents === null) return 'Enter a dollar amount like 1,234.50.';
+  return BigInt(cents) > 0n || 'Enter an amount greater than 0.00.';
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return (
+    <p className={FIELD_ERROR} role="alert" id={id}>
+      <span aria-hidden="true">⚠ </span>
+      {message}
+    </p>
+  );
+}
 
 export function TransactionForm({
   transaction,
@@ -111,6 +133,7 @@ export function TransactionForm({
   });
   const kind = useWatch({ control, name: 'kind' });
   const accountId = useWatch({ control, name: 'accountId' });
+  const description = useWatch({ control, name: 'description' });
 
   const saveMutation = useMutation({
     mutationFn: (values: FormValues) => {
@@ -178,7 +201,7 @@ export function TransactionForm({
       )}
       <div className={FIELD}>
         <span className={LABEL} id="transaction-kind-label">
-          Kind
+          Type
         </span>
         <div
           className={SEGMENTED}
@@ -194,139 +217,140 @@ export function TransactionForm({
             </label>
           ))}
         </div>
-        {errors.kind && (
-          <p className={FIELD_ERROR} role="alert" id="transaction-kind-error">
-            {errors.kind.message}
-          </p>
-        )}
+        {errors.kind && <FieldError id="transaction-kind-error" message={errors.kind.message} />}
       </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="transaction-date">
-          Date
-        </label>
-        <input
-          id="transaction-date"
-          type="date"
-          className={INPUT}
-          max={localToday()}
-          aria-invalid={errors.date ? true : undefined}
-          aria-describedby={errors.date ? 'transaction-date-error' : undefined}
-          {...register('date', { required: 'date is required' })}
-        />
-        {errors.date && (
-          <p className={FIELD_ERROR} role="alert" id="transaction-date-error">
-            {errors.date.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="transaction-description">
-          Description
-        </label>
-        <input
-          id="transaction-description"
-          type="text"
-          className={INPUT}
-          aria-invalid={errors.description ? true : undefined}
-          aria-describedby={errors.description ? 'transaction-description-error' : undefined}
-          {...register('description', {
-            required: 'description is required',
-            maxLength: { value: 120, message: 'description must be at most 120 characters' },
-            validate: (value) => value.trim().length > 0 || 'description is required',
-          })}
-        />
-        {errors.description && (
-          <p className={FIELD_ERROR} role="alert" id="transaction-description-error">
-            {errors.description.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="transaction-amount">
-          Amount
-        </label>
-        <Controller
-          control={control}
-          name="amount"
-          rules={{
-            validate: (value) => {
-              const cents = parseDollars(value);
-              if (cents === null) return 'Enter a dollar amount like 1,234.50';
-              return BigInt(cents) > 0n || 'amount must be positive';
-            },
-          }}
-          render={({ field }) => (
-            <MoneyInput
-              id="transaction-amount"
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              autoFocus={!transaction}
-              invalid={!!errors.amount}
-              describedBy={errors.amount ? 'transaction-amount-error' : undefined}
-              ref={field.ref}
-            />
-          )}
-        />
-        {errors.amount && (
-          <p className={FIELD_ERROR} role="alert" id="transaction-amount-error">
-            {errors.amount.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="transaction-account">
-          {kind === 'transfer' ? 'From account' : 'Account'}
-        </label>
-        <Controller
-          control={control}
-          name="accountId"
-          rules={{ validate: (value) => value !== null || 'account is required' }}
-          render={({ field }) => (
-            <AccountPicker
-              id="transaction-account"
-              value={field.value}
-              onChange={field.onChange}
-              accounts={accounts}
-              invalid={!!errors.accountId}
-              describedBy={errors.accountId ? 'transaction-account-error' : undefined}
-            />
-          )}
-        />
-        {errors.accountId && (
-          <p className={FIELD_ERROR} role="alert" id="transaction-account-error">
-            {errors.accountId.message}
-          </p>
-        )}
-      </div>
-      {kind !== 'transfer' && (
+      <div className="grid grid-cols-2 gap-12">
         <div className={FIELD}>
-          <label className={LABEL} htmlFor="transaction-category">
-            Category
+          <label className={LABEL} htmlFor="transaction-amount">
+            Amount
           </label>
           <Controller
             control={control}
-            name="categoryId"
-            rules={{ validate: (value) => value !== null || 'category is required' }}
+            name="amount"
+            rules={{ validate: amountError }}
             render={({ field }) => (
-              <CategoryPicker
-                id="transaction-category"
+              <MoneyInput
+                id="transaction-amount"
                 value={field.value}
                 onChange={field.onChange}
-                categories={categories}
-                type={kind === 'income' ? 'income' : 'expense'}
-                invalid={!!errors.categoryId}
-                describedBy={errors.categoryId ? 'transaction-category-error' : undefined}
+                onBlur={field.onBlur}
+                autoFocus={!transaction}
+                invalid={!!errors.amount}
+                describedBy={errors.amount ? 'transaction-amount-error' : 'transaction-amount-hint'}
+                ref={field.ref}
               />
             )}
           />
-          {errors.categoryId && (
-            <p className={FIELD_ERROR} role="alert" id="transaction-category-error">
-              {errors.categoryId.message}
-            </p>
+          {errors.amount && (
+            <FieldError id="transaction-amount-error" message={errors.amount.message} />
           )}
         </div>
-      )}
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="transaction-date">
+            Date
+          </label>
+          <input
+            id="transaction-date"
+            type="date"
+            className={INPUT}
+            max={localToday()}
+            aria-invalid={errors.date ? true : undefined}
+            aria-describedby={errors.date ? 'transaction-date-error' : undefined}
+            {...register('date', {
+              required: 'Pick a date.',
+              validate: (value) =>
+                value <= localToday() || "Date can't be in the future. Schedule it instead.",
+            })}
+          />
+          {errors.date && <FieldError id="transaction-date-error" message={errors.date.message} />}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-12">
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="transaction-account">
+            {kind === 'transfer' ? 'From account' : 'Account'}
+          </label>
+          <Controller
+            control={control}
+            name="accountId"
+            rules={{ validate: (value) => value !== null || 'Choose an account.' }}
+            render={({ field }) => (
+              <AccountPicker
+                id="transaction-account"
+                value={field.value}
+                onChange={field.onChange}
+                accounts={accounts}
+                invalid={!!errors.accountId}
+                describedBy={errors.accountId ? 'transaction-account-error' : undefined}
+              />
+            )}
+          />
+          {errors.accountId && (
+            <FieldError id="transaction-account-error" message={errors.accountId.message} />
+          )}
+        </div>
+        {kind === 'transfer' ? (
+          <div className={FIELD}>
+            <label className={LABEL} htmlFor="transaction-counter-account">
+              To account
+            </label>
+            <Controller
+              control={control}
+              name="counterAccountId"
+              rules={{
+                validate: (value) => {
+                  if (value === null) return 'Choose the account the money goes to.';
+                  return value !== accountId || 'Choose a different account than From account.';
+                },
+              }}
+              render={({ field }) => (
+                <AccountPicker
+                  id="transaction-counter-account"
+                  value={field.value}
+                  onChange={field.onChange}
+                  accounts={accounts}
+                  sourceId={accountId}
+                  invalid={!!errors.counterAccountId}
+                  describedBy={
+                    errors.counterAccountId ? 'transaction-counter-account-error' : undefined
+                  }
+                />
+              )}
+            />
+            {errors.counterAccountId && (
+              <FieldError
+                id="transaction-counter-account-error"
+                message={errors.counterAccountId.message}
+              />
+            )}
+          </div>
+        ) : (
+          <div className={FIELD}>
+            <label className={LABEL} htmlFor="transaction-category">
+              Category
+            </label>
+            <Controller
+              control={control}
+              name="categoryId"
+              rules={{ validate: (value) => value !== null || 'Choose a category.' }}
+              render={({ field }) => (
+                <CategoryPicker
+                  id="transaction-category"
+                  value={field.value}
+                  onChange={field.onChange}
+                  categories={categories}
+                  type={kind === 'income' ? 'income' : 'expense'}
+                  invalid={!!errors.categoryId}
+                  describedBy={errors.categoryId ? 'transaction-category-error' : undefined}
+                />
+              )}
+            />
+            {errors.categoryId && (
+              <FieldError id="transaction-category-error" message={errors.categoryId.message} />
+            )}
+          </div>
+        )}
+      </div>
       {kind === 'expense' && (
         <div className={FIELD}>
           <label className={LABEL} htmlFor="transaction-project">
@@ -347,57 +371,60 @@ export function TransactionForm({
             )}
           />
           {errors.projectId && (
-            <p className={FIELD_ERROR} role="alert" id="transaction-project-error">
-              {errors.projectId.message}
-            </p>
+            <FieldError id="transaction-project-error" message={errors.projectId.message} />
           )}
         </div>
       )}
-      {kind === 'transfer' && (
-        <div className={FIELD}>
-          <label className={LABEL} htmlFor="transaction-counter-account">
-            To account
+      <div className={FIELD}>
+        <div className="flex items-center justify-between">
+          <label className={LABEL} htmlFor="transaction-description">
+            Description
           </label>
-          <Controller
-            control={control}
-            name="counterAccountId"
-            rules={{
-              validate: (value) => {
-                if (value === null) return 'destination account is required';
-                return value !== accountId || 'must differ from the source account';
-              },
-            }}
-            render={({ field }) => (
-              <AccountPicker
-                id="transaction-counter-account"
-                value={field.value}
-                onChange={field.onChange}
-                accounts={accounts}
-                sourceId={accountId}
-                invalid={!!errors.counterAccountId}
-                describedBy={
-                  errors.counterAccountId ? 'transaction-counter-account-error' : undefined
-                }
-              />
-            )}
-          />
-          {errors.counterAccountId && (
-            <p className={FIELD_ERROR} role="alert" id="transaction-counter-account-error">
-              {errors.counterAccountId.message}
-            </p>
-          )}
+          <span className="font-mono text-12 text-text-2" aria-hidden="true">
+            {description.length}/{DESCRIPTION_LIMIT}
+          </span>
         </div>
+        <input
+          id="transaction-description"
+          type="text"
+          className={INPUT}
+          aria-invalid={errors.description ? true : undefined}
+          aria-describedby={errors.description ? 'transaction-description-error' : undefined}
+          {...register('description', {
+            validate: (value) => {
+              if (value.trim().length === 0) return 'Add a description.';
+              return (
+                value.trim().length <= DESCRIPTION_LIMIT ||
+                `Shorten the description to ${DESCRIPTION_LIMIT} characters or fewer.`
+              );
+            },
+          })}
+        />
+        {errors.description && (
+          <FieldError id="transaction-description-error" message={errors.description.message} />
+        )}
+      </div>
+      <p className={HINT} id="transaction-amount-hint">
+        Accepted amounts: 1234.5, 1,234.50 or $1,234.50.
+      </p>
+      {kind === 'transfer' && (
+        <p className={HINT}>
+          Transfers move money between your accounts. They have no category or project and
+          don&apos;t count as expenses.
+        </p>
       )}
       <div className={FORM_ACTIONS}>
         {transaction && (
-          <button
-            type="button"
-            className={BUTTON_DANGER}
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Delete
-          </button>
+          <div className="mr-auto">
+            <button
+              type="button"
+              className={BUTTON_DANGER}
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              Delete
+            </button>
+          </div>
         )}
         <button type="button" className={BUTTON} onClick={onDone}>
           Cancel

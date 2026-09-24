@@ -23,6 +23,7 @@ import {
   FORM_ACTIONS,
   INPUT,
   LABEL,
+  OPTIONAL,
   SEGMENT,
   SEGMENTED,
 } from '../../../../shared/lib/styles';
@@ -116,6 +117,7 @@ export function ScheduledItemForm({
   });
   const kind = useWatch({ control, name: 'kind' });
   const nextDueDate = useWatch({ control, name: 'nextDueDate' });
+  const description = useWatch({ control, name: 'description' });
 
   const saveMutation = useMutation({
     mutationFn: (values: FormValues) => {
@@ -195,9 +197,12 @@ export function ScheduledItemForm({
         )}
       </div>
       <div className={FIELD}>
-        <label className={LABEL} htmlFor="scheduled-description">
-          Description
-        </label>
+        <span className="flex justify-between gap-8">
+          <label className={LABEL} htmlFor="scheduled-description">
+            Description
+          </label>
+          <span className="font-mono text-12 text-text-2">{description.length}/120</span>
+        </span>
         <input
           id="scheduled-description"
           type="text"
@@ -216,112 +221,116 @@ export function ScheduledItemForm({
           </p>
         )}
       </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="scheduled-amount">
-          Amount
-        </label>
-        <Controller
-          control={control}
-          name="amount"
-          rules={{
-            validate: (value) => {
-              const cents = parseDollars(value);
-              if (cents === null) return 'Enter a dollar amount like 1,234.50';
-              return BigInt(cents) > 0n || 'amount must be positive';
-            },
-          }}
-          render={({ field }) => (
-            <MoneyInput
-              id="scheduled-amount"
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              autoFocus={!item}
-              invalid={!!errors.amount}
-              describedBy={errors.amount ? 'scheduled-amount-error' : undefined}
-              ref={field.ref}
-            />
+      <div className="grid grid-cols-2 gap-12">
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="scheduled-amount">
+            Amount
+          </label>
+          <Controller
+            control={control}
+            name="amount"
+            rules={{
+              validate: (value) => {
+                const cents = parseDollars(value);
+                if (cents === null) return 'Enter a dollar amount like 1,234.50';
+                return BigInt(cents) > 0n || 'amount must be positive';
+              },
+            }}
+            render={({ field }) => (
+              <MoneyInput
+                id="scheduled-amount"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                autoFocus={!item}
+                invalid={!!errors.amount}
+                describedBy={errors.amount ? 'scheduled-amount-error' : undefined}
+                ref={field.ref}
+              />
+            )}
+          />
+          {errors.amount && (
+            <p className={FIELD_ERROR} role="alert" id="scheduled-amount-error">
+              {errors.amount.message}
+            </p>
           )}
-        />
-        {errors.amount && (
-          <p className={FIELD_ERROR} role="alert" id="scheduled-amount-error">
-            {errors.amount.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="scheduled-account">
-          Account
-        </label>
-        <Controller
-          control={control}
-          name="accountId"
-          rules={{ validate: (value) => value !== null || 'account is required' }}
-          render={({ field }) => (
-            <AccountPicker
-              id="scheduled-account"
-              value={field.value}
-              onChange={field.onChange}
-              accounts={accounts}
-              invalid={!!errors.accountId}
-              describedBy={errors.accountId ? 'scheduled-account-error' : undefined}
-            />
+        </div>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="scheduled-account">
+            Account
+          </label>
+          <Controller
+            control={control}
+            name="accountId"
+            rules={{ validate: (value) => value !== null || 'account is required' }}
+            render={({ field }) => (
+              <AccountPicker
+                id="scheduled-account"
+                value={field.value}
+                onChange={field.onChange}
+                accounts={accounts}
+                invalid={!!errors.accountId}
+                describedBy={errors.accountId ? 'scheduled-account-error' : undefined}
+              />
+            )}
+          />
+          {errors.accountId && (
+            <p className={FIELD_ERROR} role="alert" id="scheduled-account-error">
+              {errors.accountId.message}
+            </p>
           )}
-        />
-        {errors.accountId && (
-          <p className={FIELD_ERROR} role="alert" id="scheduled-account-error">
-            {errors.accountId.message}
-          </p>
-        )}
+        </div>
       </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="scheduled-category">
-          Category
-        </label>
-        <Controller
-          control={control}
-          name="categoryId"
-          rules={{ validate: (value) => value !== null || 'category is required' }}
-          render={({ field }) => (
-            <CategoryPicker
-              id="scheduled-category"
-              value={field.value}
-              onChange={field.onChange}
-              categories={categories}
-              type={kind === 'bill' ? 'expense' : 'income'}
-              invalid={!!errors.categoryId}
-              describedBy={errors.categoryId ? 'scheduled-category-error' : undefined}
-            />
+      <div className="grid grid-cols-2 gap-12">
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="scheduled-category">
+            Category
+          </label>
+          <Controller
+            control={control}
+            name="categoryId"
+            rules={{ validate: (value) => value !== null || 'category is required' }}
+            render={({ field }) => (
+              <CategoryPicker
+                id="scheduled-category"
+                value={field.value}
+                onChange={field.onChange}
+                categories={categories}
+                type={kind === 'bill' ? 'expense' : 'income'}
+                invalid={!!errors.categoryId}
+                describedBy={errors.categoryId ? 'scheduled-category-error' : undefined}
+              />
+            )}
+          />
+          {errors.categoryId && (
+            <p className={FIELD_ERROR} role="alert" id="scheduled-category-error">
+              {errors.categoryId.message}
+            </p>
           )}
-        />
-        {errors.categoryId && (
-          <p className={FIELD_ERROR} role="alert" id="scheduled-category-error">
-            {errors.categoryId.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="scheduled-due-date">
-          Next due date
-        </label>
-        <input
-          id="scheduled-due-date"
-          type="date"
-          className={INPUT}
-          min={item ? undefined : localToday()}
-          aria-invalid={errors.nextDueDate ? true : undefined}
-          aria-describedby={errors.nextDueDate ? 'scheduled-due-date-error' : undefined}
-          {...register('nextDueDate', {
-            required: 'next due date is required',
-            validate: (value) =>
-              item !== null || value >= localToday() || 'must be today or later when creating',
-          })}
-        />
-        {errors.nextDueDate && (
-          <p className={FIELD_ERROR} role="alert" id="scheduled-due-date-error">
-            {errors.nextDueDate.message}
-          </p>
-        )}
+        </div>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="scheduled-due-date">
+            Next due date
+          </label>
+          <input
+            id="scheduled-due-date"
+            type="date"
+            className={INPUT}
+            min={item ? undefined : localToday()}
+            aria-invalid={errors.nextDueDate ? true : undefined}
+            aria-describedby={errors.nextDueDate ? 'scheduled-due-date-error' : undefined}
+            {...register('nextDueDate', {
+              required: 'next due date is required',
+              validate: (value) =>
+                item !== null || value >= localToday() || 'must be today or later when creating',
+            })}
+          />
+          {errors.nextDueDate && (
+            <p className={FIELD_ERROR} role="alert" id="scheduled-due-date-error">
+              {errors.nextDueDate.message}
+            </p>
+          )}
+        </div>
       </div>
       <div className={FIELD}>
         <span className={LABEL} id="scheduled-recurrence-label">
@@ -354,7 +363,7 @@ export function ScheduledItemForm({
       </div>
       <div className={FIELD}>
         <label className={LABEL} htmlFor="scheduled-end-date">
-          End date (optional)
+          End date <span className={OPTIONAL}>(optional)</span>
         </label>
         <input
           id="scheduled-end-date"

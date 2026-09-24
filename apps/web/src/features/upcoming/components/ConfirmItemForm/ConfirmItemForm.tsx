@@ -1,10 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
-import { formatPlain, parseDollars, Cents } from '../../../../shared/lib/money';
+import {
+  compareCents,
+  formatCents,
+  formatPlain,
+  parseDollars,
+  Cents,
+} from '../../../../shared/lib/money';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
 import { AccountOption, AccountPicker } from '../../../../shared/ui/AccountPicker/AccountPicker';
 import {
@@ -12,6 +18,7 @@ import {
   CategoryPicker,
 } from '../../../../shared/ui/CategoryPicker/CategoryPicker';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
+import { DueChip, DueTile } from '../DueTile/DueTile';
 import { EditableScheduledItem } from '../ScheduledItemForm/ScheduledItemForm';
 import {
   BANNER_ERROR,
@@ -21,6 +28,7 @@ import {
   FIELD_ERROR,
   FORM,
   FORM_ACTIONS,
+  HINT,
   INPUT,
   LABEL,
 } from '../../../../shared/lib/styles';
@@ -34,6 +42,8 @@ type FormValues = {
 };
 
 const FIELDS = ['amount', 'date', 'accountId', 'categoryId', 'description'] as const;
+
+const RECURRENCE_LABEL = { once: 'Once', weekly: 'Weekly', monthly: 'Monthly' } as const;
 
 export function ConfirmItemForm({
   item,
@@ -64,6 +74,10 @@ export function ConfirmItemForm({
       description: item.description,
     },
   });
+  const amount = useWatch({ control, name: 'amount' });
+  const description = useWatch({ control, name: 'description' });
+  const typed = parseDollars(amount);
+  const edited = typed === null || compareCents(typed, item.amount as Cents) !== 0;
 
   const confirmMutation = useMutation({
     mutationFn: (values: FormValues) =>
@@ -99,117 +113,136 @@ export function ConfirmItemForm({
         })(event);
       }}
     >
+      <div className="flex items-center gap-12 rounded-lg bg-sand-100 px-12 py-10">
+        <DueTile date={item.nextDueDate} />
+        <span className="min-w-0 flex-1 text-14 font-medium break-words">
+          {item.description} · {RECURRENCE_LABEL[item.recurrence]}
+        </span>
+        <DueChip due={item.nextDueDate} today={today} />
+      </div>
+      <p className="text-13 text-text-strong">
+        This records {item.kind === 'bill' ? 'an expense' : 'an income'} with these values. Change
+        anything that was different.
+      </p>
       {formError && (
         <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="confirm-amount">
-          Amount
-        </label>
-        <Controller
-          control={control}
-          name="amount"
-          rules={{
-            validate: (value) => {
-              const cents = parseDollars(value);
-              if (cents === null) return 'Enter a dollar amount like 1,234.50';
-              return BigInt(cents) > 0n || 'amount must be positive';
-            },
-          }}
-          render={({ field }) => (
-            <MoneyInput
-              id="confirm-amount"
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              invalid={!!errors.amount}
-              describedBy={errors.amount ? 'confirm-amount-error' : undefined}
-              ref={field.ref}
-            />
+      <div className="grid grid-cols-2 gap-12">
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="confirm-amount">
+            Amount
+          </label>
+          <Controller
+            control={control}
+            name="amount"
+            rules={{
+              validate: (value) => {
+                const cents = parseDollars(value);
+                if (cents === null) return 'Enter a dollar amount like 1,234.50';
+                return BigInt(cents) > 0n || 'amount must be positive';
+              },
+            }}
+            render={({ field }) => (
+              <MoneyInput
+                id="confirm-amount"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                invalid={!!errors.amount}
+                describedBy={errors.amount ? 'confirm-amount-error' : undefined}
+                ref={field.ref}
+              />
+            )}
+          />
+          {errors.amount && (
+            <p className={FIELD_ERROR} role="alert" id="confirm-amount-error">
+              {errors.amount.message}
+            </p>
           )}
-        />
-        {errors.amount && (
-          <p className={FIELD_ERROR} role="alert" id="confirm-amount-error">
-            {errors.amount.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="confirm-date">
-          Date
-        </label>
-        <input
-          id="confirm-date"
-          type="date"
-          className={INPUT}
-          max={today}
-          aria-invalid={errors.date ? true : undefined}
-          aria-describedby={errors.date ? 'confirm-date-error' : undefined}
-          {...register('date', { required: 'date is required' })}
-        />
-        {errors.date && (
-          <p className={FIELD_ERROR} role="alert" id="confirm-date-error">
-            {errors.date.message}
-          </p>
-        )}
-      </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="confirm-account">
-          Account
-        </label>
-        <Controller
-          control={control}
-          name="accountId"
-          rules={{ validate: (value) => value !== null || 'account is required' }}
-          render={({ field }) => (
-            <AccountPicker
-              id="confirm-account"
-              value={field.value}
-              onChange={field.onChange}
-              accounts={accounts}
-              invalid={!!errors.accountId}
-              describedBy={errors.accountId ? 'confirm-account-error' : undefined}
-            />
+          {edited && <p className={HINT}>Scheduled: {formatCents(item.amount as Cents)}</p>}
+        </div>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="confirm-date">
+            Date
+          </label>
+          <input
+            id="confirm-date"
+            type="date"
+            className={INPUT}
+            max={today}
+            aria-invalid={errors.date ? true : undefined}
+            aria-describedby={errors.date ? 'confirm-date-error' : undefined}
+            {...register('date', { required: 'date is required' })}
+          />
+          {errors.date && (
+            <p className={FIELD_ERROR} role="alert" id="confirm-date-error">
+              {errors.date.message}
+            </p>
           )}
-        />
-        {errors.accountId && (
-          <p className={FIELD_ERROR} role="alert" id="confirm-account-error">
-            {errors.accountId.message}
-          </p>
-        )}
+        </div>
       </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="confirm-category">
-          Category
-        </label>
-        <Controller
-          control={control}
-          name="categoryId"
-          rules={{ validate: (value) => value !== null || 'category is required' }}
-          render={({ field }) => (
-            <CategoryPicker
-              id="confirm-category"
-              value={field.value}
-              onChange={field.onChange}
-              categories={categories}
-              type={item.kind === 'bill' ? 'expense' : 'income'}
-              invalid={!!errors.categoryId}
-              describedBy={errors.categoryId ? 'confirm-category-error' : undefined}
-            />
+      <div className="grid grid-cols-2 gap-12">
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="confirm-account">
+            Account
+          </label>
+          <Controller
+            control={control}
+            name="accountId"
+            rules={{ validate: (value) => value !== null || 'account is required' }}
+            render={({ field }) => (
+              <AccountPicker
+                id="confirm-account"
+                value={field.value}
+                onChange={field.onChange}
+                accounts={accounts}
+                invalid={!!errors.accountId}
+                describedBy={errors.accountId ? 'confirm-account-error' : undefined}
+              />
+            )}
+          />
+          {errors.accountId && (
+            <p className={FIELD_ERROR} role="alert" id="confirm-account-error">
+              {errors.accountId.message}
+            </p>
           )}
-        />
-        {errors.categoryId && (
-          <p className={FIELD_ERROR} role="alert" id="confirm-category-error">
-            {errors.categoryId.message}
-          </p>
-        )}
+        </div>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="confirm-category">
+            Category
+          </label>
+          <Controller
+            control={control}
+            name="categoryId"
+            rules={{ validate: (value) => value !== null || 'category is required' }}
+            render={({ field }) => (
+              <CategoryPicker
+                id="confirm-category"
+                value={field.value}
+                onChange={field.onChange}
+                categories={categories}
+                type={item.kind === 'bill' ? 'expense' : 'income'}
+                invalid={!!errors.categoryId}
+                describedBy={errors.categoryId ? 'confirm-category-error' : undefined}
+              />
+            )}
+          />
+          {errors.categoryId && (
+            <p className={FIELD_ERROR} role="alert" id="confirm-category-error">
+              {errors.categoryId.message}
+            </p>
+          )}
+        </div>
       </div>
       <div className={FIELD}>
-        <label className={LABEL} htmlFor="confirm-description">
-          Description
-        </label>
+        <span className="flex justify-between gap-8">
+          <label className={LABEL} htmlFor="confirm-description">
+            Description
+          </label>
+          <span className="font-mono text-12 text-text-2">{description.length}/120</span>
+        </span>
         <input
           id="confirm-description"
           type="text"

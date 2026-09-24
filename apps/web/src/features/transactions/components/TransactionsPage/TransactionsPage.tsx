@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { queryKeys } from '../../../../shared/lib/query-keys';
@@ -17,15 +17,17 @@ import {
   BANNER_WARNING,
   BUTTON_COMPACT,
   BUTTON_PRIMARY,
-  CARD,
   CHIP_CATEGORY,
+  FIELD,
   INPUT,
   LABEL,
+  LINK,
   PAGE,
   PAGE_HEADER,
   PAGE_TITLE,
-  PAGINATION,
   ROW_ACTION_TEXT,
+  SEGMENT,
+  SEGMENTED,
   TD_AMOUNT,
   TOOLBAR,
   TOOLBAR_FIELD,
@@ -41,6 +43,26 @@ const KIND_LABEL: Record<Kind, string> = {
   opening: 'Opening',
 };
 
+const KIND_FILTERS = [
+  { value: '', label: 'All' },
+  { value: 'expense', label: 'Expense' },
+  { value: 'income', label: 'Income' },
+  { value: 'transfer', label: 'Transfer' },
+  { value: 'opening', label: 'Opening' },
+];
+
+const PAGE_BUTTON =
+  'grid size-32 cursor-pointer place-items-center rounded-sm font-mono transition-colors duration-(--dur-hover) ease-(--ease-out) active:scale-97 active:duration-(--dur-press)';
+
+function pageNumbers(current: number, count: number): (number | null)[] {
+  const wanted = [...new Set([1, current - 1, current, current + 1, count])]
+    .filter((number) => number >= 1 && number <= count)
+    .sort((a, b) => a - b);
+  return wanted.flatMap((number, index) =>
+    index > 0 && number - wanted[index - 1] > 1 ? [null, number] : [number],
+  );
+}
+
 function TransactionAmount({ kind, amount }: { kind: string; amount: string }) {
   if (kind === 'expense') return <Amount cents={`-${amount}`} />;
   if (kind === 'income') return <Amount cents={amount} sign="always" />;
@@ -52,6 +74,7 @@ type Filters = {
   to?: string;
   kind?: string;
   categoryId?: string;
+  projectId?: string;
 };
 
 export function TransactionsPage() {
@@ -83,12 +106,14 @@ export function TransactionsPage() {
               ...(filters.to ? { to: filters.to } : {}),
               ...(filters.kind ? { kind: filters.kind as TransactionKindChoice } : {}),
               ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+              ...(filters.projectId ? { projectId: filters.projectId } : {}),
               limit: PAGE_SIZE,
               offset,
             },
           },
         }),
       ),
+    placeholderData: keepPreviousData,
   });
 
   const accounts = accountsQuery.data?.items ?? [];
@@ -98,101 +123,147 @@ export function TransactionsPage() {
   const categoryName = (id?: string) =>
     categories.find((category) => category.id === id)?.name ?? '';
 
+  const projectName = (id?: string) => projects.find((project) => project.id === id)?.name;
+
   function setFilter(patch: Filters) {
     setFilters((current) => ({ ...current, ...patch }));
     setOffset(0);
   }
 
+  function clearFilters() {
+    setFilters({});
+    setOffset(0);
+  }
+
   const page = transactionsQuery.data;
-  const hasFilters = Boolean(filters.from || filters.to || filters.kind || filters.categoryId);
+  const hasFilters = Boolean(
+    filters.from || filters.to || filters.kind || filters.categoryId || filters.projectId,
+  );
+  const pageCount = page ? Math.max(1, Math.ceil(page.total / PAGE_SIZE)) : 1;
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
   return (
     <div className={PAGE}>
       <div className={PAGE_HEADER}>
-        <h1 className={PAGE_TITLE}>Transactions</h1>
+        <div>
+          <h1 className={PAGE_TITLE}>Transactions</h1>
+          {page && (
+            <p className="text-14 text-text-2">
+              {page.total === 1 ? '1 result' : `${page.total} results`} · newest first
+            </p>
+          )}
+        </div>
         <button type="button" className={BUTTON_PRIMARY} onClick={() => setCreating(true)}>
           New transaction
         </button>
       </div>
-      <div className={CARD}>
-        <div className={TOOLBAR}>
-          <div className={TOOLBAR_FIELD}>
-            <label className={LABEL} htmlFor="filter-from">
-              From
-            </label>
-            <input
-              id="filter-from"
-              type="date"
-              className={INPUT}
-              value={filters.from ?? ''}
-              onChange={(event) => setFilter({ from: event.target.value || undefined })}
-            />
-          </div>
-          <div className={TOOLBAR_FIELD}>
-            <label className={LABEL} htmlFor="filter-to">
-              To
-            </label>
-            <input
-              id="filter-to"
-              type="date"
-              className={INPUT}
-              value={filters.to ?? ''}
-              onChange={(event) => setFilter({ to: event.target.value || undefined })}
-            />
-          </div>
-          <div className={TOOLBAR_FIELD}>
-            <label className={LABEL} htmlFor="filter-kind">
-              Kind
-            </label>
-            <Picker
-              id="filter-kind"
-              value={filters.kind ?? null}
-              onChange={(value) => setFilter({ kind: value ?? undefined })}
-              options={Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))}
-              placeholder="All kinds"
-            />
-          </div>
-          <div className={TOOLBAR_FIELD}>
-            <label className={LABEL} htmlFor="filter-category">
-              Category
-            </label>
-            <Picker
-              id="filter-category"
-              value={filters.categoryId ?? null}
-              onChange={(value) => setFilter({ categoryId: value ?? undefined })}
-              options={categories.map((category) => ({
-                value: category.id,
-                label: category.name,
-              }))}
-              placeholder="All categories"
-            />
+      <div className={TOOLBAR}>
+        <div className={TOOLBAR_FIELD}>
+          <label className={LABEL} htmlFor="filter-from">
+            From
+          </label>
+          <input
+            id="filter-from"
+            type="date"
+            className={INPUT}
+            value={filters.from ?? ''}
+            onChange={(event) => setFilter({ from: event.target.value || undefined })}
+          />
+        </div>
+        <div className={TOOLBAR_FIELD}>
+          <label className={LABEL} htmlFor="filter-to">
+            To
+          </label>
+          <input
+            id="filter-to"
+            type="date"
+            className={INPUT}
+            value={filters.to ?? ''}
+            onChange={(event) => setFilter({ to: event.target.value || undefined })}
+          />
+        </div>
+        <div className={FIELD}>
+          <span className={LABEL} id="filter-kind">
+            Type
+          </span>
+          <div role="radiogroup" aria-labelledby="filter-kind" className={SEGMENTED}>
+            {KIND_FILTERS.map((choice) => (
+              <label key={choice.label} className={`${SEGMENT} px-12`}>
+                <input
+                  type="radio"
+                  name="filter-kind"
+                  className="sr-only"
+                  checked={(filters.kind ?? '') === choice.value}
+                  onChange={() => setFilter({ kind: choice.value || undefined })}
+                />
+                {choice.label}
+              </label>
+            ))}
           </div>
         </div>
+        <div className={TOOLBAR_FIELD}>
+          <label className={LABEL} htmlFor="filter-category">
+            Category
+          </label>
+          <Picker
+            id="filter-category"
+            value={filters.categoryId ?? null}
+            onChange={(value) => setFilter({ categoryId: value ?? undefined })}
+            options={categories.map((category) => ({
+              value: category.id,
+              label: category.name,
+            }))}
+            placeholder="All categories"
+          />
+        </div>
+        <div className={TOOLBAR_FIELD}>
+          <label className={LABEL} htmlFor="filter-project">
+            Project
+          </label>
+          <Picker
+            id="filter-project"
+            value={filters.projectId ?? null}
+            onChange={(value) => setFilter({ projectId: value ?? undefined })}
+            options={projects.map((project) => ({ value: project.id, label: project.name }))}
+            placeholder="All projects"
+          />
+        </div>
+        {hasFilters && (
+          <button
+            type="button"
+            className={`${LINK} ml-auto h-42 cursor-pointer text-13`}
+            onClick={clearFilters}
+          >
+            Clear filters
+          </button>
+        )}
       </div>
-      <div className={CARD}>
+      <div className="overflow-hidden rounded-3xl border border-sand-350 bg-sand-0 shadow-card">
         {transactionsQuery.isError ? (
-          <div className={BANNER_WARNING} role="alert">
-            <span>The transaction list could not be refreshed, so it is not shown.</span>
-            <button
-              type="button"
-              className={BUTTON_COMPACT}
-              onClick={() => void transactionsQuery.refetch()}
-            >
-              Retry
-            </button>
+          <div className="p-24">
+            <div className={BANNER_WARNING} role="alert">
+              <span>The transaction list could not be refreshed, so it is not shown.</span>
+              <button
+                type="button"
+                className={BUTTON_COMPACT}
+                onClick={() => void transactionsQuery.refetch()}
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : !page ? (
-          <p className="text-14 text-text-2">Loading transactions…</p>
+          <p className="p-24 text-14 text-text-2">Loading transactions…</p>
         ) : page.items.length === 0 ? (
           <EmptyState
             title={hasFilters ? 'No transactions match these filters' : 'No transactions yet'}
             hint={
               hasFilters
-                ? 'Loosen the date range or clear the filters.'
+                ? 'Try a wider date range or clear the type, category and project filters.'
                 : 'Record your first expense, income or transfer.'
             }
-            actionLabel={hasFilters ? undefined : 'New transaction'}
-            onAction={hasFilters ? undefined : () => setCreating(true)}
+            actionLabel={hasFilters ? 'Clear filters' : 'New transaction'}
+            onAction={hasFilters ? clearFilters : () => setCreating(true)}
           />
         ) : (
           <>
@@ -200,10 +271,10 @@ export function TransactionsPage() {
               caption="Transactions"
               columns={[
                 { label: 'Date' },
-                { label: 'Kind' },
                 { label: 'Description' },
                 { label: 'Account' },
                 { label: 'Category' },
+                { label: 'Project' },
                 { label: 'Amount', align: 'right' },
               ]}
             >
@@ -231,24 +302,27 @@ export function TransactionsPage() {
                     }
                     onClick={editable ? open : undefined}
                   >
-                    <td className="font-mono text-12 text-text-2">{transaction.date}</td>
-                    <td>
-                      <KindGlyph
-                        kind={transaction.kind as Kind}
-                        label={KIND_LABEL[transaction.kind as Kind]}
-                        showLabel
-                      />
+                    <td className="font-mono text-12 whitespace-nowrap text-text-2">
+                      {transaction.date}
                     </td>
                     <td>
-                      {editable ? (
-                        <button type="button" className={ROW_ACTION_TEXT} onClick={open}>
-                          {transaction.description}
-                        </button>
-                      ) : (
-                        <span className={TRUNCATE}>{transaction.description}</span>
-                      )}
+                      <span className="flex min-w-0 items-center gap-10">
+                        <KindGlyph
+                          kind={transaction.kind as Kind}
+                          label={KIND_LABEL[transaction.kind as Kind]}
+                        />
+                        {editable ? (
+                          <button type="button" className={ROW_ACTION_TEXT} onClick={open}>
+                            {transaction.description}
+                          </button>
+                        ) : (
+                          <span className={`${TRUNCATE} font-medium`}>
+                            {transaction.description}
+                          </span>
+                        )}
+                      </span>
                     </td>
-                    <td>
+                    <td className="text-13 text-text-strong">
                       {transaction.kind === 'transfer'
                         ? `${accountName(transaction.accountId)} → ${accountName(transaction.counterAccountId)}`
                         : accountName(transaction.accountId)}
@@ -260,38 +334,71 @@ export function TransactionsPage() {
                         </span>
                       )}
                     </td>
-                    <td className={TD_AMOUNT}>
+                    <td className="text-13 text-text-strong">
+                      {projectName(transaction.projectId) ?? '—'}
+                    </td>
+                    <td className={`${TD_AMOUNT} font-mono font-medium`}>
                       <TransactionAmount kind={transaction.kind} amount={transaction.amount} />
                     </td>
                   </tr>
                 );
               })}
             </Table>
-            <div className={PAGINATION}>
+            <nav
+              aria-label="Pagination"
+              className="flex flex-wrap items-center justify-between gap-12 border-t border-sand-350 px-20 py-12 text-13 text-text-strong"
+            >
               <span>
-                {page.total === 0
-                  ? '0 of 0'
-                  : `${page.offset + 1}–${Math.min(page.offset + PAGE_SIZE, page.total)} of ${page.total}`}
+                <strong className="font-semibold text-text-1">
+                  {page.total === 0
+                    ? '0'
+                    : `${page.offset + 1}–${Math.min(page.offset + PAGE_SIZE, page.total)}`}
+                </strong>{' '}
+                of {page.total}
               </span>
-              <span>
-                <button
-                  type="button"
-                  className={BUTTON_COMPACT}
-                  disabled={offset === 0}
-                  onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                >
-                  Previous
-                </button>{' '}
-                <button
-                  type="button"
-                  className={BUTTON_COMPACT}
-                  disabled={page.offset + PAGE_SIZE >= page.total}
-                  onClick={() => setOffset(offset + PAGE_SIZE)}
-                >
-                  Next
-                </button>
+              <span className="flex items-center gap-4">
+                {currentPage > 1 && (
+                  <button
+                    type="button"
+                    className={BUTTON_COMPACT}
+                    onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                  >
+                    <span aria-hidden="true">‹</span> Previous
+                  </button>
+                )}
+                {pageNumbers(currentPage, pageCount).map((number, index) =>
+                  number === null ? (
+                    <span
+                      key={`gap-${index}`}
+                      aria-hidden="true"
+                      className="grid size-32 place-items-center font-mono text-text-2"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={number}
+                      type="button"
+                      aria-label={`Page ${number}`}
+                      aria-current={number === currentPage ? 'page' : undefined}
+                      className={`${PAGE_BUTTON} ${number === currentPage ? 'bg-ink-900 text-text-on-ink' : 'text-text-1 hover:bg-sand-200'}`}
+                      onClick={() => setOffset((number - 1) * PAGE_SIZE)}
+                    >
+                      {number}
+                    </button>
+                  ),
+                )}
+                {currentPage < pageCount && (
+                  <button
+                    type="button"
+                    className={BUTTON_COMPACT}
+                    onClick={() => setOffset(offset + PAGE_SIZE)}
+                  >
+                    Next <span aria-hidden="true">›</span>
+                  </button>
+                )}
               </span>
-            </div>
+            </nav>
           </>
         )}
       </div>

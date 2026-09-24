@@ -175,6 +175,9 @@ be used.
 | `--color-warning`         | `--color-warning-soft`     | body |
 | `--color-warning-strong`  | `--color-warning-soft`     | body |
 | `--color-warning-ink`     | `--color-warning-surface`  | body |
+| `--color-text-1`          | `--color-warning-surface`  | body |
+| `--color-text-2`          | `--color-warning-surface`  | body |
+| `--color-text-on-ink`     | `--color-warning`          | body |
 | `--color-transfer`        | `--color-sand-0`           | body |
 | `--color-text-3`          | `--color-sand-100`         | body |
 | `--color-text-strong`     | `--color-sand-200`         | body |

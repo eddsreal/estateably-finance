@@ -103,18 +103,35 @@ describe('SimilarPage', () => {
     stubRoutes({ body: { narrative: '' } });
     renderPage();
     await generate();
-    const groups = await screen.findByRole('table', { name: /^Groups from 2026-09-01/ });
-    const uberRow = within(groups).getByText('uber').closest('tr')!;
-    expect(uberRow).toHaveTextContent('3');
+    const groups = await screen.findByRole('list', { name: /^Groups from 2026-09-01/ });
+    const uberRow = within(groups).getByText('uber').closest('li')!;
+    expect(uberRow).toHaveTextContent('3 expenses');
     expect(uberRow).toHaveTextContent('$48.80');
-    const rentRow = within(groups).getByText('rent').closest('tr')!;
+    expect(uberRow).toHaveTextContent('uber · UBER 5678 · Uber 1234');
+    const rentRow = within(groups).getByText('rent').closest('li')!;
     expect(rentRow).toHaveTextContent('Most expensive group');
     expect(uberRow).not.toHaveTextContent('Most expensive group');
-    const top = screen.getByRole('table', { name: 'Top 5 most expensive' });
-    expect(within(top).getAllByRole('row')).toHaveLength(5);
+    expect(screen.getByText('Expenses only · 4 in 2 groups')).toBeInTheDocument();
+    const top = screen.getByRole('list', { name: 'Top 5 most expensive' });
+    const items = within(top).getAllByRole('listitem');
+    expect(items).toHaveLength(4);
+    expect(items[0]).toHaveTextContent('Rent');
+    expect(items[0]).toHaveTextContent('1 Sep 2026 · Checking');
+    expect(items[0]).toHaveTextContent('$1,200.00');
     expect(within(top).getByRole('button', { name: 'UBER 5678' })).toBeInTheDocument();
     expect(screen.queryByText('4880')).not.toBeInTheDocument();
     expect(screen.queryByText('120000')).not.toBeInTheDocument();
+  });
+
+  it('sizes each group bar by its total relative to the largest group', async () => {
+    stubRoutes({ body: { narrative: '' } });
+    renderPage();
+    await generate();
+    const groups = await screen.findByRole('list', { name: /^Groups from 2026-09-01/ });
+    const bar = (name: string) =>
+      within(groups).getByText(name).closest('li')!.querySelector('[style]') as HTMLElement;
+    expect(bar('rent').style.width).toBe('100%');
+    expect(bar('uber').style.width).toBe(`${(4880 / 120000) * 100}%`);
   });
 
   it('shows the empty state for a period without expenses (US6 #3)', async () => {
@@ -128,7 +145,7 @@ describe('SimilarPage', () => {
     const calls = stubRoutes({ body: { narrative: 'Rent dominated this month.' } });
     renderPage();
     await generate();
-    await screen.findByRole('table', { name: 'Top 5 most expensive' });
+    await screen.findByRole('list', { name: 'Top 5 most expensive' });
     await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
     expect(await screen.findByText('Rent dominated this month.')).toBeInTheDocument();
     expect(calls).toEqual([{ from: '2026-09-01', to: '2026-09-30' }]);
@@ -145,7 +162,7 @@ describe('SimilarPage', () => {
     });
     renderPage();
     await generate();
-    await screen.findByRole('table', { name: 'Top 5 most expensive' });
+    await screen.findByRole('list', { name: 'Top 5 most expensive' });
     await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
     const button = await screen.findByRole('button', { name: '✦ AI narrative' });
     await vi.waitFor(() => expect(button).toBeDisabled());
@@ -165,16 +182,38 @@ describe('SimilarPage', () => {
     });
     renderPage();
     await generate();
-    await screen.findByRole('table', { name: 'Top 5 most expensive' });
+    await screen.findByRole('list', { name: 'Top 5 most expensive' });
     await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
     const notice = await screen.findByRole('alert');
     expect(notice).toHaveTextContent('AI_TIMEOUT');
     expect(notice).toHaveTextContent(correlationId);
-    expect(screen.getByRole('table', { name: 'Top 5 most expensive' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '✦ AI narrative' })).toBeEnabled();
+    expect(notice).toHaveTextContent(
+      "The AI summary couldn't be generated. The report below is unaffected.",
+    );
     await userEvent.click(within(notice).getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByRole('table', { name: 'Top 5 most expensive' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
+  });
+
+  it('retries the narrative from the failure notice', async () => {
+    const calls = stubRoutes({
+      status: 504,
+      body: {
+        code: 'AI_TIMEOUT',
+        message: 'The LLM provider timed out after 10000 ms',
+        correlationId,
+      },
+    });
+    renderPage();
+    await generate();
+    await screen.findByRole('list', { name: 'Top 5 most expensive' });
+    await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
+    const notice = await screen.findByRole('alert');
+    await userEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
+    await vi.waitFor(() => expect(calls).toHaveLength(2));
+    expect(calls[1]).toEqual({ from: '2026-09-01', to: '2026-09-30' });
   });
 
   it('opens the edit form from a top-5 transaction', async () => {

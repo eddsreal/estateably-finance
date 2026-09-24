@@ -9,6 +9,7 @@ import {
   formatPlain,
   isNegative,
   parseDollars,
+  share,
   toCents,
   toPlotNumber,
   toPlotSeries,
@@ -133,5 +134,53 @@ describe('toPlotSeries', () => {
     expect(toPlotSeries(['-100', '0', '300'] as Cents[])).toEqual([0, 0.25, 1]);
     expect(toPlotSeries(['7', '7'] as Cents[])).toEqual([0.5, 0.5]);
     expect(toPlotSeries(['42'] as Cents[])).toEqual([0.5]);
+  });
+});
+
+describe('share (FR-009)', () => {
+  const sum = (shares: string[]) => shares.reduce((total, value) => total + Number(value) * 10, 0);
+
+  it('splits three equal totals into exactly 100.0%, the extra tenth to the first', () => {
+    const shares = share(['100', '100', '100'] as Cents[]);
+    expect(shares).toEqual(['33.4', '33.3', '33.3']);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it('gives the leftover tenths to the largest remainders', () => {
+    expect(share(['1', '1', '1', '1', '1', '1', '1'] as Cents[])).toEqual([
+      '14.3',
+      '14.3',
+      '14.3',
+      '14.3',
+      '14.3',
+      '14.3',
+      '14.2',
+    ]);
+    expect(share(['132000', '110000', '9640', '5440', '4250', '3480', '1599'] as Cents[])).toEqual([
+      '49.6',
+      '41.3',
+      '3.6',
+      '2.0',
+      '1.6',
+      '1.3',
+      '0.6',
+    ]);
+  });
+
+  it('breaks ties by input order and adds up for awkward splits', () => {
+    expect(share(['1', '2'] as Cents[])).toEqual(['33.3', '66.7']);
+    expect(share(['2', '1'] as Cents[])).toEqual(['66.7', '33.3']);
+    for (const totals of [
+      ['1', '1', '1'],
+      ['7', '7', '7', '7', '7', '7'],
+      ['999999', '1'],
+    ]) {
+      expect(sum(share(totals as Cents[]))).toBe(1000);
+    }
+  });
+
+  it('returns 0.0 for every share of a zero grand total and 100.0 for a single total', () => {
+    expect(share(['0', '0'] as Cents[])).toEqual(['0.0', '0.0']);
+    expect(share(['4250'] as Cents[])).toEqual(['100.0']);
   });
 });

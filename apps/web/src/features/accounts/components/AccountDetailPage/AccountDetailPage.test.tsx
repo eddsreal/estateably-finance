@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
+import { localToday } from '../../../../shared/lib/dates';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
-import { AccountDetailPage } from './AccountDetailPage';
+import { AccountDetailPage, dayLabel } from './AccountDetailPage';
 
 const accounts = {
   items: [
@@ -18,6 +19,15 @@ const accounts = {
       archived: false,
       balance: '445750',
     },
+    {
+      id: '2',
+      name: 'Savings',
+      kind: 'bank',
+      openingBalance: '0',
+      openingDate: '2026-09-01',
+      archived: false,
+      balance: '30000',
+    },
   ],
   totalBalance: '445750',
 };
@@ -26,6 +36,62 @@ const balancesByDate: Record<string, string> = {
   '2026-09-12': '145750',
   '2026-08-15': '0',
 };
+
+const transactions = [
+  {
+    id: 't6',
+    kind: 'expense',
+    date: localToday(),
+    description: 'Market',
+    amount: '4250',
+    accountId: '1',
+    categoryId: 'c1',
+  },
+  {
+    id: 't5',
+    kind: 'income',
+    date: localToday(),
+    description: 'Refund',
+    amount: '1000',
+    accountId: '1',
+    categoryId: 'c2',
+  },
+  {
+    id: 't4',
+    kind: 'transfer',
+    date: '2026-09-16',
+    description: 'To savings',
+    amount: '50000',
+    accountId: '1',
+    counterAccountId: '2',
+  },
+  {
+    id: 't3',
+    kind: 'transfer',
+    date: '2026-09-16',
+    description: 'From savings',
+    amount: '20000',
+    accountId: '2',
+    counterAccountId: '1',
+  },
+  {
+    id: 't2',
+    kind: 'income',
+    date: '2026-09-15',
+    description: 'Salary',
+    amount: '300000',
+    accountId: '1',
+    categoryId: 'c2',
+  },
+  {
+    id: 't1',
+    kind: 'opening',
+    date: '2026-09-01',
+    description: 'Opening balance',
+    amount: '150000',
+    accountId: '1',
+  },
+];
 
 function stubRoutes(overrides: { balance?: string; current?: string } = {}) {
   stubApi({
@@ -39,6 +105,18 @@ function stubRoutes(overrides: { balance?: string; current?: string } = {}) {
             },
           }
         : { body: accounts },
+    'GET /categories': [
+      { id: 'c1', name: 'Groceries', type: 'expense', archived: false },
+      { id: 'c2', name: 'Salary', type: 'income', archived: false },
+    ],
+    'GET /transactions': (url: URL) => ({
+      body: {
+        items: url.searchParams.get('accountId') === '1' ? transactions : [],
+        total: 6,
+        limit: 50,
+        offset: 0,
+      },
+    }),
     'GET /accounts/1/balance': (url: URL) => {
       const asOf = url.searchParams.get('asOf') ?? '';
       return {
@@ -113,6 +191,37 @@ describe('AccountDetailPage', () => {
     expect(screen.getByRole('status', { name: 'Current balance' })).toHaveTextContent('$3,457.50');
     expect(screen.getByRole('status', { name: /^Balance on / })).toHaveTextContent('$3,457.50');
     expect(document.body).not.toHaveTextContent('$4,457.50');
+  });
+
+  it('groups rows by day with each day net signed by the account role (FR-008)', async () => {
+    stubRoutes();
+    renderPage();
+    const list = await screen.findByRole('region', { name: 'Transactions on this account' });
+    const days = await within(list).findAllByRole('region');
+    expect(days.map((day) => day.getAttribute('aria-label'))).toEqual([
+      expect.stringMatching(/^Today · /),
+      expect.stringMatching(/^Wed · Sep 16/),
+      expect.stringMatching(/^Tue · Sep 15/),
+      expect.stringMatching(/^Tue · Sep 1(,|$)/),
+    ]);
+    const net = (day: HTMLElement) => within(day).getByRole('heading').textContent;
+    expect(net(days[0])).toMatch(/-\$32\.50$/);
+    expect(net(days[1])).toMatch(/-\$300\.00$/);
+    expect(net(days[2])).toMatch(/\+\$3,000\.00$/);
+    expect(net(days[3])).toMatch(/[^+]\$1,500\.00$/);
+    expect(within(days[1]).getByText('→ Savings')).toBeInTheDocument();
+    expect(within(days[1]).getByText('← Savings')).toBeInTheDocument();
+    expect(within(days[1]).getByText('-$500.00')).toBeInTheDocument();
+    expect(within(days[1]).getByText('+$200.00')).toBeInTheDocument();
+    expect(within(days[0]).getByText('Groceries')).toBeInTheDocument();
+    expect(screen.getByText('6 transactions')).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/debit|credit|entr(y|ies)/i);
+  });
+
+  it('labels days as Today or weekday and date, with the year only when it differs', () => {
+    expect(dayLabel('2026-09-22', '2026-09-22')).toBe('Today · Sep 22');
+    expect(dayLabel('2026-09-16', '2026-09-22')).toBe('Wed · Sep 16');
+    expect(dayLabel('2025-12-31', '2026-01-02')).toBe('Wed · Dec 31, 2025');
   });
 
   it('says so when the account does not exist', async () => {

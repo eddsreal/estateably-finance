@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -149,5 +149,49 @@ describe('ReportPage', () => {
     expect(dialog).toHaveTextContent('Edit transaction');
     expect(screen.getByLabelText('Description')).toHaveValue('Market run');
     expect(screen.getByLabelText('Amount')).toHaveValue('42.50');
+  });
+
+  it('shows each category share, item count, bar and the month total (FR-009)', async () => {
+    stubRoutes();
+    renderPage();
+    const groceries = (await screen.findByText('Groceries')).closest('summary')!;
+    const rent = screen.getByText('Rent').closest('summary')!;
+    expect(groceries).toHaveTextContent('· 2 items');
+    expect(groceries).toHaveTextContent('37.7%');
+    expect(rent).toHaveTextContent('· 1 item');
+    expect(rent).toHaveTextContent('62.3%');
+    expect(rent.querySelector('[style]')).toHaveStyle({ width: '100%' });
+    expect(groceries.querySelector<HTMLElement>('[style]')!.style.width).toMatch(/^60\.41/);
+    expect(screen.getByText(/^Total for /).parentElement).toHaveTextContent('$192.50');
+  });
+
+  it('links a hovered or focused row to the donut centre and fades the other rows (FR-009)', async () => {
+    stubRoutes();
+    renderPage();
+    const groceries = (await screen.findByText('Groceries')).closest('summary')!;
+    const donut = screen.getByRole('group', { name: 'Spending by category' });
+    expect(donut).toHaveTextContent('2 categories');
+    fireEvent.mouseEnter(groceries);
+    expect(donut).toHaveTextContent('37.7% of spend');
+    expect(within(donut).getByText('$72.50')).toBeInTheDocument();
+    expect(groceries.closest('details')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByText('Rent').closest('details')).toHaveClass('opacity-70');
+    fireEvent.mouseLeave(groceries);
+    expect(donut).toHaveTextContent('2 categories');
+    act(() => groceries.focus());
+    expect(donut).toHaveTextContent('37.7% of spend');
+  });
+
+  it('highlights the row of the donut segment that has focus (FR-009)', async () => {
+    stubRoutes();
+    renderPage();
+    await screen.findByText('Groceries');
+    act(() => screen.getByRole('button', { name: 'Rent, $120.00, 62.3%' }).focus());
+    expect(
+      screen.getByText('Rent', { selector: 'summary span' }).closest('details'),
+    ).toHaveAttribute('data-active', 'true');
+    expect(
+      screen.getByText('Groceries', { selector: 'summary span' }).closest('details'),
+    ).toHaveClass('opacity-70');
   });
 });

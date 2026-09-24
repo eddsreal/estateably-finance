@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
-import { dueLabel, UpcomingPage } from './UpcomingPage';
+import { UpcomingPage } from './UpcomingPage';
 
 function localDate(offsetDays: number): string {
   const now = new Date();
@@ -74,16 +74,6 @@ function renderPage(items: unknown[]) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('dueLabel', () => {
-  it('names today, tomorrow, future days and overdue days', () => {
-    expect(dueLabel('2026-09-24', '2026-09-24')).toBe('Due today');
-    expect(dueLabel('2026-09-25', '2026-09-24')).toBe('Due tomorrow');
-    expect(dueLabel('2026-09-30', '2026-09-24')).toBe('Due in 6 days');
-    expect(dueLabel('2026-09-23', '2026-09-24')).toBe('Overdue 1 day');
-    expect(dueLabel('2026-08-24', '2026-09-24')).toBe('Overdue 31 days');
-  });
-});
-
 describe('UpcomingPage', () => {
   it('lists items with relative due labels and dollar amounts only (SC-009)', async () => {
     renderPage([
@@ -102,8 +92,9 @@ describe('UpcomingPage', () => {
     expect(screen.getByText('$1,200.00')).toBeInTheDocument();
     expect(screen.getByText('$45.00')).toBeInTheDocument();
     expect(screen.queryByText('120000')).not.toBeInTheDocument();
-    expect(screen.getByText('Due in 3 days')).toBeInTheDocument();
-    expect(screen.getByText('Due tomorrow')).toBeInTheDocument();
+    expect(screen.getByText('In 3 days')).toBeInTheDocument();
+    expect(screen.getByText('Tomorrow')).toBeInTheDocument();
+    expect(screen.getByText('Monthly · Checking · Rent')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark paid' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark received' })).toBeInTheDocument();
   });
@@ -113,8 +104,55 @@ describe('UpcomingPage', () => {
       item({ nextDueDate: localDate(-40), overdue: true, overdueCount: 2 }),
       item({ id: '9', description: 'Old dues', accountId: '2', accountArchived: true }),
     ]);
-    expect(await screen.findByText(/Overdue 40 days · 2 missed/)).toBeInTheDocument();
-    expect(screen.getByText('Account archived')).toBeInTheDocument();
+    expect(await screen.findByText('⚠ Overdue 40 days · 2 missed')).toBeInTheDocument();
+    expect(screen.getByText('⚠ Account archived')).toBeInTheDocument();
+  });
+
+  it('disables Mark paid on an archived account and says why next to it (FR-014)', async () => {
+    renderPage([
+      item(),
+      item({ id: '9', description: 'Old dues', accountId: '2', accountArchived: true }),
+    ]);
+    const cards = await screen.findAllByRole('listitem');
+    const blocked = cards.find((card) => within(card).queryByText('Old dues'))!;
+    const button = within(blocked).getByRole('button', { name: 'Mark paid' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription('Its account is archived');
+    expect(within(blocked).getByText('Its account is archived')).toBeVisible();
+    const open = cards.find((card) => within(card).queryByText('Rent'))!;
+    expect(within(open).getByRole('button', { name: 'Mark paid' })).toBeEnabled();
+    expect(within(open).queryByText('Its account is archived')).not.toBeInTheDocument();
+  });
+
+  it('groups items into overdue and the next 2 weeks, later this month and later months (FR-011)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 10, 12));
+    try {
+      renderPage([
+        item({
+          id: '1',
+          description: 'Late',
+          nextDueDate: '2026-09-08',
+          overdue: true,
+          overdueCount: 1,
+        }),
+        item({ id: '2', description: 'Soon', nextDueDate: '2026-09-24' }),
+        item({ id: '3', description: 'Mid', nextDueDate: '2026-09-30' }),
+        item({ id: '4', description: 'Far', nextDueDate: '2026-11-09' }),
+      ]);
+      const first = await screen.findByRole('region', { name: 'Overdue & next 2 weeks' });
+      expect(within(first).getByText('SEP 8 – SEP 24')).toBeInTheDocument();
+      expect(within(first).getByText('⚠ Overdue 2 days')).toBeInTheDocument();
+      expect(within(first).getByText('In 14 days')).toBeInTheDocument();
+      const middle = screen.getByRole('region', { name: 'Later in September' });
+      expect(within(middle).getByText('Mid')).toBeInTheDocument();
+      expect(within(middle).getByText('In 20 days')).toBeInTheDocument();
+      const later = screen.getByRole('region', { name: 'Later months' });
+      expect(within(later).getByText('Far')).toBeInTheDocument();
+      expect(within(later).queryByText('Soon')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shows the empty state when nothing is scheduled', async () => {

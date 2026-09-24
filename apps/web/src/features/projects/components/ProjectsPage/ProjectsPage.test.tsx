@@ -42,38 +42,54 @@ function renderPage() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('ProjectsPage', () => {
-  it('lists status, spent and remaining in dollars; no budget reads as absent, not zero (US5 #1, #8)', async () => {
+  it('lists status, spent and remaining in dollars on cards; no budget reads as absent, not zero (US5 #1, #8)', async () => {
     stubApi({ 'GET /projects': projects });
     renderPage();
     const trip = within(
-      (await screen.findByRole('link', { name: 'Trip to France' })).closest('tr')!,
+      (await screen.findByRole('link', { name: 'Trip to France' })).closest('li')!,
     );
     expect(trip.getByText('$5,000.00')).toBeInTheDocument();
     expect(trip.getByText('$1,100.00')).toBeInTheDocument();
     expect(trip.getByText('$3,900.00')).toBeInTheDocument();
     expect(trip.getByText('active')).toBeInTheDocument();
+    expect(trip.queryByText(/Over budget/)).not.toBeInTheDocument();
 
-    const remodel = within(screen.getByRole('link', { name: 'Remodel' }).closest('tr')!);
-    expect(remodel.getByText('No budget')).toBeInTheDocument();
-    expect(remodel.getByText('—')).toBeInTheDocument();
-    expect(remodel.queryByText('$0.00 over')).not.toBeInTheDocument();
+    const remodel = within(screen.getByRole('link', { name: 'Remodel' }).closest('li')!);
+    expect(remodel.getByText('active · no budget')).toBeInTheDocument();
+    expect(remodel.getByText('$0.00')).toBeInTheDocument();
+    expect(remodel.queryByText('Budget')).not.toBeInTheDocument();
+    expect(remodel.queryByText('Remaining')).not.toBeInTheDocument();
   });
 
   it('flags an over-budget project in words with the overrun, not by colour alone (US5 #4)', async () => {
     stubApi({ 'GET /projects': projects });
     renderPage();
     const office = within(
-      (await screen.findByRole('link', { name: 'Home office' })).closest('tr')!,
+      (await screen.findByRole('link', { name: 'Home office' })).closest('li')!,
     );
-    expect(office.getByText('Over budget')).toBeInTheDocument();
-    expect(office.getByText('$26.50 over')).toBeInTheDocument();
+    expect(office.getByText(/Over budget by \$26\.50/)).toBeInTheDocument();
+    expect(office.getByText('-$26.50')).toBeInTheDocument();
+    expect(office.getByText('Closed')).toBeInTheDocument();
     expect(office.getByRole('button', { name: 'Reopen Home office' })).toBeInTheDocument();
   });
 
-  it('surfaces a rejected delete of a used project as the structured error telling to close it (US5 #6)', async () => {
+  it('states why a project with expenses cannot be deleted instead of offering Delete (FR-014)', async () => {
+    stubApi({ 'GET /projects': projects });
+    renderPage();
+    const trip = within(
+      (await screen.findByRole('link', { name: 'Trip to France' })).closest('li')!,
+    );
+    expect(trip.getByText("Has expenses, can't delete")).toBeInTheDocument();
+    expect(trip.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
+    const remodel = within(screen.getByRole('link', { name: 'Remodel' }).closest('li')!);
+    expect(remodel.getByRole('button', { name: 'Delete Remodel' })).toBeInTheDocument();
+    expect(remodel.queryByText("Has expenses, can't delete")).not.toBeInTheDocument();
+  });
+
+  it('surfaces a rejected delete as the structured error telling to close it (US5 #6)', async () => {
     stubApi({
       'GET /projects': projects,
-      'DELETE /projects/1': () => ({
+      'DELETE /projects/3': () => ({
         status: 422,
         body: {
           code: 'DOMAIN_RULE_VIOLATION',
@@ -85,7 +101,7 @@ describe('ProjectsPage', () => {
     });
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Trip to France' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete Remodel' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /DOMAIN_RULE_VIOLATION: .*close it instead/,
     );

@@ -55,6 +55,12 @@ function dialog(page: Page): Locator {
   return page.getByRole('dialog');
 }
 
+function upcomingItem(page: Page, description: string): Locator {
+  return page
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name: description, exact: true }) });
+}
+
 test('seeded items are listed by due date with relative labels and the overdue flag (US4 #1, FR-017)', async ({
   page,
 }) => {
@@ -63,19 +69,15 @@ test('seeded items are listed by due date with relative labels and the overdue f
   for (const name of ['Property tax', 'Storage rent', 'Dog walking', 'Gym trial', 'Water bill']) {
     await expect(page.getByRole('button', { name })).toBeVisible();
   }
-  const waterRow = page.getByRole('row', { name: /Water bill/ });
-  await expect(waterRow).toContainText(/Overdue \d+ days/);
-  await expect(waterRow).toContainText('2 missed');
-  await expect(page.getByRole('row', { name: /Dog walking/ })).toContainText(
-    /Due (today|tomorrow|in \d+ days)/,
-  );
+  const waterItem = upcomingItem(page, 'Water bill');
+  await expect(waterItem).toContainText(/⚠ Overdue \d+ days/);
+  await expect(waterItem).toContainText('2 missed');
+  await expect(upcomingItem(page, 'Dog walking')).toContainText(/Today|Tomorrow|In \d+ days/);
 
-  const rows = page.getByRole('row', { name: /Due|Overdue/ });
-  const dates = await rows.evaluateAll((elements) =>
-    elements
-      .map((element) => element.textContent?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? '')
-      .filter((value) => value !== ''),
-  );
+  const dates = await page
+    .locator('li time[datetime]')
+    .evaluateAll((elements) => elements.map((element) => element.getAttribute('datetime') ?? ''));
+  expect(dates.length).toBeGreaterThan(4);
   expect([...dates].sort((a, b) => a.localeCompare(b))).toEqual(dates);
 });
 
@@ -108,7 +110,7 @@ test('the projection starts from the dashboard total and flags the below-zero oc
     await expect(page.getByRole('heading', { name: 'Projection' })).toBeVisible();
     await expect(page.getByRole('status', { name: 'Current total' })).toHaveText(dashboardText);
     await expect(page.getByRole('row', { name: new RegExp(overdraftDesc) })).toContainText(
-      'Below zero',
+      'Below $0.00',
     );
     await expect(page.getByRole('row', { name: /Property tax/ })).toContainText('-$9,000.00');
   } finally {
@@ -128,9 +130,9 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
   await pickOption(page, createModal.getByRole('combobox', { name: 'Category' }), 'Rent');
   await createModal.getByLabel('Next due date').fill(dueDate);
   await press(createModal.getByRole('button', { name: 'Create scheduled item' }));
-  const billRow = page.getByRole('row', { name: new RegExp(billDesc) });
-  await expect(billRow).toContainText('$1,200.00');
-  await expect(billRow).toContainText(dueDate);
+  const billItem = upcomingItem(page, billDesc);
+  await expect(billItem).toContainText('$1,200.00');
+  await expect(billItem.locator(`time[datetime="${dueDate}"]`)).toBeVisible();
 
   await press(page.getByRole('link', { name: 'Projection', exact: true }));
   await expect(page.getByRole('row', { name: new RegExp(billDesc) }).first()).toContainText(
@@ -139,21 +141,18 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
   const projectedBefore = await page.getByRole('status', { name: 'Current total' }).innerText();
 
   await press(page.getByRole('link', { name: 'Upcoming', exact: true }));
-  await press(
-    page
-      .getByRole('row', { name: new RegExp(billDesc) })
-      .getByRole('button', { name: 'Mark paid' }),
-  );
+  await press(upcomingItem(page, billDesc).getByRole('button', { name: 'Mark paid' }));
   const confirmModal = dialog(page);
   await expect(confirmModal.getByLabel('Amount')).toHaveValue('1,200.00');
   await typeInto(confirmModal.getByLabel('Amount'), '1,250.00');
+  await expect(confirmModal.getByText('Scheduled: $1,200.00')).toBeVisible();
   await confirmModal.getByLabel('Date').fill(confirmDate);
   await typeInto(confirmModal.getByLabel('Description'), paidDesc);
   await press(confirmModal.getByRole('button', { name: 'Record payment' }));
 
-  const advancedRow = page.getByRole('row', { name: new RegExp(billDesc) });
-  await expect(advancedRow).toContainText(advancedDate);
-  await expect(advancedRow).toContainText('$1,200.00');
+  const advancedItem = upcomingItem(page, billDesc);
+  await expect(advancedItem.locator(`time[datetime="${advancedDate}"]`)).toBeVisible();
+  await expect(advancedItem).toContainText('$1,200.00');
 
   const paid = await page.request.get(`${API}/transactions?q=${encodeURIComponent(paidDesc)}`);
   const { items } = await paid.json();
@@ -170,4 +169,47 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
   }
   await press(page.locator('summary').filter({ hasText: 'Rent' }));
   await expect(page.getByRole('button', { name: paidDesc })).toBeVisible();
+});
+
+test('Mark paid is disabled with its reason written next to it for an item on an archived account (US3 #7)', async ({
+  page,
+}) => {
+  const description = `Archived bill e2e ${run}`;
+  const account = await (
+    await page.request.post(`${API}/accounts`, {
+      data: {
+        name: `Archived e2e ${run}`,
+        kind: 'bank',
+        openingBalance: '0',
+        openingDate: localDate(0),
+      },
+    })
+  ).json();
+  const categories = await (await page.request.get(`${API}/categories`)).json();
+  const created = await page.request.post(`${API}/scheduled-items`, {
+    data: {
+      kind: 'bill',
+      description,
+      amount: '4500',
+      accountId: account.id,
+      categoryId: categories.find((category: { name: string }) => category.name === 'Utilities').id,
+      nextDueDate: localDate(3),
+      recurrence: 'once',
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  await page.request.post(`${API}/accounts/${account.id}/archive`);
+  try {
+    await page.goto('/upcoming');
+    const item = upcomingItem(page, description);
+    await expect(item).toContainText('In 3 days');
+    await expect(item.getByRole('button', { name: 'Mark paid' })).toBeDisabled();
+    await expect(item.getByText('Its account is archived')).toBeVisible();
+    await expect(item.getByRole('button', { name: 'Mark paid' })).toHaveAccessibleDescription(
+      'Its account is archived',
+    );
+  } finally {
+    await page.request.delete(`${API}/scheduled-items/${id}`);
+  }
 });

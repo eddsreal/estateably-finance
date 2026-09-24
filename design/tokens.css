@@ -103,6 +103,7 @@
   --tracking-wider: 0.08em;
   --tracking-widest: 0.1em;
 
+  --spacing-0: 0;
   --spacing-2: 2px;
   --spacing-3: 3px;
   --spacing-4: 4px;
@@ -184,6 +185,13 @@
   --chart-stroke: 2.5;
   --spark-stroke: 1.8;
   --cards-grid: repeat(auto-fill, minmax(var(--spacing-232), 1fr));
+  --projects-grid: repeat(auto-fill, minmax(var(--spacing-280), 1fr));
+  --upcoming-grid: 150px minmax(0, 1fr);
+  --similar-grid: minmax(0, 1fr) 360px;
+  --report-grid: 340px minmax(0, 1fr);
+  --report-row-grid: 12px minmax(0, 1fr) 120px 48px 104px;
+  --report-item-grid: 96px minmax(0, 1fr) 120px;
+  --projection-grid: 270px minmax(0, 1fr);
   --dur-press: 100ms;
   --dur-hover: 150ms;
   --dur-dialog: 200ms;

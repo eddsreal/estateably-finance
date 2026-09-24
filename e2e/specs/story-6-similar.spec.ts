@@ -29,15 +29,15 @@ test('groups the seeded Uber rides and highlights the top group and top 5, keybo
   await page.getByLabel('To').fill(to);
   await press(page.getByRole('button', { name: 'Generate report' }));
 
-  const groups = page.getByRole('table', { name: /^Groups from/ });
-  const uber = groups.getByRole('row').filter({ has: page.getByRole('cell', { name: 'uber' }) });
-  await expect(uber).toContainText('3');
+  const groups = page.getByRole('list', { name: /^Groups from/ });
+  const uber = groups.getByRole('listitem').filter({ hasText: /^uber/ });
+  await expect(uber).toContainText('3 expenses');
   await expect(uber).toContainText('$54.90');
   await expect(groups.getByText('Most expensive group')).toHaveCount(1);
   await expect(page.locator('body')).not.toContainText('5490');
 
-  const top = page.getByRole('table', { name: 'Top 5 most expensive' });
-  await expect(top.getByRole('row')).toHaveCount(6);
+  const top = page.getByRole('list', { name: 'Top 5 most expensive' });
+  await expect(top.getByRole('listitem')).toHaveCount(5);
   await expect(top).toContainText('$');
 });
 
@@ -49,7 +49,7 @@ test('the AI narrative button ends disabled and says why when no key is configur
   await page.getByLabel('From').fill(from);
   await page.getByLabel('To').fill(to);
   await press(page.getByRole('button', { name: 'Generate report' }));
-  await expect(page.getByRole('table', { name: 'Top 5 most expensive' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Top 5 most expensive' })).toBeVisible();
 
   const narrative = page.getByRole('button', { name: '✦ AI narrative' });
   await press(narrative);
@@ -59,5 +59,5 @@ test('the AI narrative button ends disabled and says why when no key is configur
     'AI narrative is disabled: no API key configured.',
   );
   await expect(page.getByText('AI narrative is disabled: no API key configured.')).toBeVisible();
-  await expect(page.getByRole('table', { name: 'Top 5 most expensive' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Top 5 most expensive' })).toBeVisible();
 });

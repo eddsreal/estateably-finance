@@ -95,11 +95,11 @@ describe('ProjectDetailPage', () => {
     });
     renderPage();
     expect(await screen.findByRole('heading', { name: /Home office/ })).toHaveTextContent(
-      'Over budget',
+      'Over budget by $26.50',
     );
     expect(screen.getByRole('status', { name: 'Spent' })).toHaveTextContent('$76.50');
     expect(screen.getByText('of a $50.00 budget')).toBeInTheDocument();
-    expect(screen.getByText('$26.50 over')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Remaining' })).toHaveTextContent('-$26.50');
     const table = within(await screen.findByRole('table', { name: 'Expenses in Home office' }));
     expect(await table.findByText('Cash')).toBeInTheDocument();
     expect(table.getByText('Checking')).toBeInTheDocument();

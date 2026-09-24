@@ -174,7 +174,7 @@ test('rejects invalid input with errors tied to their fields (US1 #7)', async ({
   await pickOption(page, modal.getByRole('combobox', { name: 'Account' }), checkingName);
   await pickOption(page, modal.getByRole('combobox', { name: 'Category' }), 'Groceries');
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(modal.getByText('must be today or earlier')).toBeVisible();
+  await expect(modal.getByText("Date can't be in the future. Schedule it instead.")).toBeVisible();
   await expect(modal.getByLabel('Date')).toHaveAttribute('aria-invalid', 'true');
   await press(modal.getByRole('button', { name: 'Cancel' }));
 });
@@ -186,6 +186,17 @@ test('a new category is immediately usable on an expense, and deleting removes i
   await press(page.getByRole('button', { name: 'New category' }));
   await typeInto(dialog(page).getByLabel('Name'), categoryName);
   await press(dialog(page).getByRole('button', { name: 'Create category' }));
+  await expect(page.getByRole('row', { name: new RegExp(categoryName) })).toBeVisible();
+
+  await press(page.getByRole('button', { name: `Rename ${categoryName}` }));
+  const renameInput = page.getByLabel(`Rename "${categoryName}"`);
+  await expect(renameInput).toBeFocused();
+  await typeInto(renameInput, 'groceries');
+  await renameInput.press('Enter');
+  await expect(page.getByText('A category named "Groceries" already exists.')).toBeVisible();
+  await expect(renameInput).toHaveAttribute('aria-invalid', 'true');
+  await renameInput.press('Escape');
+  await expect(renameInput).toHaveCount(0);
   await expect(page.getByRole('row', { name: new RegExp(categoryName) })).toBeVisible();
 
   await press(page.getByRole('link', { name: 'Transactions', exact: true }));

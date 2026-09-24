@@ -6,6 +6,7 @@ const remodel = `Remodel e2e ${run}`;
 const flights = `Flights ${run}`;
 const hotel = `Hotel deposit ${run}`;
 const taxi = `Untagged taxi ${run}`;
+const API = 'http://localhost:3000';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -46,7 +47,17 @@ function dialog(page: Page): Locator {
 }
 
 function projectRow(page: Page, name: string): Locator {
-  return page.getByRole('row').filter({ has: page.getByRole('link', { name, exact: true }) });
+  return page
+    .getByRole('list', { name: 'Projects' })
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('link', { name, exact: true }) });
+}
+
+async function projectId(page: Page, name: string): Promise<string> {
+  const projects: { id: string; name: string }[] = await (
+    await page.request.get(`${API}/projects`)
+  ).json();
+  return projects.find((project) => project.name === name)!.id;
 }
 
 async function createProject(page: Page, name: string, budget?: string): Promise<void> {
@@ -104,8 +115,7 @@ test('the seeded projects show spend, remaining and the over-budget overrun (US5
 
   const office = projectRow(page, 'Home office');
   await expect(office).toContainText('closed');
-  await expect(office).toContainText('Over budget');
-  await expect(office).toContainText('$26.50 over');
+  await expect(office).toContainText('Over budget by $26.50');
 
   await press(page.getByRole('link', { name: 'Trip to France' }));
   await expect(page.getByRole('heading', { name: 'Trip to France' })).toBeVisible();
@@ -164,9 +174,12 @@ test('deleting the seeded project is refused; close hides it, keeps its report, 
   page,
 }) => {
   await page.goto('/projects');
-  await press(page.getByRole('button', { name: 'Delete Trip to France' }));
-  await expect(page.getByRole('alert')).toContainText('DOMAIN_RULE_VIOLATION');
-  await expect(page.getByRole('alert')).toContainText('close it instead');
+  await expect(projectRow(page, 'Trip to France')).toContainText("Has expenses, can't delete");
+  await expect(page.getByRole('button', { name: 'Delete Trip to France' })).toHaveCount(0);
+  const refused = await page.request.delete(
+    `${API}/projects/${await projectId(page, 'Trip to France')}`,
+  );
+  expect((await refused.json()).code).toBe('DOMAIN_RULE_VIOLATION');
   await expect(projectRow(page, 'Trip to France')).toContainText('$585.00');
 
   await press(page.getByRole('button', { name: 'Close Trip to France' }));
@@ -212,9 +225,8 @@ test('a project without a budget shows no budget rather than zero, and an unused
 }) => {
   await createProject(page, remodel);
   const row = projectRow(page, remodel);
-  await expect(row).toContainText('No budget');
-  await expect(row).toContainText('—');
-  await expect(row).not.toContainText('$0.00 over');
+  await expect(row).toContainText(/no budget/i);
+  await expect(row).not.toContainText('Over budget');
 
   await press(row.getByRole('link', { name: remodel }));
   await expect(page.getByText('No budget')).toBeVisible();

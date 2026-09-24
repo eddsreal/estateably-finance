@@ -1,20 +1,23 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
+import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
 import {
   BANNER_ERROR,
+  BANNER_WARNING,
   BUTTON,
   BUTTON_PRIMARY,
   FIELD,
   FIELD_ERROR,
   FORM,
   FORM_ACTIONS,
+  HINT,
   INPUT,
   LABEL,
   SEGMENT,
@@ -34,6 +37,8 @@ export type EditableAccount = {
   kind: 'bank' | 'cash' | 'card';
   openingBalance: string;
   openingDate: string;
+  archived?: boolean;
+  balance?: string;
 };
 
 const FIELDS = ['name', 'kind', 'openingBalance', 'openingDate'] as const;
@@ -68,6 +73,7 @@ export function AccountForm({
         }
       : { name: '', kind: 'bank', openingBalance: '0', openingDate: localToday() },
   });
+  const name = useWatch({ control, name: 'name' });
 
   const mutation = useMutation({
     mutationFn: (values: AccountFormValues) => {
@@ -90,6 +96,22 @@ export function AccountForm({
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) =>
+      unwrap(
+        account?.archived
+          ? api.POST('/accounts/{id}/unarchive', { params: { path: { id } } })
+          : api.POST('/accounts/{id}/archive', { params: { path: { id } } }),
+      ),
+    onSuccess: async () => {
+      await invalidateEntryDerived(queryClient);
+      onDone();
+    },
+    onError: (error) => {
+      setFormError(applyServerError(error, setError, FIELDS));
+    },
+  });
+
   return (
     <form
       className={FORM}
@@ -101,15 +123,24 @@ export function AccountForm({
         })(event);
       }}
     >
+      {account?.archived && (
+        <p className={BANNER_WARNING}>
+          Archived accounts keep their history but aren't counted in the total. Scheduled payments
+          on this account can't be marked paid.
+        </p>
+      )}
       {formError && (
         <div className={BANNER_ERROR} role="alert">
           {formError}
         </div>
       )}
       <div className={FIELD}>
-        <label className={LABEL} htmlFor="account-name">
-          Name
-        </label>
+        <div className="flex justify-between gap-8">
+          <label className={LABEL} htmlFor="account-name">
+            Name
+          </label>
+          <span className="font-mono text-12 text-text-2">{name.length}/60</span>
+        </div>
         <input
           id="account-name"
           type="text"
@@ -148,56 +179,82 @@ export function AccountForm({
           </p>
         )}
       </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="account-opening-balance">
-          Opening balance
-        </label>
-        <Controller
-          control={control}
-          name="openingBalance"
-          rules={{
-            validate: (value) =>
-              parseDollars(value) !== null || 'Enter a dollar amount like 1,234.50',
-          }}
-          render={({ field }) => (
-            <MoneyInput
-              id="account-opening-balance"
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              autoFocus={!account}
-              invalid={!!errors.openingBalance}
-              describedBy={errors.openingBalance ? 'account-opening-balance-error' : undefined}
-              ref={field.ref}
-            />
+      <div className="grid grid-cols-2 gap-12">
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="account-opening-balance">
+            Opening balance
+          </label>
+          <Controller
+            control={control}
+            name="openingBalance"
+            rules={{
+              validate: (value) =>
+                parseDollars(value) !== null || 'Enter a dollar amount like 1,234.50',
+            }}
+            render={({ field }) => (
+              <MoneyInput
+                id="account-opening-balance"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                autoFocus={!account}
+                invalid={!!errors.openingBalance}
+                describedBy={errors.openingBalance ? 'account-opening-balance-error' : undefined}
+                ref={field.ref}
+              />
+            )}
+          />
+          {errors.openingBalance && (
+            <p className={FIELD_ERROR} role="alert" id="account-opening-balance-error">
+              {errors.openingBalance.message}
+            </p>
           )}
-        />
-        {errors.openingBalance && (
-          <p className={FIELD_ERROR} role="alert" id="account-opening-balance-error">
-            {errors.openingBalance.message}
-          </p>
-        )}
+        </div>
+        <div className={FIELD}>
+          <label className={LABEL} htmlFor="account-opening-date">
+            Opening date
+          </label>
+          <input
+            id="account-opening-date"
+            type="date"
+            className={INPUT}
+            max={localToday()}
+            aria-invalid={errors.openingDate ? true : undefined}
+            aria-describedby={errors.openingDate ? 'account-opening-date-error' : undefined}
+            {...register('openingDate', { required: 'opening date is required' })}
+          />
+          {errors.openingDate && (
+            <p className={FIELD_ERROR} role="alert" id="account-opening-date-error">
+              {errors.openingDate.message}
+            </p>
+          )}
+        </div>
       </div>
-      <div className={FIELD}>
-        <label className={LABEL} htmlFor="account-opening-date">
-          Opening date
-        </label>
-        <input
-          id="account-opening-date"
-          type="date"
-          className={INPUT}
-          max={localToday()}
-          aria-invalid={errors.openingDate ? true : undefined}
-          aria-describedby={errors.openingDate ? 'account-opening-date-error' : undefined}
-          {...register('openingDate', { required: 'opening date is required' })}
-        />
-        {errors.openingDate && (
-          <p className={FIELD_ERROR} role="alert" id="account-opening-date-error">
-            {errors.openingDate.message}
-          </p>
-        )}
-      </div>
+      {account?.balance === undefined ? (
+        <p className={HINT}>
+          The opening balance can be negative, for example a card that starts with an amount owed:
+          -350.00.
+        </p>
+      ) : (
+        <p className="flex justify-between gap-8 text-13 text-text-2">
+          <span>Current balance</span>
+          <Amount cents={account.balance} />
+        </p>
+      )}
       <div className={FORM_ACTIONS}>
+        {account && (
+          <button
+            type="button"
+            className={`${BUTTON} mr-auto`}
+            disabled={archiveMutation.isPending}
+            onClick={() => {
+              setFormError(null);
+              archiveMutation.mutate(account.id);
+            }}
+          >
+            {account.archived ? 'Unarchive' : 'Archive account'}
+          </button>
+        )}
         <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>

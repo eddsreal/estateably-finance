@@ -76,3 +76,22 @@ export function countUpFrames(start: Cents, end: Cents): Cents[] {
     (_, k) => (from + (distance * BigInt(k)) / 60n).toString() as Cents,
   );
 }
+
+export function share(totals: Cents[]): string[] {
+  const values = totals.map((total) => BigInt(total));
+  const grand = values.reduce((sum, value) => sum + value, 0n);
+  if (grand === 0n) return totals.map(() => '0.0');
+  const tenths = values.map((value) => (value * 1000n) / grand);
+  const order = values
+    .map((value, index) => ({ index, remainder: (value * 1000n) % grand }))
+    .sort((a, b) =>
+      a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1,
+    );
+  let left = 1000n - tenths.reduce((sum, value) => sum + value, 0n);
+  for (const { index } of order) {
+    if (left === 0n) break;
+    tenths[index] += 1n;
+    left -= 1n;
+  }
+  return tenths.map((value) => `${value / 10n}.${value % 10n}`);
+}

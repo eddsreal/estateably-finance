@@ -290,6 +290,8 @@ export function AccountsPage() {
                           kind: account.kind,
                           openingBalance: account.openingBalance,
                           openingDate: account.openingDate,
+                          archived: account.archived,
+                          balance: account.balance,
                         })
                       }
                     >
