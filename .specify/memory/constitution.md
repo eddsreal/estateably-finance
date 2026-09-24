@@ -1,5 +1,15 @@
 <!--
 Sync Impact Report
+- Version change: 1.0.0 → 1.1.0 (MINOR: workflow guidance materially changed)
+- Modified sections:
+  - Development Workflow & Quality Gates: ceilings of deliberate simplifications are recorded
+    in the plan's Complexity Tracking instead of code comments. Rationale: CLAUDE.md forbids
+    comments in code, and feature 001 already recorded every ceiling in Complexity Tracking.
+- Templates requiring updates: none. CLAUDE.md already states this rule.
+- Code made non-compliant: none. No ceiling comment exists in the code.
+- Follow-up TODOs: none
+
+Previous report (1.0.0)
 - Version change: (template, unversioned) → 1.0.0
 - Modified principles: none (initial ratification; all template placeholders replaced)
 - Added sections:
@@ -148,8 +158,8 @@ keep the option to split open without paying the distributed-systems cost up fro
 - Complexity that appears to violate a principle (a second entry-creation path, a cached balance
   without reconciliation, a cross-module internal import) MUST be justified in writing in the
   plan's complexity tracking, or removed.
-- Deliberate simplifications with a known ceiling MUST be marked in code with a comment naming
-  the ceiling and the upgrade path.
+- Deliberate simplifications with a known ceiling MUST be recorded in the plan's Complexity
+  Tracking, naming the ceiling and the upgrade path. They are not marked in code comments.
 
 ## Governance
 
@@ -168,4 +178,4 @@ keep the option to split open without paying the distributed-systems cost up fro
 - Runtime development guidance for agents lives in `CLAUDE.md` and MUST stay consistent with
   this document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-18 | **Last Amended**: 2026-09-18
+**Version**: 1.1.0 | **Ratified**: 2026-09-18 | **Last Amended**: 2026-09-22

@@ -26,15 +26,6 @@ The constitution is the authority; these are the ones that get code rejected.
 5. Domain tests are not optional, even though `tasks-template.md` marks tests as
    "only if tests requested". Principle VI wins.
 
-## Any UI work
-
-- **[`design/design-system.md`](design/design-system.md)** — money formatting, the four
-  transaction kinds, custom pickers, error placement, empty states.
-- **[`design/tokens.css`](design/tokens.css)** — every colour, size, radius and control height.
-  Never hard-code a hex in a component; add a token instead.
-- **[`design/reference.html`](design/reference.html)** — what it all looks like. Open it in a
-  browser; no dependencies, no network.
-
 ## How to work with me
 
 **Spec Kit sets the order; I set the pace.**
