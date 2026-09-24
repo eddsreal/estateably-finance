@@ -22,6 +22,12 @@ function seeded(failing: readonly unknown[] | null) {
   return { queryClient, calls, seed, arm };
 }
 
+describe('queryKeys', () => {
+  it('keeps the transaction search under the transactions prefix', () => {
+    expect(queryKeys.transactionSearch('uber').slice(0, 1)).toEqual([...queryKeys.transactions]);
+  });
+});
+
 describe('refetchEntryDerived', () => {
   it('refetches every entry-derived query and resolves', async () => {
     const { queryClient, calls, seed, arm } = seeded(null);

@@ -139,10 +139,13 @@
   --spacing-50: 50px;
   --spacing-52: 52px;
   --spacing-56: 56px;
+  --spacing-62: 62px;
+  --spacing-110: 110px;
   --spacing-190: 190px;
   --spacing-232: 232px;
   --spacing-280: 280px;
   --spacing-440: 440px;
+  --spacing-620: 620px;
 
   --radius-xs: 5px;
   --radius-sm: 9px;
@@ -164,6 +167,7 @@
   --shadow-focus: 0 0 0 3px rgb(26 122 83 / 0.25);
   --shadow-focus-negative: 0 0 0 3px rgb(180 35 24 / 0.12);
   --shadow-nav-active: inset 2px 0 0 #25a06d;
+  --shadow-selected: inset 3px 0 0 #1a7a53;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 

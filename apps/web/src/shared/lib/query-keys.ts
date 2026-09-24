@@ -9,6 +9,7 @@ export const queryKeys = {
   transactions: ['transactions'] as const,
   transactionsList: (filters: Record<string, string | number | undefined>) =>
     ['transactions', 'list', filters] as const,
+  transactionSearch: (q: string) => ['transactions', 'search', q] as const,
   categories: ['categories'] as const,
   categoriesList: (includeArchived: boolean) => ['categories', 'list', includeArchived] as const,
   projects: ['projects'] as const,

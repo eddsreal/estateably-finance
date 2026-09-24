@@ -4,7 +4,7 @@ import { Icon, ICONS } from '../../shared/ui/Icon/Icon';
 
 type NavItem = { to: string; label: string; icon: string };
 
-const GROUPS: { title: string; items: NavItem[] }[] = [
+export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Money',
     items: [
@@ -82,7 +82,7 @@ function footerDate(): string {
   }).format(new Date(`${localToday()}T00:00:00Z`));
 }
 
-export function Sidebar() {
+export function Sidebar({ onSearch }: { onSearch: () => void }) {
   const { pathname } = useLocation();
   return (
     <aside className="flex h-full w-232 flex-col gap-18 rounded-2xl bg-ink-900 px-12 py-18">
@@ -95,15 +95,20 @@ export function Sidebar() {
         </span>
         <span className="text-15 font-semibold tracking-snug text-text-on-ink">Estateably</span>
       </div>
-      <div className="flex h-36 items-center gap-8 rounded-md bg-ink-850 px-10 text-13 text-ink-300">
-        <Icon path="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-4-4" size="size-15" />
+      <button
+        type="button"
+        aria-keyshortcuts="Meta+K Control+K"
+        className="flex h-36 cursor-pointer items-center gap-8 rounded-md bg-ink-850 px-10 text-13 text-ink-300 transition-colors duration-(--dur-hover) ease-(--ease-out) hover:text-text-on-ink"
+        onClick={onSearch}
+      >
+        <Icon path={ICONS.search} size="size-15" />
         Search
         <kbd className="ml-auto rounded-xs bg-ink-700 px-6 py-2 font-mono text-11 text-ink-200">
           ⌘K
         </kbd>
-      </div>
+      </button>
       <nav aria-label="Primary" className="flex flex-col gap-18">
-        {GROUPS.map((group) => (
+        {NAV_GROUPS.map((group) => (
           <div key={group.title} className="flex flex-col gap-2">
             <h2
               id={`nav-${group.title}`}

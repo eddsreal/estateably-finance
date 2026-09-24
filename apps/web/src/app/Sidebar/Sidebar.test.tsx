@@ -1,14 +1,16 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
 
-function renderAt(path: string) {
+function renderAt(path: string, onSearch = vi.fn<() => void>()) {
   render(
     <MemoryRouter initialEntries={[path]}>
-      <Sidebar />
+      <Sidebar onSearch={onSearch} />
     </MemoryRouter>,
   );
+  return onSearch;
 }
 
 describe('Sidebar', () => {
@@ -66,6 +68,14 @@ describe('Sidebar', () => {
     renderAt('/projects/3');
     expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Projection' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('opens the command palette from the Search field, which names its ⌘K shortcut', async () => {
+    const onSearch = renderAt('/');
+    const search = screen.getByRole('button', { name: /^Search/ });
+    expect(search).toHaveAttribute('aria-keyshortcuts', 'Meta+K Control+K');
+    await userEvent.setup().click(search);
+    expect(onSearch).toHaveBeenCalledTimes(1);
   });
 
   it('shows the current date and the currency in the footer', () => {

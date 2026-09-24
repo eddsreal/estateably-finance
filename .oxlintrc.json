@@ -60,7 +60,7 @@
       }
     },
     {
-      "files": ["apps/web/src/shared/ui/Picker/**"],
+      "files": ["apps/web/src/shared/ui/Picker/**", "apps/web/src/shared/ui/CommandPalette/**"],
       "rules": {
         "jsx-a11y/prefer-tag-over-role": "off",
         "jsx-a11y/no-noninteractive-element-to-interactive-role": "off"

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, SyntheticEvent, useEffect, useRef } from 'react';
 import { ROW_ACTION } from '../../lib/styles';
 
 type ModalProps = {
@@ -6,9 +6,13 @@ type ModalProps = {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  variant?: 'form' | 'palette';
 };
 
-export function Modal({ title, open, onClose, children }: ModalProps) {
+const DIALOG =
+  'w-full bg-sand-0 p-0 text-text-1 shadow-overlay backdrop:bg-scrim open:animate-dialog';
+
+export function Modal({ title, open, onClose, children, variant = 'form' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -47,15 +51,30 @@ export function Modal({ title, open, onClose, children }: ModalProps) {
 
   if (!open) return null;
 
+  const onCancel = (event: SyntheticEvent) => {
+    event.preventDefault();
+    onClose();
+  };
+
+  if (variant === 'palette') {
+    return (
+      <dialog
+        ref={dialogRef}
+        className={`${DIALOG} mx-auto mt-110 max-w-620 overflow-hidden rounded-3xl`}
+        aria-label={title}
+        onCancel={onCancel}
+      >
+        {children}
+      </dialog>
+    );
+  }
+
   return (
     <dialog
       ref={dialogRef}
-      className="m-auto w-full max-w-440 rounded-4xl bg-sand-0 p-0 text-text-1 shadow-overlay backdrop:bg-scrim open:animate-dialog"
+      className={`${DIALOG} m-auto max-w-440 rounded-4xl`}
       aria-label={title}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
+      onCancel={onCancel}
     >
       <div className="flex items-center justify-between gap-12 px-22 pt-20">
         <h2 className="text-17 font-semibold">{title}</h2>
