@@ -24,6 +24,7 @@ type Mocks = {
     deleteByTransaction: ReturnType<typeof vi.fn>;
     existsForCategory: ReturnType<typeof vi.fn>;
     listForAccount: ReturnType<typeof vi.fn>;
+    earliestDate: ReturnType<typeof vi.fn>;
     spentByProject: ReturnType<typeof vi.fn>;
   };
   systemAccounts: {
@@ -55,6 +56,7 @@ function build(): { service: LedgerService; mocks: Mocks } {
       deleteByTransaction: asyncMock(),
       existsForCategory: asyncMock().mockResolvedValue(false),
       listForAccount: asyncMock().mockResolvedValue([]),
+      earliestDate: asyncMock().mockResolvedValue(null),
       spentByProject: asyncMock().mockResolvedValue(new Map()),
     },
     systemAccounts: {
@@ -279,5 +281,34 @@ describe('LedgerService', () => {
     ]);
     expect(await service.balanceAsOf(1n, '2026-09-10')).toBe(150000n);
     expect(mocks.snapshots.get).not.toHaveBeenCalled();
+  });
+
+  it('computes the daily series from the same entries read as balanceAsOf', async () => {
+    mocks.entries.listForAccount.mockResolvedValue([
+      { date: '2026-09-01', amount: 150000n },
+      { date: '2026-09-12', amount: 300000n },
+    ]);
+    expect(await service.balanceSeries(1n, '2026-09-11', '2026-09-13')).toEqual([
+      150000n,
+      450000n,
+      450000n,
+    ]);
+    expect(mocks.entries.listForAccount).toHaveBeenCalledWith(1n);
+    expect(mocks.snapshots.get).not.toHaveBeenCalled();
+  });
+
+  it('answers the earliest entry date of the given accounts, or null', async () => {
+    mocks.entries.earliestDate.mockResolvedValue('2026-08-15');
+    expect(await service.earliestEntryDate([1n, 3n])).toBe('2026-08-15');
+    expect(mocks.entries.earliestDate).toHaveBeenCalledWith([1n, 3n]);
+
+    mocks.entries.earliestDate.mockResolvedValue(null);
+    expect(await service.earliestEntryDate([4n])).toBeNull();
+  });
+
+  it('answers null for no accounts without querying', async () => {
+    mocks.entries.earliestDate.mockClear();
+    expect(await service.earliestEntryDate([])).toBeNull();
+    expect(mocks.entries.earliestDate).not.toHaveBeenCalled();
   });
 });

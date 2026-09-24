@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
@@ -28,10 +29,6 @@ const KINDS: { value: AccountFormValues['kind']; label: string }[] = [
   { value: 'cash', label: 'Cash' },
   { value: 'card', label: 'Card' },
 ];
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 export function AccountForm({
   account,

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { Cents, formatCents, isNegative } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
@@ -11,10 +12,6 @@ const KIND_META: Record<'bill' | 'income', { glyph: string; chip: string; label:
   bill: { glyph: '↑', chip: 'expense', label: 'Bill' },
   income: { glyph: '↓', chip: 'income', label: 'Income' },
 };
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 function shiftMonths(date: string, months: number): { year: number; month: number } {
   const [year, month] = date.split('-').map(Number);

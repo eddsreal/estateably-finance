@@ -49,9 +49,13 @@ export function plainText(text: string): string {
 export class AiService {
   constructor(private readonly reports: ReportsService) {}
 
+  isConfigured(): boolean {
+    return (process.env.LLM_API_KEY ?? '') !== '';
+  }
+
   async similarNarrative(from: string, to: string): Promise<string> {
+    if (!this.isConfigured()) throw new AiNotConfiguredError();
     const apiKey = process.env.LLM_API_KEY ?? '';
-    if (apiKey === '') throw new AiNotConfiguredError();
     const report = await this.reports.similar(from, to);
     const baseUrl = process.env.LLM_BASE_URL || 'https://api.anthropic.com';
     const timeout = timeoutMs();

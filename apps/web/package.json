@@ -6,7 +6,8 @@
     "dev": "node scripts/copy-docs.mjs && vite",
     "build": "node scripts/copy-docs.mjs && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.103.2",

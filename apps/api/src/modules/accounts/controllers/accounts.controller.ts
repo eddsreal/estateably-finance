@@ -11,6 +11,8 @@ import {
   AccountResponseDto,
   BalanceResponseDto,
 } from '../dtos/account-response.dto';
+import { BalanceHistoryQueryDto, BalanceHistoryQueryPipe } from '../dtos/balance-history-query.dto';
+import { BalanceHistoryResponseDto } from '../dtos/balance-history-response.dto';
 import { AccountsService } from '../services/accounts.service';
 
 @Controller('accounts')
@@ -30,6 +32,19 @@ export class AccountsController {
         kind: body.kind,
         openingBalance: BigInt(body.openingBalance),
         openingDate: body.openingDate,
+      }),
+    );
+  }
+
+  @Get('balance-history')
+  async getBalanceHistory(
+    @Query(BalanceHistoryQueryPipe) query: BalanceHistoryQueryDto,
+  ): Promise<BalanceHistoryResponseDto> {
+    return BalanceHistoryResponseDto.from(
+      await this.accounts.balanceHistory({
+        from: query.from,
+        to: query.to,
+        includeArchived: query.includeArchived,
       }),
     );
   }

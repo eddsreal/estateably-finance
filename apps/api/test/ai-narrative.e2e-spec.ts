@@ -132,4 +132,16 @@ describe('AI narrative over the similar report (US6, FR-015)', () => {
     expectError(res.body, 'VALIDATION_FAILED');
     expect(received).toHaveLength(0);
   });
+
+  it('reports configured from the key alone, without calling the provider', async () => {
+    const set = await request(http).get('/ai/status').expect(200);
+    expectValid('AiStatusResponse', set.body);
+    expect(set.body).toEqual({ configured: true });
+
+    vi.stubEnv('LLM_API_KEY', '');
+    const empty = await request(http).get('/ai/status').expect(200);
+    expectValid('AiStatusResponse', empty.body);
+    expect(empty.body).toEqual({ configured: false });
+    expect(received).toHaveLength(0);
+  });
 });

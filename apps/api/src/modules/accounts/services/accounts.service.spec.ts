@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ArchivedAccountError,
   DomainRuleViolationError,
@@ -48,6 +48,8 @@ function build() {
       findOpening: asyncMock().mockResolvedValue(null),
       currentBalance: asyncMock().mockResolvedValue(0n),
       balanceAsOf: asyncMock().mockResolvedValue(0n),
+      balanceSeries: asyncMock(),
+      earliestEntryDate: asyncMock().mockResolvedValue(null),
     },
   };
   const service = new AccountsService(
@@ -233,5 +235,100 @@ describe('AccountsService', () => {
     const { items, totalBalance } = await service.list(true);
     expect(items).toHaveLength(3);
     expect(totalBalance).toBe(123n);
+  });
+
+  describe('balanceHistory', () => {
+    const series: Record<string, bigint[]> = {
+      '1': [100n, 150n, 150n],
+      '2': [900n, 900n, 0n],
+      '3': [23n, -7n, 40n],
+    };
+
+    beforeEach(() => {
+      vi.stubEnv('APP_TIMEZONE', 'UTC');
+      mocks.accounts.list.mockImplementation((includeArchived: unknown) =>
+        Promise.resolve(
+          [
+            { id: 1n, archived: false },
+            { id: 2n, archived: true },
+            { id: 3n, archived: false },
+          ].filter((row) => includeArchived || !row.archived),
+        ),
+      );
+      mocks.ledger.balanceSeries.mockImplementation((id: unknown) =>
+        Promise.resolve(series[String(id)]),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('sums the total element-wise over non-archived accounts only', async () => {
+      const history = await service.balanceHistory({
+        from: '2026-09-10',
+        to: '2026-09-12',
+        includeArchived: true,
+      });
+      expect(history.accounts.map((account) => account.accountId)).toEqual([1n, 2n, 3n]);
+      expect(history.accounts[1]).toEqual({ accountId: 2n, archived: true, balances: series['2'] });
+      expect(history.total).toEqual([123n, 143n, 190n]);
+      expect(mocks.ledger.balanceSeries).toHaveBeenCalledWith(1n, '2026-09-10', '2026-09-12');
+    });
+
+    it('leaves the total unchanged when archived series are added', async () => {
+      const without = await service.balanceHistory({
+        from: '2026-09-10',
+        to: '2026-09-12',
+        includeArchived: false,
+      });
+      expect(without.accounts).toHaveLength(2);
+      expect(without.total).toEqual([123n, 143n, 190n]);
+    });
+
+    it('answers zeros when there are no active accounts', async () => {
+      mocks.accounts.list.mockResolvedValue([{ id: 2n, archived: true }]);
+      const history = await service.balanceHistory({
+        from: '2026-09-10',
+        to: '2026-09-12',
+        includeArchived: true,
+      });
+      expect(history.total).toEqual([0n, 0n, 0n]);
+    });
+
+    it('defaults to to today and from to the earliest entry of active accounts only', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-25T12:00:00Z'));
+      try {
+        mocks.ledger.earliestEntryDate.mockResolvedValue('2026-09-01');
+        mocks.ledger.balanceSeries.mockResolvedValue(new Array(25).fill(0n));
+        for (const includeArchived of [false, true]) {
+          const history = await service.balanceHistory({ includeArchived });
+          expect(history.from).toBe('2026-09-01');
+          expect(history.to).toBe('2026-09-25');
+          expect(history.total).toHaveLength(25);
+          expect(mocks.ledger.earliestEntryDate).toHaveBeenLastCalledWith([1n, 3n]);
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('uses to as from when the active accounts have no entries', async () => {
+      mocks.ledger.earliestEntryDate.mockResolvedValue(null);
+      mocks.ledger.balanceSeries.mockResolvedValue([0n]);
+      const history = await service.balanceHistory({ to: '2026-09-12', includeArchived: false });
+      expect(history.from).toBe('2026-09-12');
+      expect(history.total).toEqual([0n]);
+    });
+
+    it('clamps the default from to 10 years before to', async () => {
+      mocks.ledger.earliestEntryDate.mockResolvedValue('2001-03-04');
+      mocks.ledger.balanceSeries.mockResolvedValue(new Array(3653).fill(1n));
+      const history = await service.balanceHistory({ to: '2026-09-12', includeArchived: false });
+      expect(history.from).toBe('2016-09-12');
+      expect(history.total).toHaveLength(3653);
+      expect(history.total[3652]).toBe(2n);
+    });
   });
 });

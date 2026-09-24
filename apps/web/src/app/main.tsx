@@ -1,9 +1,8 @@
-import '../../../../design/tokens.css';
 import './app.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, NavLink, Outlet, RouterProvider } from 'react-router';
+import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AccountDetailRoute } from '../routes/account-detail';
 import { AccountsRoute } from '../routes/accounts';
 import { CategoriesRoute } from '../routes/categories';
@@ -14,29 +13,7 @@ import { ReportRoute } from '../routes/report';
 import { SimilarRoute } from '../routes/similar';
 import { TransactionsRoute } from '../routes/transactions';
 import { UpcomingRoute } from '../routes/upcoming';
-
-function Shell() {
-  return (
-    <>
-      <nav className="app-nav" aria-label="Primary">
-        <span className="brand">Estateably Finance</span>
-        <NavLink to="/" end>
-          Accounts
-        </NavLink>
-        <NavLink to="/transactions">Transactions</NavLink>
-        <NavLink to="/report">Report</NavLink>
-        <NavLink to="/similar">Similar</NavLink>
-        <NavLink to="/upcoming">Upcoming</NavLink>
-        <NavLink to="/projection">Projection</NavLink>
-        <NavLink to="/projects">Projects</NavLink>
-        <NavLink to="/categories">Categories</NavLink>
-      </nav>
-      <main>
-        <Outlet />
-      </main>
-    </>
-  );
-}
+import { Shell } from './Shell/Shell';
 
 const router = createBrowserRouter([
   {

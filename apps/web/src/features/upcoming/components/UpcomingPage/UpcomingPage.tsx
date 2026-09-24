@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
@@ -19,10 +20,6 @@ const RECURRENCE_LABEL: Record<string, string> = {
   weekly: 'Weekly',
   monthly: 'Monthly',
 };
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 export function dueLabel(date: string, today: string): string {
   const diff = Math.round(

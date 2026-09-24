@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { formatPlain, parseDollars, Cents } from '../../../../shared/lib/money';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
@@ -22,10 +23,6 @@ type FormValues = {
 };
 
 const FIELDS = ['amount', 'date', 'accountId', 'categoryId', 'description'] as const;
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 export function ConfirmItemForm({
   item,

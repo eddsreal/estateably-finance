@@ -41,6 +41,7 @@ export class TransactionsController {
         projectId: query.projectId === undefined ? undefined : BigInt(query.projectId),
         from: query.from,
         to: query.to,
+        q: query.q,
         limit: query.limit,
         offset: query.offset,
       }),

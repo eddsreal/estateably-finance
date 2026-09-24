@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { formatPlain, parseDollars, Cents } from '../../../../shared/lib/money';
 import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
@@ -56,10 +57,6 @@ const RECURRENCES: { value: 'once' | 'weekly' | 'monthly'; label: string }[] = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
 ];
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 export function ScheduledItemForm({
   item,

@@ -2,12 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { Cents, formatCents, isNegative } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 function Amount({ cents }: { cents: string }) {
   return (

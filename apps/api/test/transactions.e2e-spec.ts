@@ -416,4 +416,93 @@ describe('transactions (US1)', () => {
     }
     expect(await totalFor(accountA)).toBe(before);
   });
+
+  describe('search by description (q)', () => {
+    const tag = `q${run}`;
+    const ids: Record<string, string> = {};
+
+    async function post(body: Record<string, string>): Promise<string> {
+      const res = await request(http).post('/transactions').send(body).expect(201);
+      return res.body.id;
+    }
+
+    function search(query: Record<string, string | number>) {
+      return request(http).get('/transactions').query(query);
+    }
+
+    async function descriptionsFor(query: Record<string, string | number>): Promise<string[]> {
+      const res = await search(query).expect(200);
+      expectValid('PaginatedTransactions', res.body);
+      return res.body.items.map((item: { description: string }) => item.description);
+    }
+
+    beforeAll(async () => {
+      const expense = (description: string, date: string) =>
+        post({
+          kind: 'expense',
+          date,
+          description: `${tag} ${description}`,
+          amount: '100',
+          accountId: accountA,
+          categoryId: groceriesId,
+        });
+      ids.ride = await expense('Uber ride', '2026-09-05');
+      ids.eats = await expense('UBER eats', '2026-09-07');
+      ids.refund = await post({
+        kind: 'income',
+        date: '2026-09-06',
+        description: `${tag} uber refund`,
+        amount: '100',
+        accountId: accountB,
+        categoryId: salaryId,
+      });
+      ids.deleted = await expense('uber deleted', '2026-09-08');
+      await request(http).delete(`/transactions/${ids.deleted}`).expect(204);
+      await expense('lunch', '2026-09-06');
+      await expense('50% off', '2026-09-06');
+      await expense('5000 off', '2026-09-06');
+      await expense('a_b', '2026-09-06');
+      await expense('axb', '2026-09-06');
+      await expense('c\\d', '2026-09-06');
+      await expense('cxd', '2026-09-06');
+    });
+
+    it('matches a substring ignoring case, newest first, without soft-deleted rows', async () => {
+      const res = await search({ q: `${tag} uber` }).expect(200);
+      expectValid('PaginatedTransactions', res.body);
+      expect(res.body.items.map((item: { id: string }) => item.id)).toEqual([
+        ids.eats,
+        ids.refund,
+        ids.ride,
+      ]);
+      expect(res.body.total).toBe(3);
+    });
+
+    it('respects limit while total counts every match', async () => {
+      const res = await search({ q: `${tag} UBER`, limit: 2 }).expect(200);
+      expectValid('PaginatedTransactions', res.body);
+      expect(res.body.items).toHaveLength(2);
+      expect(res.body.total).toBe(3);
+    });
+
+    it('combines with accountId by AND', async () => {
+      const res = await search({ q: `${tag} uber`, accountId: accountA }).expect(200);
+      expectValid('PaginatedTransactions', res.body);
+      expect(res.body.items.map((item: { id: string }) => item.id)).toEqual([ids.eats, ids.ride]);
+    });
+
+    it('matches %, _ and \\ literally', async () => {
+      expect(await descriptionsFor({ q: `${tag} 50%` })).toEqual([`${tag} 50% off`]);
+      expect(await descriptionsFor({ q: `${tag} a_b` })).toEqual([`${tag} a_b`]);
+      expect(await descriptionsFor({ q: `${tag} c\\d` })).toEqual([`${tag} c\\d`]);
+    });
+
+    it('trims q and rejects a blank or 61-character q', async () => {
+      expect(await descriptionsFor({ q: `  ${tag} lunch  ` })).toEqual([`${tag} lunch`]);
+      for (const q of ['   ', 'x'.repeat(61)]) {
+        const res = await search({ q }).expect(400);
+        expectError(res.body, 'VALIDATION_FAILED');
+      }
+    });
+  });
 });

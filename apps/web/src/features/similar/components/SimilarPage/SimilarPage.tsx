@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { localToday } from '../../../../shared/lib/dates';
 import { isApiError } from '../../../../shared/lib/form-errors';
 import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
@@ -16,10 +17,6 @@ import {
 type Range = { from: string; to: string };
 
 const AI_DISABLED_REASON = 'AI narrative is disabled: no API key configured.';
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 function requestError(error: unknown): string {
   return isApiError(error)

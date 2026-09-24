@@ -1,7 +1,11 @@
 import { TransactionKind } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
-import { IsDateOnly, IsIdString } from '../../../common/request-validation/request-validation';
+import { IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsDateOnly,
+  IsIdString,
+  Trimmed,
+} from '../../../common/request-validation/request-validation';
 
 export class TransactionListQueryDto {
   @IsOptional()
@@ -27,6 +31,12 @@ export class TransactionListQueryDto {
   @IsOptional()
   @IsDateOnly()
   to?: string;
+
+  @IsOptional()
+  @Trimmed()
+  @IsString()
+  @Length(1, 60)
+  q?: string;
 
   @IsOptional()
   @Type(() => Number)

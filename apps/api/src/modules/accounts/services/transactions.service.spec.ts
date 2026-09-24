@@ -169,4 +169,9 @@ describe('TransactionsService', () => {
       offset: 0,
     });
   });
+
+  it('passes the search text through to the ledger unchanged, combined with the other filters', async () => {
+    await service.list({ q: 'uber', accountId: 1n, limit: 8 });
+    expect(mocks.ledger.list).toHaveBeenCalledWith({ q: 'uber', accountId: 1n, limit: 8 });
+  });
 });

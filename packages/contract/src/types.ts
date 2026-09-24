@@ -28,6 +28,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/accounts/balance-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily balances over a date range
+         * @description One balance per calendar day from `from` to `to` inclusive, for each account and for the total. Element `i` of every `balances` array is the balance at the end of day `from + i`: the sum of the account's non-deleted entries dated on or before that day, the same value `getAccountBalanceAsOf` answers. `total` sums the non-archived accounts only, whether or not `includeArchived` is set. Read-only; derived from entries on every call, never stored.
+         */
+        get: operations["getBalanceHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/accounts/{id}": {
         parameters: {
             query?: never;
@@ -490,6 +510,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether the AI narrative is available
+         * @description `configured` is true when the server has an LLM API key. It never returns the key, and it never calls the provider, so `true` does not promise that the provider will answer. The narrative endpoint still returns `AI_NOT_CONFIGURED` and the other AI errors as before.
+         */
+        get: operations["getAiStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -647,6 +687,35 @@ export interface components {
              * @example 145750
              */
             balance: components["schemas"]["Money"];
+        };
+        AccountBalanceSeries: {
+            accountId: components["schemas"]["Id"];
+            /** @example false */
+            archived: boolean;
+            /**
+             * @description One signed-cents balance per day, `from` first.
+             * @example [
+             *       "445750",
+             *       "441500",
+             *       "441500"
+             *     ]
+             */
+            balances: components["schemas"]["Money"][];
+        };
+        BalanceHistoryResponse: {
+            from: components["schemas"]["DateOnly"];
+            to: components["schemas"]["DateOnly"];
+            /**
+             * @description Per day, the sum of the non-archived accounts' balances, signed cents. Its last element equals `AccountListResponse.totalBalance` when `to` is today.
+             * @example [
+             *       "395750",
+             *       "391500",
+             *       "391500"
+             *     ]
+             */
+            total: components["schemas"]["Money"][];
+            /** @description Same accounts and order as `listAccounts` with the same `includeArchived`. */
+            accounts: components["schemas"]["AccountBalanceSeries"][];
         };
         CategoryCreateRequest: {
             /**
@@ -1000,6 +1069,13 @@ export interface components {
              */
             narrative: string;
         };
+        AiStatusResponse: {
+            /**
+             * @description True when an LLM API key is set on the server.
+             * @example true
+             */
+            configured: boolean;
+        };
     };
     responses: {
         /** @description The request's shape, a field's format, the money guard, a date rule or a pagination bound failed (`VALIDATION_FAILED`). */
@@ -1192,6 +1268,11 @@ export interface components {
          */
         ToParam: string;
         /**
+         * @description Only transactions whose description contains this text, ignoring case. Matched literally: `%`, `_` and `\` are not wildcards. Trimmed; 1–60 characters after trimming, otherwise `VALIDATION_FAILED`. Combined with the other filters by AND. Order and pagination are unchanged.
+         * @example uber
+         */
+        QueryParam: string;
+        /**
          * @description Range start, inclusive. Must not start after `to` nor span more than 24 months.
          * @example 2026-09-01
          */
@@ -1260,6 +1341,41 @@ export interface operations {
             };
             400: components["responses"]["ValidationError"];
             409: components["responses"]["DuplicateName"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getBalanceHistory: {
+        parameters: {
+            query?: {
+                /**
+                 * @description First day, inclusive. When absent, the earliest entry date of the non-archived accounts, whether or not `includeArchived` is set, clamped to 10 years before `to`; `to` itself when they have no entries. Must not be after `to`, and the span must not exceed 10 years.
+                 * @example 2026-08-24
+                 */
+                from?: string;
+                /**
+                 * @description Last day, inclusive. Defaults to today in `APP_TIMEZONE`. Must not be after today, otherwise `VALIDATION_FAILED`.
+                 * @example 2026-09-22
+                 */
+                to?: string;
+                /** @description Also return archived accounts' series. They never count toward `total`. */
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The daily series. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceHistoryResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1531,6 +1647,11 @@ export interface operations {
                  * @example 2026-09-30
                  */
                 to?: components["parameters"]["ToParam"];
+                /**
+                 * @description Only transactions whose description contains this text, ignoring case. Matched literally: `%`, `_` and `\` are not wildcards. Trimmed; 1–60 characters after trimming, otherwise `VALIDATION_FAILED`. Combined with the other filters by AND. Order and pagination are unchanged.
+                 * @example uber
+                 */
+                q?: components["parameters"]["QueryParam"];
                 /** @description Page size, 1–200. Above 200 is rejected with `VALIDATION_FAILED`. */
                 limit?: components["parameters"]["LimitParam"];
                 /** @description Rows to skip. An offset past the last row returns an empty page with the correct total. */
@@ -2071,6 +2192,27 @@ export interface operations {
             502: components["responses"]["AiProviderError"];
             503: components["responses"]["AiRateLimited"];
             504: components["responses"]["AiTimeout"];
+        };
+    };
+    getAiStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description AI availability. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiStatusResponse"];
+                };
+            };
+            500: components["responses"]["InternalError"];
         };
     };
 }

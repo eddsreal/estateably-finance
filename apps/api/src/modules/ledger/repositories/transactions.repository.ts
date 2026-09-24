@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, TransactionKind } from '@prisma/client';
 import { toDate } from '../../../common/dates/dates';
+import { escapeLike } from '../../../common/escape-like/escape-like';
 import { PrismaService, TransactionClient } from '../../../common/prisma.service/prisma.service';
 import { EntryDraft } from '../domain/to-entries';
 
@@ -22,6 +23,7 @@ export type TransactionFilters = {
   projectId?: bigint;
   from?: string;
   to?: string;
+  q?: string;
 };
 
 export type TransactionWithEntries = Prisma.TransactionGetPayload<{
@@ -106,6 +108,9 @@ export class TransactionsRepository {
       deletedAt: null,
       ...(filters.kind ? { kind: filters.kind } : {}),
       ...(filters.projectId !== undefined ? { projectId: filters.projectId } : {}),
+      ...(filters.q !== undefined
+        ? { description: { contains: escapeLike(filters.q), mode: 'insensitive' as const } }
+        : {}),
       ...(filters.from || filters.to
         ? {
             date: {

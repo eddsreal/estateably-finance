@@ -37,6 +37,15 @@ export class EntriesRepository {
     return new Map(rows.map((row) => [row.projectId, row.spent]));
   }
 
+  async earliestDate(accountIds: bigint[], tx?: TransactionClient): Promise<string | null> {
+    const row = await this.db(tx).entry.findFirst({
+      where: { accountId: { in: accountIds }, transaction: { deletedAt: null } },
+      orderBy: { transaction: { date: 'asc' } },
+      select: { transaction: { select: { date: true } } },
+    });
+    return row ? toDateOnly(row.transaction.date) : null;
+  }
+
   async listForAccount(accountId: bigint, tx?: TransactionClient): Promise<DatedAmount[]> {
     const rows = await this.db(tx).entry.findMany({
       where: { accountId, transaction: { deletedAt: null } },

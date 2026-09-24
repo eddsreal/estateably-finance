@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Account, AccountKind } from '@prisma/client';
-import { toDateOnly } from '../../../common/dates/dates';
+import { addMonthsClamped, appToday, toDate, toDateOnly } from '../../../common/dates/dates';
 import {
   ArchivedAccountError,
   DomainRuleViolationError,
@@ -29,6 +29,15 @@ export type CreateAccountInput = {
 };
 
 export type UpdateAccountInput = Partial<CreateAccountInput>;
+
+export type BalanceHistory = {
+  from: string;
+  to: string;
+  total: bigint[];
+  accounts: { accountId: bigint; archived: boolean; balances: bigint[] }[];
+};
+
+const DAY_MS = 86_400_000;
 
 function openingAmountOf(transaction: TransactionWithEntries): bigint {
   const entry = transaction.entries.find((candidate) => candidate.accountId !== null);
@@ -170,6 +179,37 @@ export class AccountsService {
       if (!row.archived) totalBalance += item.balance;
     }
     return { items, totalBalance };
+  }
+
+  async balanceHistory(input: {
+    from?: string;
+    to?: string;
+    includeArchived: boolean;
+  }): Promise<BalanceHistory> {
+    const rows = await this.accounts.list(input.includeArchived);
+    const to = input.to ?? appToday();
+    const from = input.from ?? (await this.defaultFrom(rows, to));
+    const accounts = await Promise.all(
+      rows.map(async (row) => ({
+        accountId: row.id,
+        archived: row.archived,
+        balances: await this.ledger.balanceSeries(row.id, from, to),
+      })),
+    );
+    const days = (toDate(to).getTime() - toDate(from).getTime()) / DAY_MS + 1;
+    const total = Array.from({ length: days }, (_, i) =>
+      accounts.reduce((sum, account) => (account.archived ? sum : sum + account.balances[i]), 0n),
+    );
+    return { from, to, total, accounts };
+  }
+
+  private async defaultFrom(rows: Account[], to: string): Promise<string> {
+    const earliest = await this.ledger.earliestEntryDate(
+      rows.filter((row) => !row.archived).map((row) => row.id),
+    );
+    if (earliest === null || earliest > to) return to;
+    const floor = addMonthsClamped(to, -120);
+    return earliest < floor ? floor : earliest;
   }
 
   private async view(row: Account): Promise<AccountView> {

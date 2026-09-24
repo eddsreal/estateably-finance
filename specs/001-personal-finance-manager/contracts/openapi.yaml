@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Estateably Finance API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Personal finance manager — single user, single currency (USD), double-entry ledger.
 
@@ -93,6 +93,50 @@ paths:
               schema: { $ref: '#/components/schemas/AccountResponse' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '409': { $ref: '#/components/responses/DuplicateName' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /accounts/balance-history:
+    get:
+      operationId: getBalanceHistory
+      tags: [accounts]
+      summary: Daily balances over a date range
+      description: >
+        One balance per calendar day from `from` to `to` inclusive, for each account and for the
+        total. Element `i` of every `balances` array is the balance at the end of day
+        `from + i`: the sum of the account's non-deleted entries dated on or before that day,
+        the same value `getAccountBalanceAsOf` answers. `total` sums the non-archived accounts
+        only, whether or not `includeArchived` is set. Read-only; derived from entries on every
+        call, never stored.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: >
+            First day, inclusive. When absent, the earliest entry date of the non-archived
+            accounts, whether or not `includeArchived` is set, clamped to 10 years before `to`;
+            `to` itself when they have no entries. Must not be after `to`, and the span must not
+            exceed 10 years.
+          schema: { type: string, format: date }
+          example: '2026-08-24'
+        - name: to
+          in: query
+          required: false
+          description: >
+            Last day, inclusive. Defaults to today in `APP_TIMEZONE`. Must not be after today,
+            otherwise `VALIDATION_FAILED`.
+          schema: { type: string, format: date }
+          example: '2026-09-22'
+        - name: includeArchived
+          in: query
+          required: false
+          description: Also return archived accounts' series. They never count toward `total`.
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: The daily series.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BalanceHistoryResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
   /accounts/{id}:
     patch:
@@ -319,6 +363,7 @@ paths:
           schema: { $ref: '#/components/schemas/Id' }
         - $ref: '#/components/parameters/FromParam'
         - $ref: '#/components/parameters/ToParam'
+        - $ref: '#/components/parameters/QueryParam'
         - $ref: '#/components/parameters/LimitParam'
         - $ref: '#/components/parameters/OffsetParam'
       responses:
@@ -740,6 +785,23 @@ paths:
         '503': { $ref: '#/components/responses/AiRateLimited' }
         '504': { $ref: '#/components/responses/AiTimeout' }
         '500': { $ref: '#/components/responses/InternalError' }
+  /ai/status:
+    get:
+      operationId: getAiStatus
+      tags: [reports]
+      summary: Whether the AI narrative is available
+      description: >
+        `configured` is true when the server has an LLM API key. It never returns the key, and
+        it never calls the provider, so `true` does not promise that the provider will answer.
+        The narrative endpoint still returns `AI_NOT_CONFIGURED` and the other AI errors as
+        before.
+      responses:
+        '200':
+          description: AI availability.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiStatusResponse' }
+        '500': { $ref: '#/components/responses/InternalError' }
 
 components:
   parameters:
@@ -775,6 +837,17 @@ components:
       description: Range end, inclusive.
       schema: { type: string, format: date }
       example: '2026-09-30'
+    QueryParam:
+      name: q
+      in: query
+      required: false
+      description: >
+        Only transactions whose description contains this text, ignoring case. Matched
+        literally: `%`, `_` and `\` are not wildcards. Trimmed; 1–60 characters after trimming,
+        otherwise `VALIDATION_FAILED`. Combined with the other filters by AND. Order and
+        pagination are unchanged.
+      schema: { type: string, minLength: 1, maxLength: 60 }
+      example: uber
     FromRequiredParam:
       name: from
       in: query
@@ -1078,6 +1151,34 @@ components:
           allOf: [{ $ref: '#/components/schemas/Money' }]
           description: Sum of the account's non-deleted entries dated on or before `asOf`.
           example: '145750'
+    AccountBalanceSeries:
+      type: object
+      required: [accountId, archived, balances]
+      properties:
+        accountId: { $ref: '#/components/schemas/Id' }
+        archived: { type: boolean, example: false }
+        balances:
+          type: array
+          items: { $ref: '#/components/schemas/Money' }
+          description: One signed-cents balance per day, `from` first.
+          example: ['445750', '441500', '441500']
+    BalanceHistoryResponse:
+      type: object
+      required: [from, to, total, accounts]
+      properties:
+        from: { $ref: '#/components/schemas/DateOnly' }
+        to: { $ref: '#/components/schemas/DateOnly' }
+        total:
+          type: array
+          items: { $ref: '#/components/schemas/Money' }
+          description: >
+            Per day, the sum of the non-archived accounts' balances, signed cents. Its last
+            element equals `AccountListResponse.totalBalance` when `to` is today.
+          example: ['395750', '391500', '391500']
+        accounts:
+          type: array
+          items: { $ref: '#/components/schemas/AccountBalanceSeries' }
+          description: Same accounts and order as `listAccounts` with the same `includeArchived`.
 
     CategoryCreateRequest:
       type: object
@@ -1524,3 +1625,11 @@ components:
           type: string
           description: A short natural-language summary of the grouped report.
           example: Ride-hailing was your biggest recurring cost this month, with Uber appearing three times for $87.00 in total.
+    AiStatusResponse:
+      type: object
+      required: [configured]
+      properties:
+        configured:
+          type: boolean
+          description: True when an LLM API key is set on the server.
+          example: true

@@ -21,6 +21,9 @@ async function main() {
   const iso = (date) => date.toISOString().slice(0, 10);
   const asOf = iso(new Date(Date.UTC(today.getUTCFullYear() - 1, today.getUTCMonth(), 15)));
   const horizon = iso(new Date(Date.UTC(today.getUTCFullYear() + 1, today.getUTCMonth(), 1)));
+  const yearStart = iso(
+    new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 364)),
+  );
   const endpoints = [
     { name: 'account list', path: '/accounts', budget: 1000 },
     { name: 'transaction list', path: '/transactions', budget: 1000 },
@@ -31,6 +34,12 @@ async function main() {
       budget: 2000,
     },
     { name: '12-month projection', path: `/projection?horizon=${horizon}`, budget: 2000 },
+    {
+      name: 'balance history 1Y',
+      path: `/accounts/balance-history?from=${yearStart}`,
+      budget: 2000,
+    },
+    { name: 'balance history All', path: '/accounts/balance-history', budget: 2000 },
   ];
   let failed = false;
   for (const endpoint of endpoints) {

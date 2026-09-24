@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../lib/api';
+import { localToday } from '../../lib/dates';
 import { applyServerError } from '../../lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../lib/money';
 import { invalidateEntryDerived } from '../../lib/query-keys';
@@ -51,10 +52,6 @@ const KINDS: { value: TransactionKindChoice; label: string }[] = [
   { value: 'income', label: 'Income' },
   { value: 'transfer', label: 'Transfer' },
 ];
-
-function localToday(): string {
-  return new Intl.DateTimeFormat('en-CA').format(new Date());
-}
 
 export function TransactionForm({
   transaction,

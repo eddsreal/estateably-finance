@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { NotFoundError, OpeningKindChangeError } from '../../../common/domain-errors/domain-errors';
 import { PrismaService, TransactionClient } from '../../../common/prisma.service/prisma.service';
 import { balanceAt } from '../domain/balance-at';
+import { balanceSeries } from '../domain/balance-series';
 import { LedgerIntent, toEntries } from '../domain/to-entries';
 import { BalanceSnapshotsRepository } from '../repositories/balance-snapshots.repository';
 import { EntriesRepository } from '../repositories/entries.repository';
@@ -190,6 +191,15 @@ export class LedgerService {
 
   async balanceAsOf(accountId: bigint, asOf: string): Promise<bigint> {
     return balanceAt(await this.entries.listForAccount(accountId), asOf);
+  }
+
+  async balanceSeries(accountId: bigint, from: string, to: string): Promise<bigint[]> {
+    return balanceSeries(await this.entries.listForAccount(accountId), from, to);
+  }
+
+  async earliestEntryDate(accountIds: bigint[]): Promise<string | null> {
+    if (accountIds.length === 0) return null;
+    return this.entries.earliestDate(accountIds);
   }
 
   createCategorySystemAccount(categoryId: bigint, tx?: TransactionClient): Promise<{ id: bigint }> {

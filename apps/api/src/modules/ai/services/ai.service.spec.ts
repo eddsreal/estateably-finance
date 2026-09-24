@@ -117,6 +117,24 @@ describe('AiService.similarNarrative', () => {
   });
 });
 
+describe('AiService.isConfigured', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('is true when the key is set, false when it is empty or absent, and never calls out', () => {
+    const { service, fetchMock } = build();
+    vi.stubEnv('LLM_API_KEY', 'test-key');
+    expect(service.isConfigured()).toBe(true);
+    vi.stubEnv('LLM_API_KEY', '');
+    expect(service.isConfigured()).toBe(false);
+    vi.stubEnv('LLM_API_KEY', undefined);
+    expect(service.isConfigured()).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('plainText', () => {
   it('strips Markdown headings, bold and bullets the model may still emit', () => {
     expect(
