@@ -31,16 +31,17 @@ Light theme only. No dark mode until a spec asks for one.
 
 All motion eases out with `--ease-out` (`cubic-bezier(.2,.8,.2,1)`). No bounces.
 
-| Token          | Value  | Use                                            |
-| -------------- | ------ | ---------------------------------------------- |
-| `--dur-press`  | 100 ms | buttons scale to .97                           |
-| `--dur-hover`  | 150 ms | colour, border, background                     |
-| `--dur-dialog` | 200 ms | dialog in: scale .96 → 1 and fade              |
-| `--dur-enter`  | 320 ms | screen entry: fade up, `--stagger` 40 ms apart |
-| `--dur-morph`  | 400 ms | chart range or horizon change                  |
-| `--dur-count`  | 700 ms | totals count up                                |
-| `--dur-flash`  | 2.4 s  | a saved row glows green                        |
-| `--dur-undo`   | 5 s    | the Undo window and its toast progress bar     |
+| Token           | Value  | Use                                            |
+| --------------- | ------ | ---------------------------------------------- |
+| `--dur-press`   | 100 ms | buttons scale to .97                           |
+| `--dur-hover`   | 150 ms | colour, border, background                     |
+| `--dur-dialog`  | 200 ms | dialog in: scale .96 → 1 and fade              |
+| `--dur-enter`   | 320 ms | screen entry: fade up, `--stagger` 40 ms apart |
+| `--dur-morph`   | 400 ms | chart range or horizon change                  |
+| `--dur-count`   | 700 ms | totals count up                                |
+| `--dur-flash`   | 2.4 s  | a saved row glows green                        |
+| `--dur-undo`    | 5 s    | the Undo window and its toast progress bar     |
+| `--dur-shimmer` | 1.2 s  | a loading skeleton's shimmer, left to right    |
 
 Components write `duration-(--dur-hover) ease-(--ease-out)`, never a bare `duration-150`. Under
 `prefers-reduced-motion: reduce` every `--dur-*` and `--stagger` becomes `0ms`, except

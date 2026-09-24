@@ -21,6 +21,7 @@ export const queryKeys = {
   projection: ['projection'] as const,
   projectionAt: (horizon: string) => ['projection', horizon] as const,
   scheduledItems: ['scheduled-items'] as const,
+  aiStatus: ['ai', 'status'] as const,
 };
 
 const ENTRY_DERIVED = [
@@ -32,8 +33,10 @@ const ENTRY_DERIVED = [
   queryKeys.scheduledItems,
 ];
 
-export function invalidateEntryDerived(queryClient: QueryClient): Promise<void> {
+export function refetchEntryDerived(queryClient: QueryClient): Promise<void> {
   return Promise.all(
-    ENTRY_DERIVED.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    ENTRY_DERIVED.map((queryKey) =>
+      queryClient.refetchQueries({ queryKey }, { throwOnError: true }),
+    ),
   ).then(() => undefined);
 }

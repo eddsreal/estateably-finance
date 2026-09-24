@@ -41,7 +41,7 @@ test('groups the seeded Uber rides and highlights the top group and top 5, keybo
   await expect(top).toContainText('$');
 });
 
-test('the AI narrative button ends disabled and says why when no key is configured (FR-015)', async ({
+test('Summarize with AI is disabled and says why when no key is configured (FR-015)', async ({
   page,
 }) => {
   test.skip(Boolean(process.env.LLM_API_KEY), 'the stack has an LLM key configured');
@@ -51,13 +51,9 @@ test('the AI narrative button ends disabled and says why when no key is configur
   await press(page.getByRole('button', { name: 'Generate report' }));
   await expect(page.getByRole('list', { name: 'Top 5 most expensive' })).toBeVisible();
 
-  const narrative = page.getByRole('button', { name: '✦ AI narrative' });
-  await press(narrative);
+  const narrative = page.getByRole('button', { name: '✦ Summarize with AI' });
   await expect(narrative).toBeDisabled();
-  await expect(narrative).toHaveAttribute(
-    'title',
-    'AI narrative is disabled: no API key configured.',
-  );
-  await expect(page.getByText('AI narrative is disabled: no API key configured.')).toBeVisible();
+  await expect(narrative).toHaveAttribute('title', 'Disabled until an AI key is configured.');
+  await expect(page.getByText('Disabled until an AI key is configured.')).toBeVisible();
   await expect(page.getByRole('list', { name: 'Top 5 most expensive' })).toBeVisible();
 });

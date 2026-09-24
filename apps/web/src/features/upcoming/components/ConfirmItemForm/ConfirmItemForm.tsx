@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
@@ -11,7 +11,6 @@ import {
   parseDollars,
   Cents,
 } from '../../../../shared/lib/money';
-import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
 import { AccountOption, AccountPicker } from '../../../../shared/ui/AccountPicker/AccountPicker';
 import {
   CategoryOption,
@@ -21,7 +20,6 @@ import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
 import { DueChip, DueTile } from '../DueTile/DueTile';
 import { EditableScheduledItem } from '../ScheduledItemForm/ScheduledItemForm';
 import {
-  BANNER_ERROR,
   BUTTON,
   BUTTON_PRIMARY,
   FIELD,
@@ -32,6 +30,8 @@ import {
   INPUT,
   LABEL,
 } from '../../../../shared/lib/styles';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { useSavedFeedback } from '../../../../shared/ui/Toast/Toast';
 
 type FormValues = {
   amount: string;
@@ -56,8 +56,8 @@ export function ConfirmItemForm({
   categories: CategoryOption[];
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
+  const saved = useSavedFeedback();
+  const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const today = localToday();
   const {
     control,
@@ -94,11 +94,12 @@ export function ConfirmItemForm({
         }),
       ),
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved('Payment recorded.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The payment couldn't be confirmed.", error });
     },
   });
 
@@ -115,7 +116,7 @@ export function ConfirmItemForm({
     >
       <div className="flex items-center gap-12 rounded-lg bg-sand-100 px-12 py-10">
         <DueTile date={item.nextDueDate} />
-        <span className="min-w-0 flex-1 text-14 font-medium break-words">
+        <span className="min-w-0 flex-1 text-14 font-medium wrap-break-word">
           {item.description} · {RECURRENCE_LABEL[item.recurrence]}
         </span>
         <DueChip due={item.nextDueDate} today={today} />
@@ -124,11 +125,7 @@ export function ConfirmItemForm({
         This records {item.kind === 'bill' ? 'an expense' : 'an income'} with these values. Change
         anything that was different.
       </p>
-      {formError && (
-        <div className={BANNER_ERROR} role="alert">
-          {formError}
-        </div>
-      )}
+      {formError && <ErrorNotice title={formError.title} error={formError.error} />}
       <div className="grid grid-cols-2 gap-12">
         <div className={FIELD}>
           <label className={LABEL} htmlFor="confirm-amount">
@@ -266,7 +263,7 @@ export function ConfirmItemForm({
           Cancel
         </button>
         <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
-          {item.kind === 'bill' ? 'Record payment' : 'Record receipt'}
+          {isSubmitting ? 'Saving…' : item.kind === 'bill' ? 'Record payment' : 'Record receipt'}
         </button>
       </div>
     </form>

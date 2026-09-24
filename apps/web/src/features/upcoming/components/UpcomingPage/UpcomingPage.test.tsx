@@ -58,7 +58,7 @@ function item(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderPage(items: unknown[]) {
+function renderPage(items: unknown) {
   stubApi({
     'GET /scheduled-items': items,
     'GET /accounts': accounts,
@@ -157,10 +157,23 @@ describe('UpcomingPage', () => {
 
   it('shows the empty state when nothing is scheduled', async () => {
     renderPage([]);
-    expect(await screen.findByText('Nothing scheduled')).toBeInTheDocument();
+    expect(await screen.findByText('No scheduled payments')).toBeInTheDocument();
     expect(
-      screen.getByText('Future bills and income you add will be listed here by due date.'),
+      screen.getByText('Schedule rent, bills or salary to see them here and in the projection.'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Schedule payment' })).toBeInTheDocument();
+  });
+
+  it('shows a busy skeleton, then the error with its correlation id and Try again', async () => {
+    const { container } = renderPage(() => ({
+      status: 500,
+      body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-up' },
+    }));
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent(
+      'Loading scheduled items…',
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correlation ID c-up');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   it('opens the confirm modal pre-filled from the item with every field editable (FR-018)', async () => {

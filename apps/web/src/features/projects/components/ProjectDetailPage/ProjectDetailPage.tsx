@@ -6,7 +6,10 @@ import { Cents, formatCents } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import { Stat } from '../../../../shared/ui/Stat/Stat';
 import { Table } from '../../../../shared/ui/Table/Table';
 import {
@@ -58,21 +61,20 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   });
 
   if (projectsQuery.isPending) {
-    return <p className={PAGE}>Loading project…</p>;
+    return (
+      <div className={PAGE}>
+        <Skeleton label="Loading project…" shapes={['line', 'block', 'row', 'row', 'row']} />
+      </div>
+    );
   }
   if (projectsQuery.isError) {
     return (
       <div className={PAGE}>
-        <div className={BANNER_WARNING} role="alert">
-          <span>The project could not be loaded.</span>
-          <button
-            type="button"
-            className={BUTTON_COMPACT}
-            onClick={() => void projectsQuery.refetch()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorNotice
+          title="The project couldn't load."
+          error={projectsQuery.error}
+          onRetry={() => void projectsQuery.refetch()}
+        />
       </div>
     );
   }
@@ -129,96 +131,91 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           <RemainingAmount project={project} />
         </Stat>
       </div>
-      <div className={CARD}>
-        {transactionsQuery.isError ? (
-          <div className={BANNER_WARNING} role="alert">
-            <span>The project&apos;s expenses could not be loaded.</span>
-            <button
-              type="button"
-              className={BUTTON_COMPACT}
-              onClick={() => void transactionsQuery.refetch()}
-            >
-              Retry
-            </button>
-          </div>
-        ) : !page ? (
-          <p className="text-14 text-text-2">Loading expenses…</p>
-        ) : page.items.length === 0 ? (
-          <EmptyState
-            title="No expenses in this project yet"
-            hint="Pick this project when recording an expense and it will be listed here."
-            actionLabel="Go to transactions"
-            onAction={() => void navigate('/transactions')}
-          />
-        ) : (
-          <>
-            <Table
-              caption={`Expenses in ${project.name}`}
-              columns={[
-                { label: 'Date' },
-                { label: 'Description' },
-                { label: 'Account' },
-                { label: 'Category' },
-                { label: 'Amount', align: 'right' },
-              ]}
-            >
-              {page.items.map((transaction) => (
-                <tr key={transaction.id}>
-                  <td className="font-mono text-12 text-text-2">{transaction.date}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={ROW_ACTION_TEXT}
-                      onClick={() =>
-                        setEditing({
-                          id: transaction.id,
-                          kind: 'expense',
-                          date: transaction.date,
-                          description: transaction.description,
-                          amount: transaction.amount,
-                          accountId: transaction.accountId,
-                          categoryId: transaction.categoryId,
-                          projectId: transaction.projectId,
-                        })
-                      }
-                    >
-                      {transaction.description}
-                    </button>
-                  </td>
-                  <td>{accountName(transaction.accountId)}</td>
-                  <td>{categoryName(transaction.categoryId)}</td>
-                  <td className={TD_AMOUNT}>
-                    <Amount cents={`-${transaction.amount}`} />
-                  </td>
-                </tr>
-              ))}
-            </Table>
-            <div className={PAGINATION}>
-              <span>
-                {`${page.offset + 1}–${Math.min(page.offset + PAGE_SIZE, page.total)} of ${page.total}`}
-              </span>
-              <span>
+      {transactionsQuery.isError ? (
+        <ErrorNotice
+          title="The project's expenses couldn't load."
+          error={transactionsQuery.error}
+          onRetry={() => void transactionsQuery.refetch()}
+        />
+      ) : !page ? (
+        <Skeleton label="Loading expenses…" shapes={['row', 'row', 'row', 'row']} />
+      ) : page.items.length === 0 ? (
+        <EmptyState
+          icon={ICONS.projects}
+          title="No expenses in this project yet"
+          hint="Pick this project when recording an expense and it will be listed here."
+          action={{ label: 'Go to transactions', onClick: () => void navigate('/transactions') }}
+        />
+      ) : (
+        <div className={CARD}>
+          <Table
+            caption={`Expenses in ${project.name}`}
+            columns={[
+              { label: 'Date' },
+              { label: 'Description' },
+              { label: 'Account' },
+              { label: 'Category' },
+              { label: 'Amount', align: 'right' },
+            ]}
+          >
+            {page.items.map((transaction) => (
+              <tr key={transaction.id}>
+                <td className="font-mono text-12 text-text-2">{transaction.date}</td>
+                <td>
+                  <button
+                    type="button"
+                    className={ROW_ACTION_TEXT}
+                    onClick={() =>
+                      setEditing({
+                        id: transaction.id,
+                        kind: 'expense',
+                        date: transaction.date,
+                        description: transaction.description,
+                        amount: transaction.amount,
+                        accountId: transaction.accountId,
+                        categoryId: transaction.categoryId,
+                        projectId: transaction.projectId,
+                      })
+                    }
+                  >
+                    {transaction.description}
+                  </button>
+                </td>
+                <td>{accountName(transaction.accountId)}</td>
+                <td>{categoryName(transaction.categoryId)}</td>
+                <td className={TD_AMOUNT}>
+                  <Amount cents={`-${transaction.amount}`} />
+                </td>
+              </tr>
+            ))}
+          </Table>
+          <div className={PAGINATION}>
+            <span>
+              {`${page.offset + 1}–${Math.min(page.offset + PAGE_SIZE, page.total)} of ${page.total}`}
+            </span>
+            <span>
+              {offset > 0 && (
                 <button
                   type="button"
                   className={BUTTON_COMPACT}
-                  disabled={offset === 0}
                   onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
                 >
                   Previous
-                </button>{' '}
+                </button>
+              )}{' '}
+              {page.offset + PAGE_SIZE < page.total && (
                 <button
                   type="button"
                   className={BUTTON_COMPACT}
-                  disabled={page.offset + PAGE_SIZE >= page.total}
                   onClick={() => setOffset(offset + PAGE_SIZE)}
                 >
                   Next
                 </button>
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
       <Modal title="Edit transaction" open={editing !== null} onClose={() => setEditing(null)}>
         {editing && (
           <TransactionForm

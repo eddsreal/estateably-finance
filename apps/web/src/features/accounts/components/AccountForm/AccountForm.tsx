@@ -1,15 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
-import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
 import {
-  BANNER_ERROR,
   BANNER_WARNING,
   BUTTON,
   BUTTON_PRIMARY,
@@ -23,6 +21,8 @@ import {
   SEGMENT,
   SEGMENTED,
 } from '../../../../shared/lib/styles';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { useSavedFeedback } from '../../../../shared/ui/Toast/Toast';
 
 export type AccountFormValues = {
   name: string;
@@ -55,8 +55,8 @@ export function AccountForm({
   account: EditableAccount | null;
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
+  const saved = useSavedFeedback();
+  const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const {
     register,
     control,
@@ -88,11 +88,12 @@ export function AccountForm({
         : unwrap(api.POST('/accounts', { body }));
     },
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved('Account saved.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The account couldn't be saved.", error });
     },
   });
 
@@ -104,11 +105,12 @@ export function AccountForm({
           : api.POST('/accounts/{id}/archive', { params: { path: { id } } }),
       ),
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved(account?.archived ? 'Account restored.' : 'Account archived.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The account couldn't be updated.", error });
     },
   });
 
@@ -129,11 +131,7 @@ export function AccountForm({
           on this account can't be marked paid.
         </p>
       )}
-      {formError && (
-        <div className={BANNER_ERROR} role="alert">
-          {formError}
-        </div>
-      )}
+      {formError && <ErrorNotice title={formError.title} error={formError.error} />}
       <div className={FIELD}>
         <div className="flex justify-between gap-8">
           <label className={LABEL} htmlFor="account-name">
@@ -252,14 +250,18 @@ export function AccountForm({
               archiveMutation.mutate(account.id);
             }}
           >
-            {account.archived ? 'Unarchive' : 'Archive account'}
+            {archiveMutation.isPending
+              ? 'Saving…'
+              : account.archived
+                ? 'Unarchive'
+                : 'Archive account'}
           </button>
         )}
         <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
         <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
-          {account ? 'Save changes' : 'Create account'}
+          {isSubmitting ? 'Saving…' : account ? 'Save changes' : 'Create account'}
         </button>
       </div>
     </form>

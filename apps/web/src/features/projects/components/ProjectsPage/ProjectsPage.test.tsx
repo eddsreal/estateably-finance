@@ -102,9 +102,33 @@ describe('ProjectsPage', () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Delete Remodel' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      /DOMAIN_RULE_VIOLATION: .*close it instead/,
-    );
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/close it instead/);
+    expect(alert).toHaveTextContent('Correlation ID 6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10');
+  });
+
+  it('shows a busy skeleton, then the error with Try again when the list fails', async () => {
+    stubApi({
+      'GET /projects': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-proj' },
+      }),
+    });
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent('Loading projects…');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correlation ID c-proj');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('shows the empty state with its one action', async () => {
+    stubApi({ 'GET /projects': [] });
+    renderPage();
+    expect(await screen.findByText('No projects yet')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Create a project to group expenses and track them against an optional budget.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('closes a project through the API', async () => {

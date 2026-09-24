@@ -1,18 +1,16 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../lib/api';
 import { localToday } from '../../lib/dates';
 import { applyServerError } from '../../lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../lib/money';
-import { invalidateEntryDerived } from '../../lib/query-keys';
 import { AccountOption, AccountPicker } from '../AccountPicker/AccountPicker';
 import { CategoryOption, CategoryPicker } from '../CategoryPicker/CategoryPicker';
 import { KindGlyph } from '../KindGlyph/KindGlyph';
 import { MoneyInput } from '../MoneyInput/MoneyInput';
 import { ProjectOption, ProjectPicker } from '../ProjectPicker/ProjectPicker';
 import {
-  BANNER_ERROR,
   BUTTON,
   BUTTON_DANGER,
   BUTTON_PRIMARY,
@@ -27,6 +25,8 @@ import {
   SEGMENT,
   SEGMENTED,
 } from '../../lib/styles';
+import { ErrorNotice } from '../ErrorNotice/ErrorNotice';
+import { useSavedFeedback } from '../Toast/Toast';
 
 export type TransactionKindChoice = 'expense' | 'income' | 'transfer';
 
@@ -100,8 +100,9 @@ export function TransactionForm({
   projects: ProjectOption[];
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
+  const saved = useSavedFeedback();
+  const pickable = transaction ? accounts : accounts.filter((account) => !account.archived);
+  const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const {
     register,
     control,
@@ -163,11 +164,12 @@ export function TransactionForm({
         : unwrap(api.POST('/transactions', { body }));
     },
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved(transaction ? 'Transaction saved.' : 'Transaction recorded.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The transaction couldn't be saved.", error });
     },
   });
 
@@ -175,11 +177,12 @@ export function TransactionForm({
     mutationFn: () =>
       unwrap(api.DELETE('/transactions/{id}', { params: { path: { id: transaction!.id } } })),
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved('Transaction deleted.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The transaction couldn't be deleted.", error });
     },
   });
 
@@ -194,11 +197,7 @@ export function TransactionForm({
         })(event);
       }}
     >
-      {formError && (
-        <div className={BANNER_ERROR} role="alert">
-          {formError}
-        </div>
-      )}
+      {formError && <ErrorNotice title={formError.title} error={formError.error} />}
       <div className={FIELD}>
         <span className={LABEL} id="transaction-kind-label">
           Type
@@ -279,7 +278,7 @@ export function TransactionForm({
                 id="transaction-account"
                 value={field.value}
                 onChange={field.onChange}
-                accounts={accounts}
+                accounts={pickable}
                 invalid={!!errors.accountId}
                 describedBy={errors.accountId ? 'transaction-account-error' : undefined}
               />
@@ -308,7 +307,7 @@ export function TransactionForm({
                   id="transaction-counter-account"
                   value={field.value}
                   onChange={field.onChange}
-                  accounts={accounts}
+                  accounts={pickable}
                   sourceId={accountId}
                   invalid={!!errors.counterAccountId}
                   describedBy={
@@ -422,7 +421,7 @@ export function TransactionForm({
               disabled={deleteMutation.isPending}
               onClick={() => deleteMutation.mutate()}
             >
-              Delete
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
             </button>
           </div>
         )}
@@ -430,7 +429,7 @@ export function TransactionForm({
           Cancel
         </button>
         <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
-          {transaction ? 'Save changes' : 'Record transaction'}
+          {isSubmitting ? 'Saving…' : transaction ? 'Save changes' : 'Record transaction'}
         </button>
       </div>
     </form>

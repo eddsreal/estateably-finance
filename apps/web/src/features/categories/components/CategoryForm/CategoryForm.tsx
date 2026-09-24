@@ -5,7 +5,6 @@ import { api, unwrap } from '../../../../shared/lib/api';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import {
-  BANNER_ERROR,
   BUTTON,
   BUTTON_PRIMARY,
   FIELD,
@@ -17,6 +16,8 @@ import {
   SEGMENT,
   SEGMENTED,
 } from '../../../../shared/lib/styles';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { useSavedFeedback } from '../../../../shared/ui/Toast/Toast';
 
 export type CategoryFormValues = { name: string; type: 'expense' | 'income' };
 
@@ -30,7 +31,8 @@ export function CategoryForm({
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
+  const saved = useSavedFeedback();
+  const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const {
     register,
     handleSubmit,
@@ -54,10 +56,12 @@ export function CategoryForm({
         : unwrap(api.POST('/categories', { body: values })),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+      await saved('Category saved.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, ['name', 'type']));
+      applyServerError(error, setError, ['name', 'type']);
+      setFormError({ title: "The category couldn't be saved.", error });
     },
   });
 
@@ -72,11 +76,7 @@ export function CategoryForm({
         })(event);
       }}
     >
-      {formError && (
-        <div className={BANNER_ERROR} role="alert">
-          {formError}
-        </div>
-      )}
+      {formError && <ErrorNotice title={formError.title} error={formError.error} />}
       <div className={FIELD}>
         <label className={LABEL} htmlFor="category-name">
           Name
@@ -128,7 +128,7 @@ export function CategoryForm({
           Cancel
         </button>
         <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
-          {category ? 'Save changes' : 'Create category'}
+          {isSubmitting ? 'Saving…' : category ? 'Save changes' : 'Create category'}
         </button>
       </div>
     </form>

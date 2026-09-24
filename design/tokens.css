@@ -177,6 +177,8 @@
   --animate-enter-5: screen-enter var(--dur-enter) var(--ease-out) calc(var(--stagger) * 4)
     backwards;
 
+  --animate-shimmer: shimmer var(--dur-shimmer) linear infinite;
+
   --breakpoint-md: 768px;
 }
 
@@ -201,4 +203,5 @@
   --dur-count: 700ms;
   --dur-flash: 2400ms;
   --dur-undo: 5000ms;
+  --dur-shimmer: 1200ms;
 }

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { animate, durationMs, easeOut, easeOutCurve } from './motion';
+import { animate, durationMs, easeOut, easeOutCurve, timeLimitMs } from './motion';
 
 const tokens = readFileSync(join(import.meta.dirname, '../../../../../design/tokens.css'), 'utf8');
 
@@ -34,6 +34,17 @@ describe('durationMs', () => {
     setToken('--dur-count');
     stubReducedMotion(true);
     expect(durationMs('--dur-count')).toBe(0);
+  });
+});
+
+describe('timeLimitMs', () => {
+  it('keeps --dur-undo and --dur-flash under reduced motion', () => {
+    setToken('--dur-undo');
+    setToken('--dur-flash');
+    stubReducedMotion(true);
+    expect(timeLimitMs('--dur-undo')).toBe(5000);
+    expect(timeLimitMs('--dur-flash')).toBe(2400);
+    expect(durationMs('--dur-undo')).toBe(0);
   });
 });
 

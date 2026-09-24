@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
 import { localToday } from '../../../../shared/lib/dates';
-import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
+import { refetchEntryDerived } from '../../../../shared/lib/query-keys';
 import { AccountDetailPage, dayLabel } from './AccountDetailPage';
 
 const accounts = {
@@ -145,6 +145,40 @@ function renderPage(accountId = '1') {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('AccountDetailPage', () => {
+  it('shows a busy skeleton while the account loads', () => {
+    stubRoutes();
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent('Loading account…');
+  });
+
+  it('shows the transactions empty state when the account has none', async () => {
+    stubApi({
+      'GET /accounts': accounts,
+      'GET /categories': [],
+      'GET /transactions': { items: [], total: 0, limit: 50, offset: 0 },
+      'GET /accounts/1/balance': { accountId: '1', asOf: '2026-09-20', balance: '0' },
+    });
+    renderPage();
+    expect(await screen.findByText('No transactions yet')).toBeInTheDocument();
+  });
+
+  it('shows a failed transaction list with its correlation id and Try again', async () => {
+    stubApi({
+      'GET /accounts': accounts,
+      'GET /categories': [],
+      'GET /transactions': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-acct' },
+      }),
+      'GET /accounts/1/balance': { accountId: '1', asOf: '2026-09-20', balance: '0' },
+    });
+    renderPage();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("The transactions couldn't load.");
+    expect(alert).toHaveTextContent('Correlation ID c-acct');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
   it('shows the current balance and the as-of balance for today in dollars only (SC-009)', async () => {
     stubRoutes();
     renderPage();
@@ -186,7 +220,7 @@ describe('AccountDetailPage', () => {
     expect(screen.getByRole('status', { name: 'Current balance' })).toHaveTextContent('$4,457.50');
 
     stubRoutes({ current: '345750', balance: '345750' });
-    await invalidateEntryDerived(queryClient);
+    await refetchEntryDerived(queryClient);
     expect(await screen.findByText('$3,457.50')).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Current balance' })).toHaveTextContent('$3,457.50');
     expect(screen.getByRole('status', { name: /^Balance on / })).toHaveTextContent('$3,457.50');

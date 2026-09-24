@@ -1,12 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
-import { isApiError } from '../../../../shared/lib/form-errors';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
+import { useSavedFeedback } from '../../../../shared/ui/Toast/Toast';
 import {
   hasExpenses,
   OverBudgetChip,
@@ -15,8 +18,6 @@ import {
 } from '../ProjectFigures/ProjectFigures';
 import { EditableProject, ProjectForm } from '../ProjectForm/ProjectForm';
 import {
-  BANNER_ERROR,
-  BANNER_WARNING,
   BUTTON_COMPACT,
   BUTTON_PRIMARY,
   CARD,
@@ -38,17 +39,11 @@ function spentPercent(spent: string, budget: string): number {
 
 type ProjectAction = { id: string; action: 'close' | 'reopen' | 'delete' };
 
-function requestError(error: unknown): string {
-  return isApiError(error)
-    ? `${error.code}: ${error.message} (ref ${error.correlationId})`
-    : 'The request failed. Check that the API is running and try again.';
-}
-
 export function ProjectsPage() {
-  const queryClient = useQueryClient();
+  const saved = useSavedFeedback();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<EditableProject | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<unknown>(null);
 
   const projectsQuery = useQuery({
     queryKey: queryKeys.projectsList,
@@ -68,26 +63,32 @@ export function ProjectsPage() {
       }
     },
     onMutate: () => setActionError(null),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
-    onError: (error) => setActionError(requestError(error)),
+    onSuccess: (_, { action }) =>
+      saved(
+        action === 'close'
+          ? 'Project closed.'
+          : action === 'reopen'
+            ? 'Project reopened.'
+            : 'Project deleted.',
+      ),
+    onError: setActionError,
   });
 
   if (projectsQuery.isPending) {
-    return <p className={PAGE}>Loading projects…</p>;
+    return (
+      <div className={PAGE}>
+        <Skeleton label="Loading projects…" shapes={['line', 'block', 'block']} />
+      </div>
+    );
   }
   if (projectsQuery.isError) {
     return (
       <div className={PAGE}>
-        <div className={BANNER_WARNING} role="alert">
-          <span>The projects could not be loaded.</span>
-          <button
-            type="button"
-            className={BUTTON_COMPACT}
-            onClick={() => void projectsQuery.refetch()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorNotice
+          title="The projects couldn't load."
+          error={projectsQuery.error}
+          onRetry={() => void projectsQuery.refetch()}
+        />
       </div>
     );
   }
@@ -107,20 +108,16 @@ export function ProjectsPage() {
           New project
         </button>
       </div>
-      {actionError && (
-        <div className={BANNER_ERROR} role="alert">
-          {actionError}
-        </div>
+      {actionError !== null && (
+        <ErrorNotice title="The project couldn't be updated." error={actionError} />
       )}
       {projects.length === 0 ? (
-        <div className={CARD}>
-          <EmptyState
-            title="No projects yet"
-            hint="Create a project to see what a trip or a remodel costs across accounts."
-            actionLabel="New project"
-            onAction={() => setCreating(true)}
-          />
-        </div>
+        <EmptyState
+          icon={ICONS.projects}
+          title="No projects yet"
+          hint="Create a project to group expenses and track them against an optional budget."
+          action={{ label: 'New project', onClick: () => setCreating(true) }}
+        />
       ) : (
         <ul aria-label="Projects" className="grid grid-cols-(--projects-grid) gap-14">
           {projects.map((project) => {

@@ -74,9 +74,13 @@ export function Picker({
     const flip = rect.bottom + PANEL_MAX_HEIGHT > window.innerHeight && rect.top > PANEL_MAX_HEIGHT;
     setPanelStyle({
       left: rect.left,
+      right: 'auto',
       width: Math.max(rect.width, 190),
-      ...(flip ? { bottom: window.innerHeight - rect.top } : { top: rect.bottom }),
+      ...(flip
+        ? { top: 'auto', bottom: window.innerHeight - rect.top }
+        : { top: rect.bottom, bottom: 'auto' }),
     });
+    panelRef.current?.showPopover?.();
   }, [open]);
 
   useEffect(() => {
@@ -154,9 +158,9 @@ export function Picker({
         onBlur={close}
       >
         {selected ? (
-          <span>
-            {selected.label}
-            {selected.note && <span className="ml-4 text-text-3">{selected.note}</span>}
+          <span className="flex min-w-0 gap-4">
+            <span className="truncate">{selected.label}</span>
+            {selected.note && <span className="shrink-0 text-text-3">{selected.note}</span>}
           </span>
         ) : (
           <span className="text-text-2">{placeholder}</span>
@@ -171,7 +175,8 @@ export function Picker({
             id={listId}
             ref={panelRef}
             role="listbox"
-            className="fixed z-50 max-h-280 min-w-190 list-none overflow-y-auto rounded-lg border border-sand-350 bg-sand-0 p-4 shadow-popover"
+            popover="manual"
+            className="fixed z-50 m-0 h-auto max-h-280 min-w-190 list-none overflow-x-hidden overflow-y-auto rounded-lg border border-sand-350 bg-sand-0 p-4 shadow-popover"
             style={panelStyle}
           >
             {rows.map((row, index) => (
@@ -181,15 +186,16 @@ export function Picker({
                 role="option"
                 aria-selected={index === selectedIndex}
                 aria-disabled={row.disabled || undefined}
-                className={`flex h-32 cursor-pointer items-center rounded-sm px-12 text-15 aria-disabled:cursor-not-allowed aria-disabled:text-text-3 aria-selected:bg-accent-soft aria-selected:text-accent ${index === active ? 'bg-sand-100 shadow-focus' : 'text-text-1'}`}
+                title={row.note ? `${row.label} ${row.note}` : row.label}
+                className={`flex h-32 cursor-pointer items-center gap-4 rounded-sm px-12 text-15 aria-disabled:cursor-not-allowed aria-disabled:text-text-3 aria-selected:bg-accent-soft aria-selected:text-accent ${index === active ? 'bg-sand-100 shadow-focus' : 'text-text-1'}`}
                 onMouseDown={(event) => {
                   event.preventDefault();
                   select(index);
                 }}
                 onMouseEnter={() => setActive(index)}
               >
-                {row.label}
-                {row.note && <span className="ml-4 text-text-3">{row.note}</span>}
+                <span className="min-w-0 truncate">{row.label}</span>
+                {row.note && <span className="shrink-0 text-text-3">{row.note}</span>}
               </li>
             ))}
           </ul>,

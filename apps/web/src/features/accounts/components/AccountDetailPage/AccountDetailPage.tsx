@@ -25,9 +25,11 @@ import {
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { Delta } from '../../../../shared/ui/Delta/Delta';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
 import { Icon, ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Kind, KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import { AccountForm } from '../AccountForm/AccountForm';
 
 const PAGE_SIZE = 50;
@@ -122,21 +124,20 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
   });
 
   if (accountsQuery.isPending) {
-    return <p className={PAGE}>Loading account…</p>;
+    return (
+      <div className={PAGE}>
+        <Skeleton label="Loading account…" shapes={['line', 'block', 'row', 'row', 'row']} />
+      </div>
+    );
   }
   if (accountsQuery.isError) {
     return (
       <div className={PAGE}>
-        <div className={BANNER_WARNING} role="alert">
-          <span>The account could not be loaded, so no balance is shown.</span>
-          <button
-            type="button"
-            className={BUTTON_COMPACT}
-            onClick={() => void accountsQuery.refetch()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorNotice
+          title="The account couldn't load, so no balance is shown."
+          error={accountsQuery.error}
+          onRetry={() => void accountsQuery.refetch()}
+        />
       </div>
     );
   }
@@ -210,18 +211,13 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
         {asOf === '' ? (
           <p className="text-14 text-text-2">Pick a date to see the balance at that day.</p>
         ) : balanceQuery.isError ? (
-          <div className={BANNER_WARNING} role="alert">
-            <span>The as-of balance could not be loaded.</span>
-            <button
-              type="button"
-              className={BUTTON_COMPACT}
-              onClick={() => void balanceQuery.refetch()}
-            >
-              Retry
-            </button>
-          </div>
+          <ErrorNotice
+            title="The as-of balance couldn't load."
+            error={balanceQuery.error}
+            onRetry={() => void balanceQuery.refetch()}
+          />
         ) : balanceQuery.isPending ? (
-          <p className="text-14 text-text-2">Computing balance…</p>
+          <Skeleton label="Computing balance…" shapes={['line', 'line']} />
         ) : (
           <div className="flex flex-wrap items-center gap-x-12 gap-y-6">
             <span id="balance-as-of-caption" className={`${STAT_CAPTION} basis-full`}>
@@ -240,30 +236,26 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
           {page.total} {page.total === 1 ? 'transaction' : 'transactions'}
         </span>
       )}
-      <section
-        aria-label="Transactions on this account"
-        className="overflow-hidden rounded-3xl border border-sand-350 bg-sand-0"
-      >
-        {transactionsQuery.isError ? (
-          <div className={`${BANNER_WARNING} m-16`} role="alert">
-            <span>The transaction list could not be refreshed, so it is not shown.</span>
-            <button
-              type="button"
-              className={BUTTON_COMPACT}
-              onClick={() => void transactionsQuery.refetch()}
-            >
-              Retry
-            </button>
-          </div>
-        ) : !page ? (
-          <p className="p-22 text-14 text-text-2">Loading transactions…</p>
-        ) : page.items.length === 0 ? (
-          <EmptyState
-            title="No transactions yet"
-            hint="Expenses, income and transfers on this account will show here."
-          />
-        ) : (
-          groupByDay(page.items, accountId).map((day) => (
+      {transactionsQuery.isError ? (
+        <ErrorNotice
+          title="The transactions couldn't load."
+          error={transactionsQuery.error}
+          onRetry={() => void transactionsQuery.refetch()}
+        />
+      ) : !page ? (
+        <Skeleton label="Loading transactions…" shapes={['row', 'row', 'row', 'row']} />
+      ) : page.items.length === 0 ? (
+        <EmptyState
+          icon={ICONS.transactions}
+          title="No transactions yet"
+          hint="Expenses, income and transfers on this account will show here."
+        />
+      ) : (
+        <section
+          aria-label="Transactions on this account"
+          className="overflow-hidden rounded-3xl border border-sand-350 bg-sand-0"
+        >
+          {groupByDay(page.items, accountId).map((day) => (
             <section key={day.date} aria-label={dayLabel(day.date, today)}>
               <h2 className="flex justify-between px-22 pt-14 pb-6 font-mono text-11 tracking-wide text-text-3 uppercase">
                 <span>{dayLabel(day.date, today)}</span>
@@ -299,29 +291,31 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
                 ))}
               </ul>
             </section>
-          ))
-        )}
-      </section>
+          ))}
+        </section>
+      )}
       {page && page.total > PAGE_SIZE && (
         <div className={PAGINATION}>
           <span>{`${page.offset + 1}–${Math.min(page.offset + PAGE_SIZE, page.total)} of ${page.total}`}</span>
           <span>
-            <button
-              type="button"
-              className={BUTTON_COMPACT}
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-            >
-              Previous
-            </button>{' '}
-            <button
-              type="button"
-              className={BUTTON_COMPACT}
-              disabled={page.offset + PAGE_SIZE >= page.total}
-              onClick={() => setOffset(offset + PAGE_SIZE)}
-            >
-              Next
-            </button>
+            {offset > 0 && (
+              <button
+                type="button"
+                className={BUTTON_COMPACT}
+                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              >
+                Previous
+              </button>
+            )}{' '}
+            {page.offset + PAGE_SIZE < page.total && (
+              <button
+                type="button"
+                className={BUTTON_COMPACT}
+                onClick={() => setOffset(offset + PAGE_SIZE)}
+              >
+                Next
+              </button>
+            )}
           </span>
         </div>
       )}

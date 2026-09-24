@@ -104,6 +104,22 @@ function renderPage() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('ReportPage', () => {
+  it('shows a busy skeleton, then the error with its correlation id and Try again', async () => {
+    stubApi({
+      'GET /reports/monthly': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-rep' },
+      }),
+      'GET /accounts': { items: [], totalBalance: '0' },
+      'GET /projects': [],
+      'GET /categories': [],
+    });
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent('Loading report…');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correlation ID c-rep');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
   it('shows per-category totals and the grand total in dollars only (US3 #1, SC-009)', async () => {
     stubRoutes();
     renderPage();
@@ -133,7 +149,10 @@ describe('ReportPage', () => {
     await screen.findByText('$72.50');
     await userEvent.click(screen.getByRole('button', { name: 'Previous month' }));
     expect(await screen.findByText('No expenses this month')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Go to transactions' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Expenses recorded in .* will appear here by category\.$/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Go to transactions' })).not.toBeInTheDocument();
     expect(screen.getByRole('status', { name: /^Spent in / })).toHaveTextContent('$0.00');
     await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
     expect(await screen.findByText('$72.50')).toBeInTheDocument();

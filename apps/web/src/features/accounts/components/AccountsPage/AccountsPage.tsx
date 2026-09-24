@@ -1,20 +1,21 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { addDays, formatDay, localToday } from '../../../../shared/lib/dates';
 import { addCents, Cents, change, countUpFrames, formatCents } from '../../../../shared/lib/money';
 import { animate, durationMs } from '../../../../shared/lib/motion';
-import { invalidateEntryDerived, queryKeys } from '../../../../shared/lib/query-keys';
+import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { Delta } from '../../../../shared/ui/Delta/Delta';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Icon, ICONS } from '../../../../shared/ui/Icon/Icon';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
+import { useSavedFeedback, useToast } from '../../../../shared/ui/Toast/Toast';
 import { AccountForm, EditableAccount } from '../AccountForm/AccountForm';
 import {
-  BANNER_WARNING,
-  BUTTON_COMPACT,
   BUTTON_PRIMARY,
   CARD,
   CHIP_WARNING,
@@ -68,7 +69,8 @@ function useCountUp(target: Cents): { value: Cents; busy: boolean } {
 }
 
 export function AccountsPage() {
-  const queryClient = useQueryClient();
+  const saved = useSavedFeedback();
+  const { showError } = useToast();
   const [range, setRange] = useState<Range>('30D');
   const [asOf, setAsOf] = useState<string | null>(null);
   const [serverToday, setServerToday] = useState<string | null>(null);
@@ -120,28 +122,28 @@ export function AccountsPage() {
           ? api.POST('/accounts/{id}/archive', { params: { path: { id } } })
           : api.POST('/accounts/{id}/unarchive', { params: { path: { id } } }),
       ),
-    onSuccess: () => invalidateEntryDerived(queryClient),
+    onSuccess: (_, { archive }) => saved(archive ? 'Account archived.' : 'Account restored.'),
+    onError: showError,
   });
 
   if (accountsQuery.isPending || historyQuery.isPending) {
-    return <p className={PAGE}>Loading accounts…</p>;
+    return (
+      <div className={PAGE}>
+        <Skeleton label="Loading accounts…" shapes={['line', 'block', 'row', 'row', 'row']} />
+      </div>
+    );
   }
   if (accountsQuery.isError || historyQuery.isError) {
     return (
       <div className={PAGE}>
-        <div className={BANNER_WARNING} role="alert">
-          <span>The account balances could not be refreshed, so none are shown.</span>
-          <button
-            type="button"
-            className={BUTTON_COMPACT}
-            onClick={() => {
-              void accountsQuery.refetch();
-              void historyQuery.refetch();
-            }}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorNotice
+          title="The account balances couldn't load, so none are shown."
+          error={accountsQuery.error ?? historyQuery.error}
+          onRetry={() => {
+            void accountsQuery.refetch();
+            void historyQuery.refetch();
+          }}
+        />
       </div>
     );
   }
@@ -181,14 +183,12 @@ export function AccountsPage() {
         </button>
       </div>
       {items.length === 0 ? (
-        <div className={CARD}>
-          <EmptyState
-            title="No accounts yet"
-            hint="Create your first account to start recording transactions."
-            actionLabel="New account"
-            onAction={() => setCreating(true)}
-          />
-        </div>
+        <EmptyState
+          icon={ICONS.accounts}
+          title="No accounts yet"
+          hint="Add a bank account, cash or a card to start tracking balances."
+          action={{ label: 'Add account', onClick: () => setCreating(true) }}
+        />
       ) : (
         <>
           <section className={`${CARD} flex flex-col gap-12`} aria-label="Balance over time">

@@ -5,16 +5,16 @@ import { formatDay, localToday, UpcomingGroup, upcomingGroup } from '../../../..
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import { DueChip, DueTile, shortDay } from '../DueTile/DueTile';
 import { ConfirmItemForm } from '../ConfirmItemForm/ConfirmItemForm';
 import { EditableScheduledItem, ScheduledItemForm } from '../ScheduledItemForm/ScheduledItemForm';
 import {
-  BANNER_WARNING,
-  BUTTON_COMPACT,
   BUTTON_PRIMARY,
-  CARD,
   CHIP_WARNING,
   HINT,
   PAGE,
@@ -91,30 +91,21 @@ export function UpcomingPage() {
           New scheduled item
         </button>
       </div>
-      {itemsQuery.isError || !itemsQuery.data || items.length === 0 ? (
-        <div className={CARD}>
-          {itemsQuery.isError ? (
-            <div className={BANNER_WARNING} role="alert">
-              <span>The upcoming list could not be loaded, so it is not shown.</span>
-              <button
-                type="button"
-                className={BUTTON_COMPACT}
-                onClick={() => void itemsQuery.refetch()}
-              >
-                Retry
-              </button>
-            </div>
-          ) : !itemsQuery.data ? (
-            <p className="text-14 text-text-2">Loading scheduled items…</p>
-          ) : (
-            <EmptyState
-              title="Nothing scheduled"
-              hint="Future bills and income you add will be listed here by due date."
-              actionLabel="New scheduled item"
-              onAction={() => setCreating(true)}
-            />
-          )}
-        </div>
+      {itemsQuery.isError ? (
+        <ErrorNotice
+          title="The upcoming list couldn't load, so it is not shown."
+          error={itemsQuery.error}
+          onRetry={() => void itemsQuery.refetch()}
+        />
+      ) : !itemsQuery.data ? (
+        <Skeleton label="Loading scheduled items…" shapes={['line', 'row', 'row', 'row', 'row']} />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={ICONS.upcoming}
+          title="No scheduled payments"
+          hint="Schedule rent, bills or salary to see them here and in the projection."
+          action={{ label: 'Schedule payment', onClick: () => setCreating(true) }}
+        />
       ) : (
         GROUPS.map((group) => {
           const members = items.filter(

@@ -38,9 +38,10 @@ const emptyReport = {
   topGroupKey: null,
 };
 
-function stubRoutes(narrative: { status?: number; body: unknown }) {
+function stubRoutes(narrative: { status?: number; body: unknown }, configured = true) {
   const narrativeCalls: unknown[] = [];
   stubApi({
+    'GET /ai/status': { configured },
     'GET /reports/similar': (url: URL) => ({
       body: url.searchParams.get('from') === '2026-08-01' ? emptyReport : report,
     }),
@@ -96,7 +97,39 @@ describe('SimilarPage', () => {
     stubRoutes({ body: { narrative: '' } });
     renderPage();
     expect(screen.getByText('No report yet')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '✦ AI narrative' })).toBeDisabled();
+    const button = screen.getByRole('button', { name: '✦ Summarize with AI' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription('Generate a report to summarize it with AI.');
+  });
+
+  it('renders Summarize with AI disabled with its reason when no key is configured', async () => {
+    stubRoutes({ body: { narrative: '' } }, false);
+    renderPage();
+    expect(await screen.findByText('Disabled until an AI key is configured.')).toBeVisible();
+    await generate();
+    await screen.findByRole('list', { name: 'Top 5 most expensive' });
+    const button = screen.getByRole('button', { name: '✦ Summarize with AI' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription('Disabled until an AI key is configured.');
+  });
+
+  it('shows a failed report with its correlation id and Try again', async () => {
+    stubRoutes({ body: { narrative: '' } });
+    stubApi({
+      'GET /ai/status': { configured: true },
+      'GET /reports/similar': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId },
+      }),
+      'GET /accounts': { items: [], totalBalance: '0' },
+      'GET /projects': [],
+      'GET /categories': [],
+    });
+    renderPage();
+    await generate();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(`Correlation ID ${correlationId}`);
+    expect(within(alert).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   it('shows groups with count and dollar totals, the top group and the top 5 (US6 #1, #2, SC-009)', async () => {
@@ -138,7 +171,14 @@ describe('SimilarPage', () => {
     stubRoutes({ body: { narrative: '' } });
     renderPage();
     await generate('2026-08-01', '2026-08-31');
-    expect(await screen.findByText('No expenses in this period')).toBeInTheDocument();
+    expect(await screen.findByText('No similar expenses in this range')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'No two expenses between 1 Aug 2026 and 31 Aug 2026 have a similar description.',
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Change dates' }));
+    expect(screen.getByLabelText('From')).toHaveFocus();
   });
 
   it('requests the narrative for the generated range and shows it', async () => {
@@ -146,7 +186,7 @@ describe('SimilarPage', () => {
     renderPage();
     await generate();
     await screen.findByRole('list', { name: 'Top 5 most expensive' });
-    await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
+    await userEvent.click(screen.getByRole('button', { name: '✦ Summarize with AI' }));
     expect(await screen.findByText('Rent dominated this month.')).toBeInTheDocument();
     expect(calls).toEqual([{ from: '2026-09-01', to: '2026-09-30' }]);
   });
@@ -163,11 +203,11 @@ describe('SimilarPage', () => {
     renderPage();
     await generate();
     await screen.findByRole('list', { name: 'Top 5 most expensive' });
-    await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
-    const button = await screen.findByRole('button', { name: '✦ AI narrative' });
+    await userEvent.click(screen.getByRole('button', { name: '✦ Summarize with AI' }));
+    const button = await screen.findByRole('button', { name: '✦ Summarize with AI' });
     await vi.waitFor(() => expect(button).toBeDisabled());
-    expect(button).toHaveAttribute('title', 'AI narrative is disabled: no API key configured.');
-    expect(button).toHaveAccessibleDescription('AI narrative is disabled: no API key configured.');
+    expect(button).toHaveAttribute('title', 'Disabled until an AI key is configured.');
+    expect(button).toHaveAccessibleDescription('Disabled until an AI key is configured.');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -183,12 +223,13 @@ describe('SimilarPage', () => {
     renderPage();
     await generate();
     await screen.findByRole('list', { name: 'Top 5 most expensive' });
-    await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
+    await userEvent.click(screen.getByRole('button', { name: '✦ Summarize with AI' }));
     const notice = await screen.findByRole('alert');
-    expect(notice).toHaveTextContent('AI_TIMEOUT');
-    expect(notice).toHaveTextContent(correlationId);
+    expect(notice).toHaveTextContent('The LLM provider timed out after 10000 ms');
+    expect(notice).toHaveTextContent(`Correlation ID ${correlationId}`);
+    expect(within(notice).getByRole('button', { name: 'Copy ID' })).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '✦ AI narrative' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '✦ Summarize with AI' })).toBeEnabled();
     expect(notice).toHaveTextContent(
       "The AI summary couldn't be generated. The report below is unaffected.",
     );
@@ -209,7 +250,7 @@ describe('SimilarPage', () => {
     renderPage();
     await generate();
     await screen.findByRole('list', { name: 'Top 5 most expensive' });
-    await userEvent.click(screen.getByRole('button', { name: '✦ AI narrative' }));
+    await userEvent.click(screen.getByRole('button', { name: '✦ Summarize with AI' }));
     const notice = await screen.findByRole('alert');
     await userEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
     await vi.waitFor(() => expect(calls).toHaveLength(2));

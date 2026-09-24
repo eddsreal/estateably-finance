@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
-import { isApiError } from '../../../../shared/lib/form-errors';
+import { isApiError, NETWORK_ERROR } from '../../../../shared/lib/form-errors';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import { Table } from '../../../../shared/ui/Table/Table';
+import { useSavedFeedback, useToast } from '../../../../shared/ui/Toast/Toast';
 import { CategoryForm, EditableCategory } from '../CategoryForm/CategoryForm';
 import {
-  BANNER_WARNING,
   BUTTON,
   BUTTON_COMPACT,
   BUTTON_PRIMARY,
@@ -40,6 +43,8 @@ const normalize = (name: string) => name.trim().toLowerCase();
 
 export function CategoriesPage() {
   const queryClient = useQueryClient();
+  const saved = useSavedFeedback();
+  const { showError } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [creating, setCreating] = useState(false);
@@ -60,7 +65,11 @@ export function CategoriesPage() {
           ? api.POST('/categories/{id}/archive', { params: { path: { id } } })
           : api.POST('/categories/{id}/unarchive', { params: { path: { id } } }),
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+    onSuccess: async (_, { archive }) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+      await saved(archive ? 'Category archived.' : 'Category restored.');
+    },
+    onError: showError,
   });
 
   const renameMutation = useMutation({
@@ -69,36 +78,33 @@ export function CategoriesPage() {
     onSuccess: async (_, { id }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.categories });
       closeRename(id);
+      await saved('Category renamed.');
     },
-    onError: (error) =>
+    onError: (error) => {
+      showError(error);
       setRename((current) =>
         current
-          ? {
-              ...current,
-              error: isApiError(error)
-                ? error.message
-                : 'The request failed. Check that the API is running and try again.',
-            }
+          ? { ...current, error: isApiError(error) ? error.message : NETWORK_ERROR }
           : current,
-      ),
+      );
+    },
   });
 
   if (categoriesQuery.isPending) {
-    return <p className={PAGE}>Loading categories…</p>;
+    return (
+      <div className={PAGE}>
+        <Skeleton label="Loading categories…" shapes={['line', 'row', 'row', 'row', 'row']} />
+      </div>
+    );
   }
   if (categoriesQuery.isError) {
     return (
       <div className={PAGE}>
-        <div className={BANNER_WARNING} role="alert">
-          <span>The categories could not be loaded.</span>
-          <button
-            type="button"
-            className={BUTTON_COMPACT}
-            onClick={() => void categoriesQuery.refetch()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorNotice
+          title="The categories couldn't load."
+          error={categoriesQuery.error}
+          onRetry={() => void categoriesQuery.refetch()}
+        />
       </div>
     );
   }
@@ -170,15 +176,15 @@ export function CategoriesPage() {
           Show archived
         </label>
       </div>
-      <div className={CARD}>
-        {categories.length === 0 ? (
-          <EmptyState
-            title="No categories yet"
-            hint="Create a category to classify expenses and income."
-            actionLabel="New category"
-            onAction={() => setCreating(true)}
-          />
-        ) : (
+      {categories.length === 0 ? (
+        <EmptyState
+          icon={ICONS.categories}
+          title="No categories yet"
+          hint="Create a category to classify expenses and income."
+          action={{ label: 'New category', onClick: () => setCreating(true) }}
+        />
+      ) : (
+        <div className={CARD}>
           <Table
             caption="Categories"
             columns={[{ label: 'Name' }, { label: 'Type' }, { label: 'Actions', align: 'right' }]}
@@ -306,8 +312,17 @@ export function CategoriesPage() {
               );
             })}
           </Table>
+        </div>
+      )}
+      {showArchived &&
+        categories.length > 0 &&
+        !categories.some((category) => category.archived) && (
+          <EmptyState
+            icon={ICONS.categories}
+            title="No archived categories"
+            hint="Categories you archive show up here and can be restored at any time."
+          />
         )}
-      </div>
       <Modal title="New category" open={creating} onClose={() => setCreating(false)}>
         <CategoryForm category={null} onDone={() => setCreating(false)} />
       </Modal>

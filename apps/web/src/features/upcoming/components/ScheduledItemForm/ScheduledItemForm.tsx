@@ -1,11 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { formatPlain, parseDollars, Cents } from '../../../../shared/lib/money';
-import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
 import { AccountOption, AccountPicker } from '../../../../shared/ui/AccountPicker/AccountPicker';
 import {
   CategoryOption,
@@ -13,7 +12,6 @@ import {
 } from '../../../../shared/ui/CategoryPicker/CategoryPicker';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
 import {
-  BANNER_ERROR,
   BUTTON,
   BUTTON_DANGER,
   BUTTON_PRIMARY,
@@ -27,6 +25,8 @@ import {
   SEGMENT,
   SEGMENTED,
 } from '../../../../shared/lib/styles';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { useSavedFeedback } from '../../../../shared/ui/Toast/Toast';
 
 export type EditableScheduledItem = {
   id: string;
@@ -84,8 +84,8 @@ export function ScheduledItemForm({
   categories: CategoryOption[];
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
+  const saved = useSavedFeedback();
+  const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const {
     register,
     control,
@@ -136,11 +136,12 @@ export function ScheduledItemForm({
         : unwrap(api.POST('/scheduled-items', { body }));
     },
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved('Scheduled payment saved.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The scheduled payment couldn't be saved.", error });
     },
   });
 
@@ -148,11 +149,12 @@ export function ScheduledItemForm({
     mutationFn: () =>
       unwrap(api.DELETE('/scheduled-items/{id}', { params: { path: { id: item!.id } } })),
     onSuccess: async () => {
-      await invalidateEntryDerived(queryClient);
+      await saved('Scheduled payment deleted.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, FIELDS));
+      applyServerError(error, setError, FIELDS);
+      setFormError({ title: "The scheduled payment couldn't be deleted.", error });
     },
   });
 
@@ -167,11 +169,7 @@ export function ScheduledItemForm({
         })(event);
       }}
     >
-      {formError && (
-        <div className={BANNER_ERROR} role="alert">
-          {formError}
-        </div>
-      )}
+      {formError && <ErrorNotice title={formError.title} error={formError.error} />}
       <div className={FIELD}>
         <span className={LABEL} id="scheduled-kind-label">
           Kind
@@ -391,14 +389,14 @@ export function ScheduledItemForm({
             disabled={deleteMutation.isPending}
             onClick={() => deleteMutation.mutate()}
           >
-            Delete
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
           </button>
         )}
         <button type="button" className={BUTTON} onClick={onDone}>
           Cancel
         </button>
         <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
-          {item ? 'Save changes' : 'Create scheduled item'}
+          {isSubmitting ? 'Saving…' : item ? 'Save changes' : 'Create scheduled item'}
         </button>
       </div>
     </form>

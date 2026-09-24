@@ -9,6 +9,7 @@ import { EditableTransaction, TransactionForm } from './TransactionForm';
 const accounts = [
   { id: 'a1', name: 'Checking', archived: false },
   { id: 'a2', name: 'Savings', archived: false },
+  { id: 'a3', name: 'Old Bank', archived: true },
 ];
 const categories = [
   { id: 'c1', name: 'Groceries', type: 'expense' as const, archived: false },
@@ -58,6 +59,16 @@ afterEach(() => {
 });
 
 describe('TransactionForm', () => {
+  it('leaves archived accounts out of both account pickers of a new transaction', async () => {
+    const { user } = renderForm();
+    await user.click(screen.getByRole('combobox', { name: 'Account' }));
+    expect(screen.queryByRole('option', { name: /Old Bank/ })).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('radio', { name: 'Transfer' }));
+    await user.click(screen.getByRole('combobox', { name: 'To account' }));
+    expect(screen.queryByRole('option', { name: /Old Bank/ })).not.toBeInTheDocument();
+  });
+
   it('shows the fields each type requires and carries amount, date and description over', async () => {
     const { user } = renderForm();
     const date = addDays(localToday(), -3);

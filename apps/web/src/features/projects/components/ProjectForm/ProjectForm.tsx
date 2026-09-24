@@ -1,13 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { applyServerError } from '../../../../shared/lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../../../shared/lib/money';
-import { queryKeys } from '../../../../shared/lib/query-keys';
 import { MoneyInput } from '../../../../shared/ui/MoneyInput/MoneyInput';
 import {
-  BANNER_ERROR,
   BUTTON,
   BUTTON_PRIMARY,
   FIELD,
@@ -18,6 +16,8 @@ import {
   LABEL,
   OPTIONAL,
 } from '../../../../shared/lib/styles';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { useSavedFeedback } from '../../../../shared/ui/Toast/Toast';
 
 type FormValues = { name: string; budget: string };
 
@@ -30,8 +30,8 @@ export function ProjectForm({
   project: EditableProject | null;
   onDone: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string | null>(null);
+  const saved = useSavedFeedback();
+  const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const {
     register,
     control,
@@ -62,11 +62,12 @@ export function ProjectForm({
           );
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+      await saved('Project saved.');
       onDone();
     },
     onError: (error) => {
-      setFormError(applyServerError(error, setError, ['name', 'budget']));
+      applyServerError(error, setError, ['name', 'budget']);
+      setFormError({ title: "The project couldn't be saved.", error });
     },
   });
 
@@ -81,11 +82,7 @@ export function ProjectForm({
         })(event);
       }}
     >
-      {formError && (
-        <div className={BANNER_ERROR} role="alert">
-          {formError}
-        </div>
-      )}
+      {formError && <ErrorNotice title={formError.title} error={formError.error} />}
       <div className={FIELD}>
         <label className={LABEL} htmlFor="project-name">
           Name
@@ -150,7 +147,7 @@ export function ProjectForm({
           Cancel
         </button>
         <button type="submit" className={BUTTON_PRIMARY} disabled={isSubmitting}>
-          {project ? 'Save changes' : 'Create project'}
+          {isSubmitting ? 'Saving…' : project ? 'Save changes' : 'Create project'}
         </button>
       </div>
     </form>

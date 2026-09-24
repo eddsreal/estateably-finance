@@ -7,6 +7,8 @@ export type ApiError = {
   correlationId: string;
 };
 
+export const NETWORK_ERROR = 'The request failed. Check that the API is running and try again.';
+
 export function isApiError(value: unknown): value is ApiError {
   return (
     typeof value === 'object' &&
@@ -23,7 +25,7 @@ export function applyServerError<T extends FieldValues>(
   fields: readonly string[],
 ): string {
   if (!isApiError(error)) {
-    return 'The request failed. Check that the API is running and try again.';
+    return NETWORK_ERROR;
   }
   for (const detail of error.details ?? []) {
     if (fields.includes(detail.field)) {

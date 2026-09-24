@@ -60,6 +60,15 @@
   }
 }
 
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 @keyframes screen-enter {
   from {
     opacity: 0;
@@ -91,5 +100,6 @@
     --stagger: 0ms;
     --dur-morph: 0ms;
     --dur-count: 0ms;
+    --dur-shimmer: 0ms;
   }
 }

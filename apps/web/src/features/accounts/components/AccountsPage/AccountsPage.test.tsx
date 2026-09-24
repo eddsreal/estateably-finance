@@ -193,7 +193,17 @@ describe('AccountsPage', () => {
     });
     renderPage();
     expect(await screen.findByText('No accounts yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('Add a bank account, cash or a card to start tracking balances.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add account' })).toBeInTheDocument();
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+  });
+
+  it('shows a busy skeleton while the dashboard loads', () => {
+    stubDashboard();
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent('Loading accounts…');
   });
 
   it('opens the create form with the money input autofocused and a max-today date', async () => {
@@ -248,10 +258,17 @@ describe('AccountsPage', () => {
   });
 
   it('shows an error state with retry instead of stale balances when the list cannot load', async () => {
-    stubDashboard({ 'GET /accounts': () => ({ status: 500, body: { message: 'down' } }) });
+    stubDashboard({
+      'GET /accounts': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-500' },
+      }),
+    });
     renderPage();
-    expect(await screen.findByRole('alert')).toHaveTextContent('could not be refreshed');
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent("couldn't load");
+    expect(screen.getByRole('alert')).toHaveTextContent('Correlation ID c-500');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy ID' })).toBeInTheDocument();
     expect(screen.queryByText('$1,290.00')).not.toBeInTheDocument();
   });
 });

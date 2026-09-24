@@ -9,11 +9,15 @@ export function prefersReducedMotion(): boolean {
   );
 }
 
-export function durationMs(name: string): number {
+export function timeLimitMs(name: string): number {
   const value = token(name);
   const amount = Number.parseFloat(value);
-  if (prefersReducedMotion() || !Number.isFinite(amount)) return 0;
+  if (!Number.isFinite(amount)) return 0;
   return value.endsWith('ms') ? amount : amount * 1000;
+}
+
+export function durationMs(name: string): number {
+  return prefersReducedMotion() ? 0 : timeLimitMs(name);
 }
 
 function bezier(p1: number, p2: number, t: number): number {

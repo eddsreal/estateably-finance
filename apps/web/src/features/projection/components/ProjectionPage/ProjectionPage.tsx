@@ -7,10 +7,12 @@ import { Cents, compareCents, formatCents, isNegative } from '../../../../shared
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import { Stat } from '../../../../shared/ui/Stat/Stat';
 import { Table } from '../../../../shared/ui/Table/Table';
 import {
-  BANNER_WARNING,
   BUTTON_COMPACT,
   CARD,
   CHIP_WARNING,
@@ -223,95 +225,82 @@ export function ProjectionPage() {
               </Suspense>
             </section>
           )}
-          <div className="overflow-hidden rounded-3xl border border-sand-350 bg-sand-0 shadow-card">
-            {projectionQuery.isError ? (
-              <div className="p-24">
-                <div className={BANNER_WARNING} role="alert">
-                  <span>The projection could not be loaded, so it is not shown.</span>
-                  <button
-                    type="button"
-                    className={BUTTON_COMPACT}
-                    onClick={() => void projectionQuery.refetch()}
-                  >
-                    Retry
-                  </button>
-                </div>
+          {projectionQuery.isError ? (
+            <ErrorNotice
+              title="The projection couldn't load, so it is not shown."
+              error={projectionQuery.error}
+              onRetry={() => void projectionQuery.refetch()}
+            />
+          ) : !projection ? (
+            <Skeleton label="Loading projection…" shapes={['block', 'row', 'row', 'row']} />
+          ) : projection.occurrences.length === 0 ? (
+            <EmptyState
+              icon={ICONS.projection}
+              title={`Nothing scheduled before ${formatDay(projection.horizon)}`}
+              hint={`The balance stays at ${formatCents(projection.finalBalance as Cents)}. Schedule a payment or pick a later date.`}
+              action={{ label: 'Schedule payment', onClick: () => void navigate('/upcoming') }}
+            />
+          ) : (
+            <div className="overflow-hidden rounded-3xl border border-sand-350 bg-sand-0 shadow-card">
+              <Table
+                caption={`Scheduled payments up to ${formatDay(projection.horizon)}`}
+                columns={[
+                  { label: 'Date' },
+                  { label: 'Payment' },
+                  { label: 'Amount', align: 'right' },
+                  { label: 'Balance after', align: 'right' },
+                ]}
+              >
+                {projection.occurrences.map((occurrence, index) => {
+                  const first = index === summary?.first;
+                  return (
+                    <tr
+                      key={`${occurrence.scheduledItemId}-${occurrence.date}-${index}`}
+                      className={first ? 'bg-negative-soft' : ''}
+                    >
+                      <td>
+                        <span className="flex items-center gap-8 font-mono text-12 whitespace-nowrap text-text-strong">
+                          {formatDay(occurrence.date)}
+                          {occurrence.overdue && <span className={CHIP_WARNING}>Overdue</span>}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="flex min-w-0 items-center gap-8 font-medium">
+                          <span className={TRUNCATE}>{occurrence.description}</span>
+                          {first && (
+                            <span className="inline-flex h-24 shrink-0 items-center rounded-pill bg-negative px-10 text-12 font-semibold text-text-on-ink">
+                              Below $0.00
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className={TD_AMOUNT}>
+                        <Amount
+                          cents={
+                            occurrence.kind === 'bill' ? `-${occurrence.amount}` : occurrence.amount
+                          }
+                          sign="always"
+                        />
+                      </td>
+                      <td className={`${TD_AMOUNT} font-semibold`}>
+                        <Amount cents={occurrence.runningBalance} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Table>
+              <div className="flex h-56 items-center justify-between gap-12 bg-ink-900 px-22">
+                <span className="text-14 text-ink-300">
+                  {projection.occurrences.length} payment
+                  {projection.occurrences.length === 1 ? '' : 's'} · final balance on{' '}
+                  {formatDay(projection.horizon)}
+                </span>
+                <span className="text-20 font-semibold text-text-on-ink tabular-nums">
+                  {formatCents(projection.finalBalance as Cents)}
+                </span>
               </div>
-            ) : !projection ? (
-              <p className="p-24 text-14 text-text-2">Loading projection…</p>
-            ) : projection.occurrences.length === 0 ? (
-              <div className="p-24">
-                <EmptyState
-                  title="Nothing scheduled before this date"
-                  hint="Scheduled bills and income due by the chosen date will appear here with a running balance."
-                  actionLabel="Go to upcoming"
-                  onAction={() => void navigate('/upcoming')}
-                />
-              </div>
-            ) : (
-              <>
-                <Table
-                  caption={`Scheduled payments up to ${formatDay(projection.horizon)}`}
-                  columns={[
-                    { label: 'Date' },
-                    { label: 'Payment' },
-                    { label: 'Amount', align: 'right' },
-                    { label: 'Balance after', align: 'right' },
-                  ]}
-                >
-                  {projection.occurrences.map((occurrence, index) => {
-                    const first = index === summary?.first;
-                    return (
-                      <tr
-                        key={`${occurrence.scheduledItemId}-${occurrence.date}-${index}`}
-                        className={first ? 'bg-negative-soft' : ''}
-                      >
-                        <td>
-                          <span className="flex items-center gap-8 font-mono text-12 whitespace-nowrap text-text-strong">
-                            {formatDay(occurrence.date)}
-                            {occurrence.overdue && <span className={CHIP_WARNING}>Overdue</span>}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="flex min-w-0 items-center gap-8 font-medium">
-                            <span className={TRUNCATE}>{occurrence.description}</span>
-                            {first && (
-                              <span className="inline-flex h-24 shrink-0 items-center rounded-pill bg-negative px-10 text-12 font-semibold text-text-on-ink">
-                                Below $0.00
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className={TD_AMOUNT}>
-                          <Amount
-                            cents={
-                              occurrence.kind === 'bill'
-                                ? `-${occurrence.amount}`
-                                : occurrence.amount
-                            }
-                            sign="always"
-                          />
-                        </td>
-                        <td className={`${TD_AMOUNT} font-semibold`}>
-                          <Amount cents={occurrence.runningBalance} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </Table>
-                <div className="flex h-56 items-center justify-between gap-12 bg-ink-900 px-22">
-                  <span className="text-14 text-ink-300">
-                    {projection.occurrences.length} payment
-                    {projection.occurrences.length === 1 ? '' : 's'} · final balance on{' '}
-                    {formatDay(projection.horizon)}
-                  </span>
-                  <span className="text-20 font-semibold text-text-on-ink tabular-nums">
-                    {formatCents(projection.finalBalance as Cents)}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

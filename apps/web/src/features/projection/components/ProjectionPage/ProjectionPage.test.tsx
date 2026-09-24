@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
-import { invalidateEntryDerived } from '../../../../shared/lib/query-keys';
+import { refetchEntryDerived } from '../../../../shared/lib/query-keys';
 import { ProjectionPage } from './ProjectionPage';
 
 function occurrence(overrides: Record<string, unknown> = {}) {
@@ -42,6 +42,19 @@ function renderPage() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('ProjectionPage', () => {
+  it('shows a busy skeleton, then the error with its correlation id and Try again', async () => {
+    stubApi({
+      'GET /projection': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-proj' },
+      }),
+    });
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent('Loading projection…');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correlation ID c-proj');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
   it('shows the running series in dollars only, with the final balance (SC-009)', async () => {
     stubProjection({
       startingBalance: '445750',
@@ -193,15 +206,19 @@ describe('ProjectionPage', () => {
   it('shows the empty state and refetches when entry-derived queries are invalidated (FR-028)', async () => {
     stubProjection({ startingBalance: '445750', finalBalance: '445750', occurrences: [] });
     const { queryClient } = renderPage();
-    expect(await screen.findByText('Nothing scheduled before this date')).toBeInTheDocument();
+    expect(await screen.findByText(/^Nothing scheduled before /)).toBeInTheDocument();
+    expect(
+      screen.getByText('The balance stays at $4,457.50. Schedule a payment or pick a later date.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Schedule payment' })).toBeInTheDocument();
 
     stubProjection({
       startingBalance: '345750',
       finalBalance: '225750',
       occurrences: [occurrence({ runningBalance: '225750' })],
     });
-    await invalidateEntryDerived(queryClient);
+    await refetchEntryDerived(queryClient);
     expect((await screen.findAllByText('$2,257.50')).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText('Nothing scheduled before this date')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Nothing scheduled before /)).not.toBeInTheDocument();
   });
 });

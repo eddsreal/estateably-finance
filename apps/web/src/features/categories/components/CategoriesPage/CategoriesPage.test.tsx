@@ -22,6 +22,34 @@ function renderPage() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('CategoriesPage', () => {
+  it('shows a busy skeleton while loading', () => {
+    stubApi({ 'GET /categories': categories });
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent('Loading categories…');
+  });
+
+  it('shows the error with its correlation id and Try again', async () => {
+    stubApi({
+      'GET /categories': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-cat' },
+      }),
+    });
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correlation ID c-cat');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('shows the archived empty state when nothing is archived', async () => {
+    stubApi({ 'GET /categories': categories });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Groceries');
+    expect(screen.queryByText('No archived categories')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('switch', { name: 'Show archived' }));
+    expect(await screen.findByText('No archived categories')).toBeInTheDocument();
+  });
+
   it('lists categories with their type chips', async () => {
     stubApi({ 'GET /categories': categories });
     renderPage();

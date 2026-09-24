@@ -1,21 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { formatDay } from '../../../../shared/lib/dates';
 import { Cents, compareCents, share, toPlotNumber } from '../../../../shared/lib/money';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Donut, categoryColor } from '../../../../shared/ui/Donut/Donut';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import {
   EditableTransaction,
   TransactionForm,
 } from '../../../../shared/ui/TransactionForm/TransactionForm';
 import {
-  BANNER_WARNING,
-  BUTTON_COMPACT,
   CARD,
   ICON_BUTTON,
   PAGE,
@@ -48,7 +48,6 @@ export function ReportPage() {
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const spentId = useId();
-  const navigate = useNavigate();
 
   const reportQuery = useQuery({
     queryKey: queryKeys.reportMonthly(month),
@@ -139,127 +138,115 @@ export function ReportPage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col overflow-hidden rounded-3xl border border-sand-350 bg-sand-0 shadow-card">
-          {reportQuery.isError ? (
-            <div className="p-24">
-              <div className={BANNER_WARNING} role="alert">
-                <span>The report could not be loaded, so it is not shown.</span>
-                <button
-                  type="button"
-                  className={BUTTON_COMPACT}
-                  onClick={() => void reportQuery.refetch()}
+        {reportQuery.isError ? (
+          <ErrorNotice
+            title="The report couldn't load, so it is not shown."
+            error={reportQuery.error}
+            onRetry={() => void reportQuery.refetch()}
+          />
+        ) : !report ? (
+          <Skeleton label="Loading report…" shapes={['row', 'row', 'row', 'row', 'row']} />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={ICONS.report}
+            title="No expenses this month"
+            hint={`Expenses recorded in ${label} will appear here by category.`}
+          />
+        ) : (
+          <div className="flex flex-col overflow-hidden rounded-3xl border border-sand-350 bg-sand-0 shadow-card">
+            {rows.map((category, index) => (
+              <details
+                key={category.categoryId}
+                data-active={category.categoryId === active}
+                className={`border-b border-sand-200 transition ${EASE} ${
+                  category.categoryId === active
+                    ? 'bg-sand-50'
+                    : active === null
+                      ? ''
+                      : 'opacity-70'
+                }`}
+              >
+                <summary
+                  className={`flex min-h-56 cursor-pointer list-none items-center gap-14 px-22 transition-colors ${EASE} hover:bg-sand-50 md:grid md:grid-cols-(--report-row-grid)`}
+                  onMouseEnter={() => setActive(category.categoryId)}
+                  onMouseLeave={() => setActive(null)}
+                  onFocus={() => setActive(category.categoryId)}
+                  onBlur={() => setActive(null)}
                 >
-                  Retry
-                </button>
-              </div>
-            </div>
-          ) : !report ? (
-            <p className="p-24 text-14 text-text-2">Loading report…</p>
-          ) : rows.length === 0 ? (
-            <div className="p-24">
-              <EmptyState
-                title="No expenses this month"
-                hint={`Expenses dated in ${label} will show up here by category.`}
-                actionLabel="Go to transactions"
-                onAction={() => void navigate('/transactions')}
-              />
-            </div>
-          ) : (
-            <>
-              {rows.map((category, index) => (
-                <details
-                  key={category.categoryId}
-                  data-active={category.categoryId === active}
-                  className={`border-b border-sand-200 transition ${EASE} ${
-                    category.categoryId === active
-                      ? 'bg-sand-50'
-                      : active === null
-                        ? ''
-                        : 'opacity-70'
-                  }`}
-                >
-                  <summary
-                    className={`flex min-h-56 cursor-pointer list-none items-center gap-14 px-22 transition-colors ${EASE} hover:bg-sand-50 md:grid md:grid-cols-(--report-row-grid)`}
-                    onMouseEnter={() => setActive(category.categoryId)}
-                    onMouseLeave={() => setActive(null)}
-                    onFocus={() => setActive(category.categoryId)}
-                    onBlur={() => setActive(null)}
+                  <span
+                    aria-hidden="true"
+                    className={`size-12 shrink-0 rounded-xs ${categoryColor(index).swatch}`}
+                  />
+                  <span className="flex flex-1 items-baseline gap-4 overflow-hidden text-15 font-medium">
+                    <span className="truncate">{category.categoryName}</span>
+                    <span className="shrink-0 text-13 font-regular text-text-3">
+                      {`· ${category.transactions.length} ${category.transactions.length === 1 ? 'item' : 'items'}`}
+                    </span>
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="hidden h-8 overflow-hidden rounded-xs bg-sand-200 md:block"
                   >
                     <span
-                      aria-hidden="true"
-                      className={`size-12 shrink-0 rounded-xs ${categoryColor(index).swatch}`}
+                      className={`block h-full rounded-xs ${categoryColor(index).swatch}`}
+                      style={{
+                        width: `${toPlotNumber(totals[index], '0' as Cents, max, 100)}%`,
+                      }}
                     />
-                    <span className="flex flex-1 items-baseline gap-4 overflow-hidden text-15 font-medium">
-                      <span className="truncate">{category.categoryName}</span>
-                      <span className="shrink-0 text-13 font-regular text-text-3">
-                        {`· ${category.transactions.length} ${category.transactions.length === 1 ? 'item' : 'items'}`}
-                      </span>
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="hidden h-8 overflow-hidden rounded-xs bg-sand-200 md:block"
+                  </span>
+                  <span className="text-right font-mono text-12 text-text-3">{`${shares[index]}%`}</span>
+                  <span className="text-right text-14">
+                    <Amount cents={category.total} />
+                  </span>
+                </summary>
+                <ul className="flex flex-col gap-6 px-22 pb-12 md:pl-50">
+                  {category.transactions.map((transaction) => (
+                    <li
+                      key={transaction.id}
+                      className="flex min-h-40 items-center gap-12 rounded-md border border-sand-350 bg-sand-0 px-14 text-14 md:grid md:grid-cols-(--report-item-grid)"
                     >
-                      <span
-                        className={`block h-full rounded-xs ${categoryColor(index).swatch}`}
-                        style={{
-                          width: `${toPlotNumber(totals[index], '0' as Cents, max, 100)}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="text-right font-mono text-12 text-text-3">{`${shares[index]}%`}</span>
-                    <span className="text-right text-14">
-                      <Amount cents={category.total} />
-                    </span>
-                  </summary>
-                  <ul className="flex flex-col gap-6 px-22 pb-12 md:pl-50">
-                    {category.transactions.map((transaction) => (
-                      <li
-                        key={transaction.id}
-                        className="flex min-h-40 items-center gap-12 rounded-md border border-sand-350 bg-sand-0 px-14 text-14 md:grid md:grid-cols-(--report-item-grid)"
-                      >
-                        <span className="shrink-0 font-mono text-12 text-text-3 uppercase">
-                          {formatDay(transaction.date)}
+                      <span className="shrink-0 font-mono text-12 text-text-3 uppercase">
+                        {formatDay(transaction.date)}
+                      </span>
+                      <span className="flex flex-1 items-center gap-4 overflow-hidden">
+                        <button
+                          type="button"
+                          className={ROW_ACTION_TEXT}
+                          onClick={() =>
+                            setEditing({
+                              id: transaction.id,
+                              kind: 'expense',
+                              date: transaction.date,
+                              description: transaction.description,
+                              amount: transaction.amount,
+                              accountId: transaction.accountId,
+                              categoryId: transaction.categoryId,
+                              projectId: transaction.projectId,
+                            })
+                          }
+                        >
+                          {transaction.description}
+                        </button>
+                        <span className="truncate text-text-3">
+                          {`· ${accountName(transaction.accountId)}`}
                         </span>
-                        <span className="flex flex-1 items-center gap-4 overflow-hidden">
-                          <button
-                            type="button"
-                            className={ROW_ACTION_TEXT}
-                            onClick={() =>
-                              setEditing({
-                                id: transaction.id,
-                                kind: 'expense',
-                                date: transaction.date,
-                                description: transaction.description,
-                                amount: transaction.amount,
-                                accountId: transaction.accountId,
-                                categoryId: transaction.categoryId,
-                                projectId: transaction.projectId,
-                              })
-                            }
-                          >
-                            {transaction.description}
-                          </button>
-                          <span className="truncate text-text-3">
-                            {`· ${accountName(transaction.accountId)}`}
-                          </span>
-                        </span>
-                        <span className="text-right">
-                          <Amount cents={transaction.amount} />
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ))}
-              <div className="mt-auto flex min-h-56 items-center justify-between gap-12 bg-ink-900 px-22">
-                <span className="text-14 text-ink-300">{`Total for ${label}`}</span>
-                <span className="text-20 font-semibold text-text-on-ink tabular-nums">
-                  <Amount cents={report.grandTotal} />
-                </span>
-              </div>
-            </>
-          )}
-        </div>
+                      </span>
+                      <span className="text-right">
+                        <Amount cents={transaction.amount} />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+            <div className="mt-auto flex min-h-56 items-center justify-between gap-12 bg-ink-900 px-22">
+              <span className="text-14 text-ink-300">{`Total for ${label}`}</span>
+              <span className="text-20 font-semibold text-text-on-ink tabular-nums">
+                <Amount cents={report.grandTotal} />
+              </span>
+            </div>
+          </div>
+        )}
       </div>
       <Modal title="Edit transaction" open={editing !== null} onClose={() => setEditing(null)}>
         {editing && (

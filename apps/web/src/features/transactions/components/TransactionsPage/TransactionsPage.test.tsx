@@ -211,11 +211,35 @@ describe('TransactionsPage', () => {
     stubApi({
       'GET /accounts': accounts,
       'GET /categories': categories,
-      'GET /transactions': () => ({ status: 500, body: { message: 'down' } }),
+      'GET /transactions': () => ({
+        status: 500,
+        body: { code: 'INTERNAL', message: 'Something broke.', correlationId: 'c-tx' },
+      }),
     });
-    renderPage();
-    expect(await screen.findByRole('alert')).toHaveTextContent('could not be refreshed');
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    const { container } = renderPage();
+    expect(container.querySelector('[aria-busy="true"]')).toHaveTextContent(
+      'Loading transactions…',
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correlation ID c-tx');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.queryByText('-$42.50')).not.toBeInTheDocument();
+  });
+
+  it('offers Clear filters as the one action when filters match nothing', async () => {
+    stubAll({
+      'GET /transactions': (url: URL) => ({
+        body: url.searchParams.has('kind')
+          ? { items: [], total: 0, limit: 50, offset: 0 }
+          : transactions,
+      }),
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('-$42.50');
+    await user.click(screen.getByRole('radio', { name: 'Income' }));
+    expect(await screen.findByText('No transactions match these filters')).toBeInTheDocument();
+    const clear = screen.getAllByRole('button', { name: 'Clear filters' });
+    await user.click(clear[clear.length - 1]);
+    expect(await screen.findByText('-$42.50')).toBeInTheDocument();
   });
 });

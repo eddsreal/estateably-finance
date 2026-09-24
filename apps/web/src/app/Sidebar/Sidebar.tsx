@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { localToday } from '../../shared/lib/dates';
-import { Icon } from '../../shared/ui/Icon/Icon';
+import { Icon, ICONS } from '../../shared/ui/Icon/Icon';
 
 type NavItem = { to: string; label: string; icon: string };
 
@@ -11,23 +11,23 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
       {
         to: '/',
         label: 'Accounts',
-        icon: 'M3 7h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm0 0V6a2 2 0 0 1 2-2h11M16.5 13h.01',
+        icon: ICONS.accounts,
       },
       {
         to: '/transactions',
         label: 'Transactions',
-        icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+        icon: ICONS.transactions,
       },
     ],
   },
   {
     title: 'Reports',
     items: [
-      { to: '/report', label: 'Monthly expenses', icon: 'M3 20h18M7 20v-7M12 20V5M17 20v-10' },
+      { to: '/report', label: 'Monthly expenses', icon: ICONS.report },
       {
         to: '/similar',
         label: 'Similar transactions',
-        icon: 'M12 3l9 5-9 5-9-5 9-5zM3 14l9 5 9-5',
+        icon: ICONS.similar,
       },
     ],
   },
@@ -37,13 +37,13 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
       {
         to: '/upcoming',
         label: 'Upcoming',
-        icon: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6zM4 9h16M8 3v4M16 3v4',
+        icon: ICONS.upcoming,
       },
-      { to: '/projection', label: 'Projection', icon: 'M3 17l6-6 4 4 8-8M21 12V7h-5' },
+      { to: '/projection', label: 'Projection', icon: ICONS.projection },
       {
         to: '/projects',
         label: 'Projects',
-        icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z',
+        icon: ICONS.projects,
       },
     ],
   },
@@ -53,7 +53,7 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
       {
         to: '/categories',
         label: 'Categories',
-        icon: 'M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9zM7.5 7.5h.01',
+        icon: ICONS.categories,
       },
     ],
   },

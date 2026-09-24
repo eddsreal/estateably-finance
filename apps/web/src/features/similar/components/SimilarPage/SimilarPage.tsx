@@ -1,20 +1,21 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useRef, useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { formatDay, localToday } from '../../../../shared/lib/dates';
-import { isApiError } from '../../../../shared/lib/form-errors';
+import { isApiError, NETWORK_ERROR } from '../../../../shared/lib/form-errors';
 import { Cents, compareCents, toPlotNumber } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
+import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
+import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import {
   EditableTransaction,
   TransactionForm,
 } from '../../../../shared/ui/TransactionForm/TransactionForm';
 import {
-  BANNER_ERROR,
   BANNER_WARNING,
   BUTTON,
   BUTTON_COMPACT,
@@ -39,22 +40,23 @@ type Range = { from: string; to: string };
 const CAPTION =
   'flex justify-between gap-12 border-b border-sand-350 px-18 pt-14 pb-10 font-mono text-11 tracking-wide text-text-2 uppercase';
 
-const AI_DISABLED_REASON = 'AI narrative is disabled: no API key configured.';
-
-function requestError(error: unknown): string {
-  return isApiError(error)
-    ? `${error.code}: ${error.message} (ref ${error.correlationId})`
-    : 'The request failed. Check that the API is running and try again.';
-}
+const AI_DISABLED_REASON = 'Disabled until an AI key is configured.';
 
 export function SimilarPage() {
   const [from, setFrom] = useState(`${localToday().slice(0, 7)}-01`);
   const [to, setTo] = useState(localToday());
   const [range, setRange] = useState<Range | null>(null);
-  const [aiDisabled, setAiDisabled] = useState(false);
-  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const [aiRejected, setAiRejected] = useState(false);
+  const [aiError, setAiError] = useState<unknown>(null);
+  const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
-  const navigate = useNavigate();
+  const fromRef = useRef<HTMLInputElement>(null);
+
+  const aiStatusQuery = useQuery({
+    queryKey: queryKeys.aiStatus,
+    queryFn: () => unwrap(api.GET('/ai/status')),
+  });
+  const aiDisabled = aiRejected || aiStatusQuery.data?.configured === false;
 
   const reportQuery = useQuery({
     queryKey: queryKeys.reportSimilar(range?.from ?? '', range?.to ?? ''),
@@ -80,8 +82,11 @@ export function SimilarPage() {
   const narrative = useMutation({
     mutationFn: (body: Range) => unwrap(api.POST('/reports/similar/narrative', { body })),
     onError: (error) => {
-      if (isApiError(error) && error.code === 'AI_NOT_CONFIGURED') setAiDisabled(true);
-      else setAiNotice(requestError(error));
+      if (isApiError(error) && error.code === 'AI_NOT_CONFIGURED') setAiRejected(true);
+      else {
+        setCopied(false);
+        setAiError(error);
+      }
     },
   });
 
@@ -99,14 +104,14 @@ export function SimilarPage() {
 
   function generate() {
     narrative.reset();
-    setAiNotice(null);
+    setAiError(null);
     setRange({ from, to });
     if (range?.from === from && range.to === to) void reportQuery.refetch();
   }
 
   function requestNarrative() {
     if (!range) return;
-    setAiNotice(null);
+    setAiError(null);
     narrative.mutate(range);
   }
 
@@ -129,6 +134,7 @@ export function SimilarPage() {
               </label>
               <input
                 id="similar-from"
+                ref={fromRef}
                 type="date"
                 className={INPUT}
                 value={from}
@@ -151,6 +157,7 @@ export function SimilarPage() {
               type="button"
               className={BUTTON_PRIMARY}
               disabled={from === '' || to === ''}
+              aria-describedby={from === '' || to === '' ? 'generate-disabled-reason' : undefined}
               onClick={generate}
             >
               Generate report
@@ -160,20 +167,25 @@ export function SimilarPage() {
               className={BUTTON}
               disabled={aiDisabled || !report || narrative.isPending}
               title={aiDisabled ? AI_DISABLED_REASON : undefined}
-              aria-describedby={aiDisabled ? 'ai-disabled-reason' : undefined}
+              aria-describedby={aiDisabled || !report ? 'ai-disabled-reason' : undefined}
               onClick={requestNarrative}
             >
-              {narrative.isPending ? 'Writing narrative…' : '✦ AI narrative'}
+              {narrative.isPending ? 'Summarizing…' : '✦ Summarize with AI'}
             </button>
           </div>
-          {aiDisabled && (
+          {(from === '' || to === '') && (
+            <p id="generate-disabled-reason" className={HINT}>
+              Pick both dates to generate a report.
+            </p>
+          )}
+          {(aiDisabled || !report) && (
             <p id="ai-disabled-reason" className={HINT}>
-              {AI_DISABLED_REASON}
+              {aiDisabled ? AI_DISABLED_REASON : 'Generate a report to summarize it with AI.'}
             </p>
           )}
         </div>
       </div>
-      {aiNotice && (
+      {aiError !== null && (
         <div className={`${BANNER_WARNING} rounded-xl px-14 py-12`} role="alert">
           <span
             aria-hidden="true"
@@ -185,8 +197,26 @@ export function SimilarPage() {
             <span className="text-14 font-semibold">
               The AI summary couldn&apos;t be generated. The report below is unaffected.
             </span>
-            <span className="font-mono text-12 break-all">{aiNotice}</span>
+            <span className="text-13">{isApiError(aiError) ? aiError.message : NETWORK_ERROR}</span>
+            {isApiError(aiError) && (
+              <span className="font-mono text-12 break-all">
+                Correlation ID {aiError.correlationId}
+              </span>
+            )}
           </span>
+          {isApiError(aiError) && (
+            <button
+              type="button"
+              className={`${BUTTON_COMPACT} border-warning-line bg-warning-surface text-warning-ink`}
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(aiError.correlationId)
+                  .then(() => setCopied(true));
+              }}
+            >
+              {copied ? 'Copied' : 'Copy ID'}
+            </button>
+          )}
           <button
             type="button"
             className={`${BUTTON_COMPACT} border-warning-line bg-warning-surface text-warning-ink`}
@@ -198,7 +228,7 @@ export function SimilarPage() {
             type="button"
             className={`${ICON_BUTTON} text-18 text-warning-ink`}
             aria-label="Dismiss"
-            onClick={() => setAiNotice(null)}
+            onClick={() => setAiError(null)}
           >
             ×
           </button>
@@ -211,29 +241,26 @@ export function SimilarPage() {
         </div>
       )}
       {range === null ? (
-        <div className={CARD}>
-          <EmptyState
-            title="No report yet"
-            hint="Generate a report to group repeated merchants and surface the five most expensive transactions of the period."
-          />
-        </div>
+        <EmptyState
+          icon={ICONS.similar}
+          title="No report yet"
+          hint="Generate a report to group repeated merchants and surface the five most expensive transactions of the period."
+        />
       ) : reportQuery.isError ? (
-        <div className={BANNER_ERROR} role="alert">
-          {requestError(reportQuery.error)}
-        </div>
+        <ErrorNotice
+          title="The report couldn't load."
+          error={reportQuery.error}
+          onRetry={() => void reportQuery.refetch()}
+        />
       ) : !report ? (
-        <div className={CARD}>
-          <p className="text-14 text-text-2">Loading report…</p>
-        </div>
+        <Skeleton label="Loading report…" shapes={['row', 'row', 'row', 'row']} />
       ) : report.groups.length === 0 ? (
-        <div className={CARD}>
-          <EmptyState
-            title="No expenses in this period"
-            hint="Expenses dated between these two days will be grouped here."
-            actionLabel="Go to transactions"
-            onAction={() => void navigate('/transactions')}
-          />
-        </div>
+        <EmptyState
+          icon={ICONS.similar}
+          title="No similar expenses in this range"
+          hint={`No two expenses between ${formatDay(report.from)} and ${formatDay(report.to)} have a similar description.`}
+          action={{ label: 'Change dates', onClick: () => fromRef.current?.focus() }}
+        />
       ) : (
         <div className="grid gap-16 md:grid-cols-(--similar-grid)">
           <section
