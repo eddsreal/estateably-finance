@@ -26,7 +26,7 @@ import {
   SEGMENTED,
 } from '../../lib/styles';
 import { ErrorNotice } from '../ErrorNotice/ErrorNotice';
-import { useSavedFeedback } from '../Toast/Toast';
+import { useSavedFeedback, useToast } from '../Toast/Toast';
 
 export type TransactionKindChoice = 'expense' | 'income' | 'transfer';
 
@@ -78,6 +78,10 @@ function amountError(value: string): string | true {
   return BigInt(cents) > 0n || 'Enter an amount greater than 0.00.';
 }
 
+function deleteTransaction(id: string) {
+  return unwrap(api.DELETE('/transactions/{id}', { params: { path: { id } } }));
+}
+
 function FieldError({ id, message }: { id: string; message?: string }) {
   return (
     <p className={FIELD_ERROR} role="alert" id={id}>
@@ -101,6 +105,7 @@ export function TransactionForm({
   onDone: () => void;
 }) {
   const saved = useSavedFeedback();
+  const { showError, closeUndoFor } = useToast();
   const pickable = transaction ? accounts : accounts.filter((account) => !account.archived);
   const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
   const {
@@ -163,8 +168,17 @@ export function TransactionForm({
         ? unwrap(api.PUT('/transactions/{id}', { params: { path: { id: transaction.id } }, body }))
         : unwrap(api.POST('/transactions', { body }));
     },
-    onSuccess: async () => {
-      await saved(transaction ? 'Transaction saved.' : 'Transaction recorded.');
+    onSuccess: async (created) => {
+      if (transaction) {
+        closeUndoFor(transaction.id);
+        await saved('Transaction saved.');
+      } else {
+        await saved('Transaction recorded.', {
+          transactionId: created.id,
+          onUndo: () =>
+            deleteTransaction(created.id).then(() => saved('Transaction removed.'), showError),
+        });
+      }
       onDone();
     },
     onError: (error) => {
@@ -174,9 +188,9 @@ export function TransactionForm({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      unwrap(api.DELETE('/transactions/{id}', { params: { path: { id: transaction!.id } } })),
+    mutationFn: () => deleteTransaction(transaction!.id),
     onSuccess: async () => {
+      closeUndoFor(transaction!.id);
       await saved('Transaction deleted.');
       onDone();
     },

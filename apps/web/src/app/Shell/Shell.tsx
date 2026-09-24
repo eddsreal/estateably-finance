@@ -7,7 +7,7 @@ import { queryKeys } from '../../shared/lib/query-keys';
 import { CommandPalette, PaletteCommand } from '../../shared/ui/CommandPalette/CommandPalette';
 import { Icon } from '../../shared/ui/Icon/Icon';
 import { Modal } from '../../shared/ui/Modal/Modal';
-import { ToastProvider } from '../../shared/ui/Toast/Toast';
+import { ToastProvider, useToast } from '../../shared/ui/Toast/Toast';
 import {
   EditableTransaction,
   TransactionForm,
@@ -46,6 +46,22 @@ function ShellTransactionForm({
       onDone={onDone}
     />
   );
+}
+
+function UndoShortcut() {
+  const { undo } = useToast();
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'z' || event.shiftKey || !(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+      if (document.activeElement?.matches('input, textarea, select, [contenteditable]')) return;
+      if (undo()) event.preventDefault();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [undo]);
+  return null;
 }
 
 export function Shell() {
@@ -92,6 +108,7 @@ export function Shell() {
 
   return (
     <ToastProvider>
+      <UndoShortcut />
       <div className="flex min-h-screen">
         <div className="sticky top-0 h-screen flex-none py-12 pl-12">
           <Sidebar onSearch={() => setPaletteOpen(true)} />

@@ -88,6 +88,108 @@ describe('Toast', () => {
   });
 });
 
+describe('Undo toast', () => {
+  function UndoHarness({ onUndo }: { onUndo: (id: string) => Promise<void> }) {
+    const { show, undo, closeUndoFor, flashId } = useToast();
+    const push = (id: string) =>
+      show({
+        kind: 'undo',
+        message: `Recorded ${id}.`,
+        transactionId: id,
+        onUndo: () => onUndo(id),
+      });
+    return (
+      <>
+        <button type="button" onClick={() => push('t1')}>
+          create t1
+        </button>
+        <button type="button" onClick={() => push('t2')}>
+          create t2
+        </button>
+        <button type="button" onClick={() => undo()}>
+          shortcut
+        </button>
+        <button type="button" onClick={() => closeUndoFor('t1')}>
+          edit t1
+        </button>
+        <output>{flashId ?? 'none'}</output>
+      </>
+    );
+  }
+
+  function renderUndo() {
+    document.documentElement.style.setProperty('--dur-undo', '5s');
+    document.documentElement.style.setProperty('--dur-flash', '2.4s');
+    const onUndo = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
+    render(
+      <ToastProvider>
+        <UndoHarness onUndo={onUndo} />
+      </ToastProvider>,
+    );
+    const click = (name: string) => act(() => screen.getByRole('button', { name }).click());
+    return { onUndo, click };
+  }
+
+  it('keeps only the latest undo toast, so Undo targets the latest create', () => {
+    const { onUndo, click } = renderUndo();
+    click('create t1');
+    click('create t2');
+    expect(screen.queryByText('Recorded t1.')).not.toBeInTheDocument();
+    expect(screen.getByText('Recorded t2.')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Undo/ })).toHaveLength(1);
+    click('shortcut');
+    expect(onUndo).toHaveBeenCalledWith('t2');
+  });
+
+  it('acts once: the first press removes the toast, a second sends nothing', () => {
+    const { onUndo, click } = renderUndo();
+    click('create t1');
+    act(() => screen.getByRole('button', { name: /^Undo/ }).click());
+    expect(screen.queryByText('Recorded t1.')).not.toBeInTheDocument();
+    click('shortcut');
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes after --dur-undo and then has nothing to undo', () => {
+    vi.useFakeTimers();
+    const { onUndo, click } = renderUndo();
+    click('create t1');
+    act(() => {
+      vi.advanceTimersByTime(4900);
+    });
+    expect(screen.getByText('Recorded t1.')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(screen.queryByText('Recorded t1.')).not.toBeInTheDocument();
+    click('shortcut');
+    expect(onUndo).not.toHaveBeenCalled();
+  });
+
+  it('closes by transaction id only when that id is held', () => {
+    const { onUndo, click } = renderUndo();
+    click('create t2');
+    click('edit t1');
+    expect(screen.getByText('Recorded t2.')).toBeInTheDocument();
+    click('create t1');
+    click('edit t1');
+    expect(screen.queryByText('Recorded t1.')).not.toBeInTheDocument();
+    click('shortcut');
+    expect(onUndo).not.toHaveBeenCalled();
+  });
+
+  it('exposes the new id as flashId for --dur-flash', () => {
+    vi.useFakeTimers();
+    const { click } = renderUndo();
+    click('create t1');
+    expect(screen.getByRole('status')).toHaveTextContent('t1');
+    act(() => {
+      vi.advanceTimersByTime(2400);
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('none');
+  });
+});
+
 describe('useSavedFeedback', () => {
   function Saver() {
     const saved = useSavedFeedback();

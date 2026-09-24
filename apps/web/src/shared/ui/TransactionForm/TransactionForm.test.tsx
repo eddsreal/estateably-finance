@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { addDays, localToday } from '../../lib/dates';
-import { stubApi } from '../../../test-api-stub';
+import { Routes, stubApi } from '../../../test-api-stub';
+import { ToastProvider, useToast } from '../Toast/Toast';
 import { EditableTransaction, TransactionForm } from './TransactionForm';
 
 const accounts = [
@@ -178,5 +179,118 @@ describe('TransactionForm', () => {
     expect(
       screen.getByText('Shorten the description to 120 characters or fewer.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('TransactionForm undo', () => {
+  const existing: EditableTransaction = {
+    id: 't9',
+    kind: 'expense',
+    date: '2026-09-10',
+    description: 'Market',
+    amount: '4250',
+    accountId: 'a1',
+    categoryId: 'c1',
+  };
+
+  function HoldUndo() {
+    const { show } = useToast();
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          show({
+            kind: 'undo',
+            message: 'Transaction recorded.',
+            transactionId: 't9',
+            onUndo: () => Promise.resolve(),
+          })
+        }
+      >
+        hold t9
+      </button>
+    );
+  }
+
+  function renderWithToasts(transaction: EditableTransaction | null, routes: Routes) {
+    document.documentElement.style.setProperty('--dur-undo', '5s');
+    const deletes: string[] = [];
+    stubApi({
+      'POST /transactions': () => ({ status: 201, body: existing }),
+      'PUT /transactions/t9': { ...existing },
+      'DELETE /transactions/t9': (url: URL) => {
+        deletes.push(url.pathname);
+        return { status: 204, body: null };
+      },
+      ...routes,
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <HoldUndo />
+          <TransactionForm
+            transaction={transaction}
+            accounts={accounts}
+            categories={categories}
+            projects={[]}
+            onDone={() => undefined}
+          />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    return { user: userEvent.setup(), deletes };
+  }
+
+  async function record(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('Amount'), '42.50');
+    await user.type(screen.getByLabelText('Description'), 'Market');
+    await pick(user, 'Account', 'Checking');
+    await pick(user, 'Category', 'Groceries');
+    await user.click(screen.getByRole('button', { name: 'Record transaction' }));
+  }
+
+  afterEach(() => {
+    document.documentElement.removeAttribute('style');
+  });
+
+  it('offers Undo on a create, which deletes the new id through the delete path', async () => {
+    const { user, deletes } = renderWithToasts(null, {});
+    await record(user);
+    await user.click(await screen.findByRole('button', { name: /^Undo/ }));
+    expect(screen.queryByRole('button', { name: /^Undo/ })).not.toBeInTheDocument();
+    expect(await screen.findByText('Transaction removed.')).toBeInTheDocument();
+    expect(deletes).toEqual(['/transactions/t9']);
+  });
+
+  it('shows the error toast with its correlation id when the Undo delete fails', async () => {
+    const { user } = renderWithToasts(null, {
+      'DELETE /transactions/t9': () => ({
+        status: 404,
+        body: { code: 'NOT_FOUND', message: 'Transaction not found.', correlationId: 'C-42' },
+      }),
+    });
+    await record(user);
+    await user.click(await screen.findByRole('button', { name: /^Undo/ }));
+    expect(await screen.findByText('Transaction not found.')).toBeInTheDocument();
+    expect(screen.getByText('Correlation ID C-42')).toBeInTheDocument();
+    expect(screen.queryByText('Transaction removed.')).not.toBeInTheDocument();
+  });
+
+  it('closes the held Undo on a save of that id and offers no Undo for the edit', async () => {
+    const { user } = renderWithToasts(existing, {});
+    await user.click(screen.getByRole('button', { name: 'hold t9' }));
+    expect(screen.getByRole('button', { name: /^Undo/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('Transaction saved.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Undo/ })).not.toBeInTheDocument();
+  });
+
+  it('closes the held Undo on a delete of that id and offers no Undo for the delete', async () => {
+    const { user, deletes } = renderWithToasts(existing, {});
+    await user.click(screen.getByRole('button', { name: 'hold t9' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByText('Transaction deleted.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Undo/ })).not.toBeInTheDocument();
+    expect(deletes).toHaveLength(1);
   });
 });

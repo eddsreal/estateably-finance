@@ -11,6 +11,7 @@ import { Picker } from '../../../../shared/ui/Picker/Picker';
 import { Kind, KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
 import { Table } from '../../../../shared/ui/Table/Table';
+import { useToast } from '../../../../shared/ui/Toast/Toast';
 import {
   EditableTransaction,
   TransactionForm,
@@ -28,6 +29,7 @@ import {
   PAGE_HEADER,
   PAGE_TITLE,
   ROW_ACTION_TEXT,
+  ROW_FLASH,
   SEGMENT,
   SEGMENTED,
   TD_AMOUNT,
@@ -83,6 +85,7 @@ export function TransactionsPage() {
   const [filters, setFilters] = useState<Filters>({});
   const [offset, setOffset] = useState(0);
   const [creating, setCreating] = useState(false);
+  const { flashId } = useToast();
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
 
   const accountsQuery = useQuery({
@@ -296,11 +299,7 @@ export function TransactionsPage() {
               return (
                 <tr
                   key={transaction.id}
-                  className={
-                    editable
-                      ? 'cursor-pointer transition-colors duration-(--dur-hover) ease-(--ease-out) hover:bg-sand-50'
-                      : undefined
-                  }
+                  className={`${editable ? 'cursor-pointer transition-colors duration-(--dur-hover) ease-(--ease-out) hover:bg-sand-50' : ''} ${transaction.id === flashId ? ROW_FLASH : ''}`}
                   onClick={editable ? open : undefined}
                 >
                   <td className="font-mono text-12 whitespace-nowrap text-text-2">

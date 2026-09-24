@@ -182,6 +182,8 @@
     backwards;
 
   --animate-shimmer: shimmer var(--dur-shimmer) linear infinite;
+  --animate-undo: undo-progress var(--dur-undo) linear forwards;
+  --animate-flash: row-flash var(--dur-flash) var(--ease-out);
 
   --breakpoint-md: 768px;
 }

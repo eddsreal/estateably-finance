@@ -18,6 +18,7 @@ import {
   LINK,
   PAGE,
   PAGINATION,
+  ROW_FLASH,
   STAT_CAPTION,
   STAT_VALUE,
   TRUNCATE,
@@ -30,6 +31,7 @@ import { Icon, ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Kind, KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
+import { useToast } from '../../../../shared/ui/Toast/Toast';
 import { AccountForm } from '../AccountForm/AccountForm';
 
 const PAGE_SIZE = 50;
@@ -92,6 +94,7 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
   const [asOf, setAsOf] = useState(localToday());
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(false);
+  const { flashId } = useToast();
   const today = localToday();
 
   const accountsQuery = useQuery({
@@ -266,7 +269,10 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
               </h2>
               <ul>
                 {day.rows.map((row) => (
-                  <li key={row.id} className="flex items-center gap-14 px-22 py-12">
+                  <li
+                    key={row.id}
+                    className={`flex items-center gap-14 px-22 py-12 ${row.id === flashId ? ROW_FLASH : ''}`}
+                  >
                     <KindGlyph kind={row.kind as Kind} />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className={`${TRUNCATE} text-15 font-medium`}>{row.description}</span>

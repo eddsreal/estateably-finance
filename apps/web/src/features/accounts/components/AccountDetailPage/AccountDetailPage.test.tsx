@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
 import { localToday } from '../../../../shared/lib/dates';
 import { refetchEntryDerived } from '../../../../shared/lib/query-keys';
+import { ToastProvider, useToast } from '../../../../shared/ui/Toast/Toast';
 import { AccountDetailPage, dayLabel } from './AccountDetailPage';
 
 const accounts = {
@@ -263,5 +264,51 @@ describe('AccountDetailPage', () => {
     renderPage('99');
     expect(await screen.findByText('This account does not exist.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to accounts' })).toBeInTheDocument();
+  });
+});
+
+function Flash() {
+  const { show } = useToast();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        show({
+          kind: 'undo',
+          message: 'Transaction recorded.',
+          transactionId: 't6',
+          onUndo: () => Promise.resolve(),
+        })
+      }
+    >
+      flash
+    </button>
+  );
+}
+
+describe('AccountDetailPage new-row highlight', () => {
+  afterEach(() => document.documentElement.removeAttribute('style'));
+
+  it('highlights only the flashed row for --dur-flash, fading only when motion is allowed', async () => {
+    document.documentElement.style.setProperty('--dur-undo', '5s');
+    document.documentElement.style.setProperty('--dur-flash', '0.05s');
+    stubRoutes();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ToastProvider>
+            <Flash />
+            <AccountDetailPage accountId="1" />
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const row = (text: string) => screen.getByText(text).closest('li');
+    await screen.findByText('Market');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'flash' }));
+    expect(row('Market')?.className).toContain('motion-safe:animate-flash');
+    expect(row('Market')?.className).toContain('motion-reduce:bg-accent-highlight');
+    expect(row('Refund')?.className).not.toContain('animate-flash');
+    await vi.waitFor(() => expect(row('Market')?.className).not.toContain('animate-flash'));
   });
 });
