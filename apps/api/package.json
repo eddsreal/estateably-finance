@@ -15,6 +15,7 @@
     "contract:check": "tsc -p tsconfig.build.json && node dist/contract-check.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
     "@nestjs/common": "12.1.0",
     "@nestjs/core": "12.1.0",
     "@nestjs/platform-express": "12.1.0",

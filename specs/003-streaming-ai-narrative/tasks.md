@@ -38,8 +38,8 @@ feature 002's rule: Tailwind utilities from `design/tokens.css` only, checked by
 
 **Purpose**: the two new runtime dependencies, each with its reason in plan.md.
 
-- [ ] T001 [P] Add `@anthropic-ai/sdk` `0.128.0` as an exact-pinned dependency in `apps/api/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-001)
-- [ ] T002 [P] Add `react-markdown` `10.1.0` as an exact-pinned dependency in `apps/web/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-008)
+- [X] T001 [P] Add `@anthropic-ai/sdk` `0.128.0` as an exact-pinned dependency in `apps/api/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-001)
+- [X] T002 [P] Add `react-markdown` `10.1.0` as an exact-pinned dependency in `apps/web/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-008)
 
 **Checkpoint**: `pnpm install`, `pnpm typecheck` and `pnpm build` pass.
 
