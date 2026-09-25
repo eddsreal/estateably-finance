@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { formatDay, localToday } from '../../../../shared/lib/dates';
 import { isApiError, NETWORK_ERROR } from '../../../../shared/lib/form-errors';
@@ -47,6 +47,7 @@ const AI_DISABLED_REASON = 'Disabled until an AI key is configured.';
 const NARRATIVE_ANNOUNCEMENT: Partial<Record<NarrativeStatus, string>> = {
   streaming: 'Generating summary…',
   complete: 'Summary complete.',
+  stopped: 'Summary stopped.',
 };
 
 export function SimilarPage() {
@@ -58,6 +59,9 @@ export function SimilarPage() {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
   const fromRef = useRef<HTMLInputElement>(null);
+  const summaryRef = useRef<HTMLButtonElement>(null);
+  const stopRef = useRef<HTMLButtonElement>(null);
+  const refocusSummary = useRef(false);
 
   const aiStatusQuery = useQuery({
     queryKey: queryKeys.aiStatus,
@@ -87,6 +91,7 @@ export function SimilarPage() {
     queryFn: () => unwrap(api.GET('/projects')),
   });
   const narrative = useNarrative({
+    onSettle: rememberStopFocus,
     onError: (error) => {
       if (isApiError(error) && error.code === 'AI_NOT_CONFIGURED') setAiRejected(true);
       else {
@@ -107,6 +112,23 @@ export function SimilarPage() {
     (high, group) => (compareCents(group.total as Cents, high) > 0 ? (group.total as Cents) : high),
     '0' as Cents,
   );
+
+  useEffect(() => {
+    if (narrative.status === 'streaming' || !refocusSummary.current) return;
+    refocusSummary.current = false;
+    summaryRef.current?.focus();
+  }, [narrative.status]);
+
+  function rememberStopFocus() {
+    if (stopRef.current !== null && document.activeElement === stopRef.current) {
+      refocusSummary.current = true;
+    }
+  }
+
+  function stopNarrative() {
+    rememberStopFocus();
+    narrative.stop();
+  }
 
   function generate() {
     narrative.clear();
@@ -169,6 +191,7 @@ export function SimilarPage() {
               Generate report
             </button>
             <button
+              ref={summaryRef}
               type="button"
               className={BUTTON}
               disabled={aiDisabled || !report || narrative.status === 'streaming'}
@@ -178,6 +201,11 @@ export function SimilarPage() {
             >
               {narrative.status === 'streaming' ? 'Summarizing…' : '✦ Summarize with AI'}
             </button>
+            {narrative.status === 'streaming' && (
+              <button ref={stopRef} type="button" className={BUTTON} onClick={stopNarrative}>
+                Stop
+              </button>
+            )}
           </div>
           {(from === '' || to === '') && (
             <p id="generate-disabled-reason" className={HINT}>
@@ -245,6 +273,7 @@ export function SimilarPage() {
         <div className={CARD} aria-busy={narrative.status === 'streaming'}>
           <h2 className={SECTION_TITLE}>Narrative</h2>
           <NarrativeText text={narrative.text} />
+          {narrative.status === 'stopped' && <p className="mt-8 text-13 text-text-2">Stopped.</p>}
         </div>
       )}
       {range === null ? (

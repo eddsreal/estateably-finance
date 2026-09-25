@@ -19,14 +19,18 @@ type NarrativeState = {
 
 const IDLE: NarrativeState = { status: 'idle', text: '' };
 
-export function useNarrative({ onError }: { onError: (error: unknown) => void }) {
+type Options = { onError: (error: unknown) => void; onSettle?: () => void };
+
+export function useNarrative({ onError, onSettle }: Options) {
   const [state, setState] = useState<NarrativeState>(IDLE);
   const controllerRef = useRef<AbortController | null>(null);
   const onErrorRef = useRef(onError);
+  const onSettleRef = useRef(onSettle);
 
   useEffect(() => {
     onErrorRef.current = onError;
-  }, [onError]);
+    onSettleRef.current = onSettle;
+  }, [onError, onSettle]);
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
@@ -44,6 +48,7 @@ export function useNarrative({ onError }: { onError: (error: unknown) => void })
       });
       if (controller.signal.aborted) return;
       if (error !== undefined || !data) {
+        onSettleRef.current?.();
         setState(IDLE);
         onErrorRef.current(error);
         return;
@@ -60,19 +65,23 @@ export function useNarrative({ onError }: { onError: (error: unknown) => void })
           setState((current) => ({ ...current, text: current.text + text }));
         } else if (event === 'end') {
           const { outcome, reason } = JSON.parse(raw) as EndEvent;
+          onSettleRef.current?.();
           setState((current) => ({ ...current, status: outcome, reason }));
           return;
         }
       }
       if (!controller.signal.aborted) {
+        onSettleRef.current?.();
         setState((current) => ({ ...current, status: 'incomplete', reason: 'connection' }));
       }
     } catch (error) {
       if (controller.signal.aborted) return;
       if (reading) {
+        onSettleRef.current?.();
         setState((current) => ({ ...current, status: 'incomplete', reason: 'connection' }));
         return;
       }
+      onSettleRef.current?.();
       setState(IDLE);
       onErrorRef.current(error);
     }

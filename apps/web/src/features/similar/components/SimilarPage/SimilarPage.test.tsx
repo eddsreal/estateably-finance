@@ -73,8 +73,11 @@ function narrativeText(): string | null | undefined {
   return screen.queryByRole('heading', { name: 'Narrative' })?.nextElementSibling?.textContent;
 }
 
+let signals: AbortSignal[] = [];
+
 function stubRoutes(narrative: NarrativeAnswer = completed('Unused.'), configured = true) {
   const narrativeCalls: unknown[] = [];
+  signals = [];
   stubApi({
     'GET /ai/status': { configured },
     'GET /reports/similar': (url: URL) => ({
@@ -82,6 +85,7 @@ function stubRoutes(narrative: NarrativeAnswer = completed('Unused.'), configure
     }),
     'POST /reports/similar/narrative': (_url: URL, init?: RequestInit) => {
       narrativeCalls.push(JSON.parse(init?.body as string));
+      signals.push(init!.signal!);
       return typeof narrative === 'function' ? narrative() : narrative;
     },
     'GET /accounts': {
@@ -330,6 +334,106 @@ describe('SimilarPage', () => {
     );
     expect(within(narrativeCard()).getAllByRole('listitem')).toHaveLength(2);
     stream().end({ outcome: 'complete' });
+  });
+
+  it('stops mid-stream, keeping the text labelled Stopped. and aborting the request (US3)', async () => {
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    stream().delta('Rent led.');
+    await vi.waitFor(() => expect(narrativeText()).toContain('Rent led.'));
+    await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(signals[0].aborted).toBe(true);
+    expect(narrativeCard()).toHaveTextContent('Rent led.');
+    expect(narrativeCard()).toHaveTextContent('Stopped.');
+    expect(screen.getByRole('status')).toHaveTextContent('Summary stopped.');
+    expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
+    stream().delta(' More.');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(narrativeCard()).not.toHaveTextContent('More.');
+  });
+
+  it('shows Stop before any text, and stopping then leaves no card', async () => {
+    const { answer } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
+    expect(signals[0].aborted).toBe(true);
+    expect(screen.queryByRole('heading', { name: 'Narrative' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('moves focus from Stop to the summary button when Stop is pressed (FR-005)', async () => {
+    const { answer } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
+    expect(screen.getByRole('button', { name: /Summarize with AI/ })).toHaveFocus();
+  });
+
+  it('moves focus from Stop to the summary button when the stream ends while Stop has focus', async () => {
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    const stop = await screen.findByRole('button', { name: 'Stop' });
+    stop.focus();
+    stream().delta('Rent led.');
+    stream().end({ outcome: 'complete' });
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument(),
+    );
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: /Summarize with AI/ })).toHaveFocus(),
+    );
+  });
+
+  it('leaves focus alone when the stream ends while focus is elsewhere', async () => {
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    await screen.findByRole('button', { name: 'Stop' });
+    const from = screen.getByLabelText('From');
+    from.focus();
+    stream().delta('Rent led.');
+    stream().end({ outcome: 'complete' });
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Summary complete.'),
+    );
+    expect(from).toHaveFocus();
+  });
+
+  it('ends the request and removes the text when a new report is generated mid-stream (FR-006)', async () => {
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    stream().delta('Rent led.');
+    await vi.waitFor(() => expect(narrativeText()).toContain('Rent led.'));
+    await userEvent.click(screen.getByRole('button', { name: 'Generate report' }));
+    expect(signals[0].aborted).toBe(true);
+    expect(screen.queryByRole('heading', { name: 'Narrative' })).not.toBeInTheDocument();
+  });
+
+  it('aborts the request when the page unmounts mid-stream', async () => {
+    const { answer } = live();
+    stubRoutes(answer);
+    const page = renderPage();
+    await generate();
+    await summarize();
+    await screen.findByRole('button', { name: 'Stop' });
+    page.unmount();
+    expect(signals[0].aborted).toBe(true);
   });
 
   it('empties the announcement on a pre-text failure and shows the notice instead', async () => {

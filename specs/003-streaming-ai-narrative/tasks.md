@@ -191,7 +191,7 @@ back to the summary button. A new range stops and clears.
 growing, stays with "Stopped.", focus is on the summary button, and the request's signal is
 aborted.
 
-- [ ] T017 [US3] In `SimilarPage.tsx`, show a "Stop" button next to the summary button only while `status === 'streaming'`, from the request onwards (also before any text). Pressing it calls `stop()`.
+- [x] T017 [US3] In `SimilarPage.tsx`, show a "Stop" button next to the summary button only while `status === 'streaming'`, from the request onwards (also before any text). Pressing it calls `stop()`.
   - On `stopped`: show the kept text followed by "Stopped." in secondary text, and set the status element to "Summary stopped.". Stopping before any text shows no card and no notice.
   - Before the state change that unmounts Stop (Stop pressed, or the stream ended), check `document.activeElement === stopButton`. If it is, focus the summary button after render (FR-005).
   - `generate()` already calls `clear()` (T010), so a new range ends the request and removes the text (FR-006).
