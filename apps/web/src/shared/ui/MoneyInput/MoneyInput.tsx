@@ -10,6 +10,7 @@ type MoneyInputProps = {
   autoFocus?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  keypad?: boolean;
   ref?: Ref<HTMLInputElement>;
 };
 
@@ -21,6 +22,7 @@ export function MoneyInput({
   autoFocus,
   invalid,
   describedBy,
+  keypad,
   ref,
 }: MoneyInputProps) {
   return (
@@ -29,7 +31,7 @@ export function MoneyInput({
       ref={ref}
       type="text"
       className={`${INPUT} font-mono`}
-      inputMode="decimal"
+      inputMode={keypad ? 'none' : 'decimal'}
       value={value}
       autoFocus={autoFocus}
       data-autofocus={autoFocus || undefined}

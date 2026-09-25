@@ -16,4 +16,21 @@ describe('Table', () => {
     expect(screen.getByRole('columnheader', { name: 'Balance' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '$1,500.00' })).toBeInTheDocument();
   });
+
+  it('hides a column header below the md breakpoint when asked', () => {
+    render(
+      <Table columns={[{ label: 'Date' }, { label: 'Account', hideOnPhone: true }]}>
+        <tr>
+          <td>1</td>
+          <td>2</td>
+        </tr>
+      </Table>,
+    );
+    expect(screen.getByRole('columnheader', { name: 'Account' }).className).toContain(
+      'max-md:hidden',
+    );
+    expect(screen.getByRole('columnheader', { name: 'Date' }).className).not.toContain(
+      'max-md:hidden',
+    );
+  });
 });

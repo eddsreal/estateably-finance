@@ -140,6 +140,7 @@
   --spacing-52: 52px;
   --spacing-56: 56px;
   --spacing-62: 62px;
+  --spacing-68: 68px;
   --spacing-110: 110px;
   --spacing-190: 190px;
   --spacing-232: 232px;
@@ -172,6 +173,7 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --animate-dialog: dialog-enter var(--dur-dialog) var(--ease-out);
+  --animate-sheet: sheet-enter var(--dur-dialog) var(--ease-out);
   --animate-enter-1: screen-enter var(--dur-enter) var(--ease-out) backwards;
   --animate-enter-2: screen-enter var(--dur-enter) var(--ease-out) var(--stagger) backwards;
   --animate-enter-3: screen-enter var(--dur-enter) var(--ease-out) calc(var(--stagger) * 2)

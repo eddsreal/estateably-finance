@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
+import { usePhoneLayout } from '../../../../shared/lib/media';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
 import { EmptyState } from '../../../../shared/ui/EmptyState/EmptyState';
@@ -8,8 +9,10 @@ import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
 import { ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
 import { Picker } from '../../../../shared/ui/Picker/Picker';
+import { RowActions } from '../../../../shared/ui/RowActions/RowActions';
 import { Kind, KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
+import { SwipeRow } from '../../../../shared/ui/SwipeRow/SwipeRow';
 import { Table } from '../../../../shared/ui/Table/Table';
 import { useToast } from '../../../../shared/ui/Toast/Toast';
 import {
@@ -73,6 +76,32 @@ function TransactionAmount({ kind, amount }: { kind: string; amount: string }) {
   return <Amount cents={amount} />;
 }
 
+type Listed = {
+  id: string;
+  kind: string;
+  date: string;
+  description: string;
+  amount: string;
+  accountId: string;
+  categoryId?: string;
+  counterAccountId?: string;
+  projectId?: string;
+};
+
+function toEditable(transaction: Listed): EditableTransaction {
+  return {
+    id: transaction.id,
+    kind: transaction.kind as TransactionKindChoice,
+    date: transaction.date,
+    description: transaction.description,
+    amount: transaction.amount,
+    accountId: transaction.accountId,
+    categoryId: transaction.categoryId,
+    counterAccountId: transaction.counterAccountId,
+    projectId: transaction.projectId,
+  };
+}
+
 type Filters = {
   from?: string;
   to?: string;
@@ -86,7 +115,11 @@ export function TransactionsPage() {
   const [offset, setOffset] = useState(0);
   const [creating, setCreating] = useState(false);
   const { flashId } = useToast();
-  const [editing, setEditing] = useState<EditableTransaction | null>(null);
+  const phone = usePhoneLayout();
+  const [editing, setEditing] = useState<{
+    transaction: EditableTransaction;
+    confirmDelete: boolean;
+  } | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accountsList(true),
@@ -271,75 +304,141 @@ export function TransactionsPage() {
         />
       ) : (
         <div className="overflow-hidden rounded-3xl border border-sand-350 bg-sand-0 shadow-card">
-          <Table
-            caption="Transactions"
-            columns={[
-              { label: 'Date' },
-              { label: 'Description' },
-              { label: 'Account' },
-              { label: 'Category' },
-              { label: 'Project' },
-              { label: 'Amount', align: 'right' },
-            ]}
-          >
-            {page.items.map((transaction) => {
-              const editable = transaction.kind !== 'opening';
-              const open = () =>
-                setEditing({
-                  id: transaction.id,
-                  kind: transaction.kind as TransactionKindChoice,
-                  date: transaction.date,
-                  description: transaction.description,
-                  amount: transaction.amount,
-                  accountId: transaction.accountId,
-                  categoryId: transaction.categoryId,
-                  counterAccountId: transaction.counterAccountId,
-                  projectId: transaction.projectId,
-                });
-              return (
-                <tr
-                  key={transaction.id}
-                  className={`${editable ? 'cursor-pointer transition-colors duration-(--dur-hover) ease-(--ease-out) hover:bg-sand-50' : ''} ${transaction.id === flashId ? ROW_FLASH : ''}`}
-                  onClick={editable ? open : undefined}
-                >
-                  <td className="font-mono text-12 whitespace-nowrap text-text-2">
-                    {transaction.date}
-                  </td>
-                  <td>
-                    <span className="flex min-w-0 items-center gap-10">
-                      <KindGlyph
-                        kind={transaction.kind as Kind}
-                        label={KIND_LABEL[transaction.kind as Kind]}
-                      />
+          {phone ? (
+            <ul aria-label="Transactions">
+              {page.items.map((transaction) => {
+                const editable = transaction.kind !== 'opening';
+                const edit = (confirmDelete: boolean) =>
+                  setEditing({ transaction: toEditable(transaction), confirmDelete });
+                const row = (
+                  <div
+                    className={`flex items-center gap-12 border-b border-sand-200 py-10 pr-8 pl-16 ${transaction.id === flashId ? ROW_FLASH : ''}`}
+                  >
+                    <KindGlyph
+                      kind={transaction.kind as Kind}
+                      label={KIND_LABEL[transaction.kind as Kind]}
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col">
                       {editable ? (
-                        <button type="button" className={ROW_ACTION_TEXT} onClick={open}>
+                        <button
+                          type="button"
+                          className={ROW_ACTION_TEXT}
+                          onClick={() => edit(false)}
+                        >
                           {transaction.description}
                         </button>
                       ) : (
                         <span className={`${TRUNCATE} font-medium`}>{transaction.description}</span>
                       )}
+                      <span className="truncate text-12 text-text-3">
+                        {transaction.date} ·{' '}
+                        {transaction.categoryId
+                          ? categoryName(transaction.categoryId)
+                          : accountName(transaction.accountId)}
+                      </span>
                     </span>
-                  </td>
-                  <td className="text-13 text-text-strong">
-                    {transaction.kind === 'transfer'
-                      ? `${accountName(transaction.accountId)} → ${accountName(transaction.counterAccountId)}`
-                      : accountName(transaction.accountId)}
-                  </td>
-                  <td>
-                    {transaction.categoryId && (
-                      <span className={CHIP_CATEGORY}>{categoryName(transaction.categoryId)}</span>
+                    <span className="font-mono text-14 font-medium whitespace-nowrap">
+                      <TransactionAmount kind={transaction.kind} amount={transaction.amount} />
+                    </span>
+                    {editable && (
+                      <RowActions
+                        label={`Actions for ${transaction.description}`}
+                        onEdit={() => edit(false)}
+                        onDelete={() => edit(true)}
+                      />
                     )}
-                  </td>
-                  <td className="text-13 text-text-strong">
-                    {projectName(transaction.projectId) ?? '—'}
-                  </td>
-                  <td className={`${TD_AMOUNT} font-mono font-medium`}>
-                    <TransactionAmount kind={transaction.kind} amount={transaction.amount} />
-                  </td>
-                </tr>
-              );
-            })}
-          </Table>
+                  </div>
+                );
+                return (
+                  <li key={transaction.id}>
+                    {editable ? (
+                      <SwipeRow onEdit={() => edit(false)} onDelete={() => edit(true)}>
+                        {row}
+                      </SwipeRow>
+                    ) : (
+                      row
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <Table
+              caption="Transactions"
+              columns={[
+                { label: 'Date' },
+                { label: 'Description' },
+                { label: 'Account' },
+                { label: 'Category' },
+                { label: 'Project' },
+                { label: 'Amount', align: 'right' },
+              ]}
+            >
+              {page.items.map((transaction) => {
+                const editable = transaction.kind !== 'opening';
+                const edit = (confirmDelete: boolean) =>
+                  setEditing({ transaction: toEditable(transaction), confirmDelete });
+                const open = () => edit(false);
+                return (
+                  <tr
+                    key={transaction.id}
+                    className={`${editable ? 'cursor-pointer transition-colors duration-(--dur-hover) ease-(--ease-out) hover:bg-sand-50' : ''} ${transaction.id === flashId ? ROW_FLASH : ''}`}
+                    onClick={editable ? open : undefined}
+                  >
+                    <td className="font-mono text-12 whitespace-nowrap text-text-2">
+                      {transaction.date}
+                    </td>
+                    <td>
+                      <span className="flex min-w-0 items-center gap-10">
+                        <KindGlyph
+                          kind={transaction.kind as Kind}
+                          label={KIND_LABEL[transaction.kind as Kind]}
+                        />
+                        {editable ? (
+                          <button type="button" className={ROW_ACTION_TEXT} onClick={open}>
+                            {transaction.description}
+                          </button>
+                        ) : (
+                          <span className={`${TRUNCATE} font-medium`}>
+                            {transaction.description}
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="text-13 text-text-strong">
+                      {transaction.kind === 'transfer'
+                        ? `${accountName(transaction.accountId)} → ${accountName(transaction.counterAccountId)}`
+                        : accountName(transaction.accountId)}
+                    </td>
+                    <td>
+                      {transaction.categoryId && (
+                        <span className={CHIP_CATEGORY}>
+                          {categoryName(transaction.categoryId)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-13 text-text-strong">
+                      {projectName(transaction.projectId) ?? '—'}
+                    </td>
+                    <td className={`${TD_AMOUNT} font-mono font-medium`}>
+                      <span className="inline-flex items-center justify-end gap-4">
+                        <TransactionAmount kind={transaction.kind} amount={transaction.amount} />
+                        {editable ? (
+                          <RowActions
+                            label={`Actions for ${transaction.description}`}
+                            onEdit={open}
+                            onDelete={() => edit(true)}
+                          />
+                        ) : (
+                          <span aria-hidden="true" className="size-32" />
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          )}
           <nav
             aria-label="Pagination"
             className="flex flex-wrap items-center justify-between gap-12 border-t border-sand-350 px-20 py-12 text-13 text-text-strong"
@@ -397,7 +496,12 @@ export function TransactionsPage() {
           </nav>
         </div>
       )}
-      <Modal title="New transaction" open={creating} onClose={() => setCreating(false)}>
+      <Modal
+        title="New transaction"
+        open={creating}
+        onClose={() => setCreating(false)}
+        variant={phone ? 'sheet' : 'form'}
+      >
         <TransactionForm
           transaction={null}
           accounts={accounts}
@@ -409,7 +513,8 @@ export function TransactionsPage() {
       <Modal title="Edit transaction" open={editing !== null} onClose={() => setEditing(null)}>
         {editing && (
           <TransactionForm
-            transaction={editing}
+            transaction={editing.transaction}
+            confirmDelete={editing.confirmDelete}
             accounts={accounts}
             categories={categories}
             projects={projects}

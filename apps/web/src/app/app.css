@@ -91,6 +91,15 @@
   }
 }
 
+@keyframes sheet-enter {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-press: 0ms;

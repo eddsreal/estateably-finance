@@ -1,4 +1,4 @@
-import { ReactNode, SyntheticEvent, useEffect, useRef } from 'react';
+import { PointerEvent, ReactNode, SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { ROW_ACTION } from '../../lib/styles';
 
 type ModalProps = {
@@ -6,14 +6,17 @@ type ModalProps = {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
-  variant?: 'form' | 'palette';
+  variant?: 'form' | 'palette' | 'sheet';
 };
 
-const DIALOG =
-  'w-full bg-sand-0 p-0 text-text-1 shadow-overlay backdrop:bg-scrim open:animate-dialog';
+const DIALOG = 'w-full bg-sand-0 p-0 text-text-1 shadow-overlay backdrop:bg-scrim';
+
+const DISMISS_SHARE = 0.35;
 
 export function Modal({ title, open, onClose, children, variant = 'form' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const dragStart = useRef<number | null>(null);
+  const [drag, setDrag] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +54,21 @@ export function Modal({ title, open, onClose, children, variant = 'form' }: Moda
 
   if (!open) return null;
 
+  const onHandleDown = (event: PointerEvent) => {
+    dragStart.current = event.clientY;
+  };
+  const onHandleMove = (event: PointerEvent) => {
+    if (dragStart.current !== null) setDrag(Math.max(0, event.clientY - dragStart.current));
+  };
+  const onHandleUp = (event: PointerEvent) => {
+    if (dragStart.current === null) return;
+    const height = dialogRef.current?.getBoundingClientRect().height ?? 0;
+    const dismiss = event.clientY - dragStart.current > height * DISMISS_SHARE;
+    dragStart.current = null;
+    setDrag(0);
+    if (dismiss) onClose();
+  };
+
   const onCancel = (event: SyntheticEvent) => {
     event.preventDefault();
     onClose();
@@ -60,7 +78,7 @@ export function Modal({ title, open, onClose, children, variant = 'form' }: Moda
     return (
       <dialog
         ref={dialogRef}
-        className={`${DIALOG} mx-auto mt-110 max-w-620 overflow-hidden rounded-3xl`}
+        className={`${DIALOG} mx-auto mt-110 max-w-620 overflow-hidden rounded-3xl open:animate-dialog`}
         aria-label={title}
         onCancel={onCancel}
       >
@@ -69,14 +87,36 @@ export function Modal({ title, open, onClose, children, variant = 'form' }: Moda
     );
   }
 
+  const sheet = variant === 'sheet';
+
   return (
     <dialog
       ref={dialogRef}
-      className={`${DIALOG} m-auto max-w-440 rounded-4xl`}
+      className={
+        sheet
+          ? `${DIALOG} mx-0 mt-auto mb-0 max-w-none rounded-t-5xl open:animate-sheet ${drag === 0 ? 'transition-transform duration-(--dur-hover) ease-(--ease-out)' : ''}`
+          : `${DIALOG} m-auto max-w-440 rounded-4xl open:animate-dialog`
+      }
+      style={drag > 0 ? { transform: `translateY(${drag}px)` } : undefined}
       aria-label={title}
       onCancel={onCancel}
     >
-      <div className="flex items-center justify-between gap-12 px-22 pt-20">
+      {sheet && (
+        <div
+          aria-hidden="true"
+          className="flex cursor-grab touch-none justify-center pt-10 pb-4"
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={() => {
+            dragStart.current = null;
+            setDrag(0);
+          }}
+        >
+          <span className="h-5 w-40 rounded-pill bg-sand-600" />
+        </div>
+      )}
+      <div className={`flex items-center justify-between gap-12 px-22 ${sheet ? 'pt-6' : 'pt-20'}`}>
         <h2 className="text-17 font-semibold">{title}</h2>
         <button type="button" className={ROW_ACTION} aria-label="Close" onClick={onClose}>
           ✕

@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 
-type Column = { label: string; align?: 'left' | 'right' };
+type Column = { label: string; align?: 'left' | 'right'; hideOnPhone?: boolean };
 
 type TableProps = {
   columns: Column[];
@@ -10,14 +10,14 @@ type TableProps = {
 
 export function Table({ columns, caption, children }: TableProps) {
   return (
-    <table className="w-full border-collapse text-14">
+    <table className="w-full border-collapse text-14 max-md:table-fixed">
       {caption && <caption className="sr-only">{caption}</caption>}
       <thead>
         <tr>
           {columns.map((column) => (
             <th
               key={column.label}
-              className={`h-40 border-b border-sand-350 bg-sand-50 px-12 font-mono text-11 font-regular tracking-wide text-text-2 uppercase ${column.align === 'right' ? 'text-right' : 'text-left'}`}
+              className={`h-40 border-b border-sand-350 bg-sand-50 px-12 font-mono text-11 font-regular tracking-wide text-text-2 uppercase ${column.align === 'right' ? 'text-right' : 'text-left'} ${column.hideOnPhone ? 'max-md:hidden' : ''}`}
             >
               {column.label}
             </th>

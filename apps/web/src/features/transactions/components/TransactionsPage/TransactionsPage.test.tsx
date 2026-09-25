@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../../../../test-api-stub';
@@ -286,5 +286,67 @@ describe('TransactionsPage new-row highlight', () => {
     expect(row('Market')?.className).toContain('motion-reduce:bg-accent-highlight');
     expect(screen.getByText('To savings').closest('tr')?.className).not.toContain('animate-flash');
     await vi.waitFor(() => expect(row('Market')?.className).not.toContain('animate-flash'));
+  });
+});
+
+describe('TransactionsPage row actions and phone layout', () => {
+  function stubPhone() {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.startsWith('(width <'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+  }
+
+  function swipe(row: HTMLElement, from: number, to: number) {
+    vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 64));
+    fireEvent.pointerDown(row, { clientX: from });
+    fireEvent.pointerMove(row, { clientX: to });
+    fireEvent.pointerUp(row, { clientX: to });
+  }
+
+  it('gives every editable row a ⋯ menu whose Delete opens the edit form with its confirmation', async () => {
+    stubAll();
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Actions for Market' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    expect(screen.getByRole('heading', { name: 'Edit transaction' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete transaction' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(screen.getByRole('button', { name: 'Actions for To savings' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    expect(screen.getByLabelText('Description')).toHaveValue('To savings');
+    expect(screen.queryByRole('button', { name: 'Delete transaction' })).not.toBeInTheDocument();
+  });
+
+  it('lists rows on a phone, where a long left swipe asks to delete and a right swipe edits', async () => {
+    stubPhone();
+    stubAll();
+    const user = userEvent.setup();
+    renderPage();
+    const list = await screen.findByRole('list', { name: 'Transactions' });
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    const row = within(list).getByRole('button', { name: 'Market' }).closest('.touch-pan-y');
+    swipe(row as HTMLElement, 300, 250);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    swipe(row as HTMLElement, 350, 150);
+    expect(screen.getByRole('button', { name: 'Delete transaction' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    swipe(row as HTMLElement, 50, 250);
+    expect(screen.getByLabelText('Description')).toHaveValue('Market');
+    expect(screen.queryByRole('button', { name: 'Delete transaction' })).not.toBeInTheDocument();
+  });
+
+  it('opens New transaction as a sheet with the keypad on a phone', async () => {
+    stubPhone();
+    stubAll();
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New transaction' }));
+    const sheet = screen.getByRole('dialog', { name: 'New transaction' });
+    expect(sheet.className).toContain('open:animate-sheet');
+    expect(within(sheet).getByRole('group', { name: 'Keypad' })).toBeInTheDocument();
   });
 });

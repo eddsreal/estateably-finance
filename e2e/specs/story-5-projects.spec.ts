@@ -90,7 +90,7 @@ async function recordExpense(
     await pickOption(page, modal.getByRole('combobox', { name: /Project/ }), project);
   }
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: description })).toBeVisible();
+  await expect(page.getByRole('button', { name: description, exact: true })).toBeVisible();
 }
 
 async function projectOptions(page: Page): Promise<Locator> {
@@ -155,7 +155,7 @@ test('expenses from two accounts and two categories add up; an untagged one does
 test('removing the project from an expense drops it from the total (US5 #5)', async ({ page }) => {
   await page.goto('/projects');
   await press(projectRow(page, paris).getByRole('link', { name: paris }));
-  await press(page.getByRole('button', { name: flights }));
+  await press(page.getByRole('button', { name: flights, exact: true }));
   const modal = dialog(page);
   await expect(modal.getByRole('combobox', { name: /Project/ })).toContainText(paris);
   await pickOption(page, modal.getByRole('combobox', { name: /Project/ }), 'No project', 'ArrowUp');
@@ -163,8 +163,8 @@ test('removing the project from an expense drops it from the total (US5 #5)', as
   await expect(dialog(page)).toHaveCount(0);
 
   const expenses = page.getByRole('table', { name: `Expenses in ${paris}` });
-  await expect(expenses.getByRole('button', { name: flights })).toHaveCount(0);
-  await expect(expenses.getByRole('button', { name: hotel })).toBeVisible();
+  await expect(expenses.getByRole('button', { name: flights, exact: true })).toHaveCount(0);
+  await expect(expenses.getByRole('button', { name: hotel, exact: true })).toBeVisible();
   await press(page.getByRole('link', { name: 'Back to projects' }));
   await expect(projectRow(page, paris)).toContainText('$300.00');
   await expect(projectRow(page, paris)).toContainText('$4,700.00');

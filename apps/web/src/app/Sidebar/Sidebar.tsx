@@ -62,7 +62,7 @@ export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
 const LINK =
   'flex h-36 items-center gap-10 rounded-md px-10 text-14 font-medium transition-colors duration-(--dur-hover) ease-(--ease-out)';
 
-function isActive(pathname: string, to: string): boolean {
+export function isActive(pathname: string, to: string): boolean {
   if (to === '/') return pathname === '/' || pathname.startsWith('/accounts/');
   return pathname === to || pathname.startsWith(`${to}/`);
 }

@@ -153,8 +153,8 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             columns={[
               { label: 'Date' },
               { label: 'Description' },
-              { label: 'Account' },
-              { label: 'Category' },
+              { label: 'Account', hideOnPhone: true },
+              { label: 'Category', hideOnPhone: true },
               { label: 'Amount', align: 'right' },
             ]}
           >
@@ -181,8 +181,8 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
                     {transaction.description}
                   </button>
                 </td>
-                <td>{accountName(transaction.accountId)}</td>
-                <td>{categoryName(transaction.categoryId)}</td>
+                <td className="max-md:hidden">{accountName(transaction.accountId)}</td>
+                <td className="max-md:hidden">{categoryName(transaction.categoryId)}</td>
                 <td className={TD_AMOUNT}>
                   <Amount cents={`-${transaction.amount}`} />
                 </td>

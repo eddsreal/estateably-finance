@@ -168,7 +168,7 @@ test('a bill can be created, marked paid with a changed amount and date, and eve
     await press(page.getByRole('button', { name: 'Previous month' }));
   }
   await press(page.locator('summary').filter({ hasText: 'Rent' }));
-  await expect(page.getByRole('button', { name: paidDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: paidDesc, exact: true })).toBeVisible();
 });
 
 test('Mark paid is disabled with its reason written next to it for an item on an archived account (US3 #7)', async ({

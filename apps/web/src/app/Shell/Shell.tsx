@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { AccountForm } from '../../features/accounts/components/AccountForm/AccountForm';
 import { api, unwrap } from '../../shared/lib/api';
+import { usePhoneLayout } from '../../shared/lib/media';
 import { queryKeys } from '../../shared/lib/query-keys';
 import { CommandPalette, PaletteCommand } from '../../shared/ui/CommandPalette/CommandPalette';
 import { Icon } from '../../shared/ui/Icon/Icon';
@@ -14,6 +15,7 @@ import {
   TransactionKindChoice,
 } from '../../shared/ui/TransactionForm/TransactionForm';
 import { NAV_GROUPS, Sidebar } from '../Sidebar/Sidebar';
+import { TabBar } from '../TabBar/TabBar';
 
 type Overlay =
   { kind: 'transaction'; transaction: EditableTransaction | null } | { kind: 'account' } | null;
@@ -66,6 +68,7 @@ function UndoShortcut() {
 
 export function Shell() {
   const navigate = useNavigate();
+  const phone = usePhoneLayout();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [overlay, setOverlay] = useState<Overlay>(null);
   const closeOverlay = () => setOverlay(null);
@@ -110,13 +113,14 @@ export function Shell() {
     <ToastProvider>
       <UndoShortcut />
       <div className="flex min-h-screen">
-        <div className="sticky top-0 h-screen flex-none py-12 pl-12">
+        <div className="sticky top-0 h-screen flex-none py-12 pl-12 max-md:hidden">
           <Sidebar onSearch={() => setPaletteOpen(true)} />
         </div>
-        <main className="min-w-0 flex-1 *:*:animate-enter-1 *:*:nth-2:animate-enter-2 *:*:nth-3:animate-enter-3 *:*:nth-4:animate-enter-4 *:*:nth-5:animate-enter-5">
+        <main className="min-w-0 flex-1 max-md:pb-110 *:*:animate-enter-1 *:*:nth-2:animate-enter-2 *:*:nth-3:animate-enter-3 *:*:nth-4:animate-enter-4 *:*:nth-5:animate-enter-5">
           <Outlet />
         </main>
       </div>
+      <TabBar onAdd={() => setOverlay({ kind: 'transaction', transaction: null })} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -137,6 +141,9 @@ export function Shell() {
         }
         open={overlay?.kind === 'transaction'}
         onClose={closeOverlay}
+        variant={
+          phone && overlay?.kind === 'transaction' && !overlay.transaction ? 'sheet' : 'form'
+        }
       >
         {overlay?.kind === 'transaction' && (
           <ShellTransactionForm transaction={overlay.transaction} onDone={closeOverlay} />

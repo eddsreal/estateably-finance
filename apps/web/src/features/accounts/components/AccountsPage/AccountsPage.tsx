@@ -210,7 +210,7 @@ export function AccountsPage() {
                   {activeCount === 1 ? '' : 's'}
                 </span>
               </div>
-              <div className="flex flex-col items-end gap-10">
+              <div className="flex flex-col items-end gap-10 max-md:w-full max-md:items-start">
                 <label className={`${FIELD} w-190`}>
                   <span className={LABEL}>Balance as of</span>
                   <input

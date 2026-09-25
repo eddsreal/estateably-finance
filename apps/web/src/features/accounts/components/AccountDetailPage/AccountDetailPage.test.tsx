@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -110,6 +110,7 @@ function stubRoutes(overrides: { balance?: string; current?: string } = {}) {
       { id: 'c1', name: 'Groceries', type: 'expense', archived: false },
       { id: 'c2', name: 'Salary', type: 'income', archived: false },
     ],
+    'GET /projects': [],
     'GET /transactions': (url: URL) => ({
       body: {
         items: url.searchParams.get('accountId') === '1' ? transactions : [],
@@ -303,12 +304,56 @@ describe('AccountDetailPage new-row highlight', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    const row = (text: string) => screen.getByText(text).closest('li');
+    const row = (text: string) => screen.getByText(text).closest('li')?.firstElementChild;
     await screen.findByText('Market');
     await userEvent.setup().click(screen.getByRole('button', { name: 'flash' }));
     expect(row('Market')?.className).toContain('motion-safe:animate-flash');
     expect(row('Market')?.className).toContain('motion-reduce:bg-accent-highlight');
     expect(row('Refund')?.className).not.toContain('animate-flash');
     await vi.waitFor(() => expect(row('Market')?.className).not.toContain('animate-flash'));
+  });
+});
+
+describe('AccountDetailPage row actions and swipe', () => {
+  it('offers ⋯ Edit and Delete on every row but the opening balance', async () => {
+    stubRoutes();
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Market');
+    expect(screen.getByRole('button', { name: 'Actions for Market' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Actions for Opening balance' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Actions for Salary' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    expect(screen.getByRole('heading', { name: 'Edit transaction' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete transaction' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Description')).toHaveValue('Salary');
+  });
+
+  it('swipes rows on a phone: short snaps back, long left confirms a delete, right edits', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.startsWith('(width <'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    stubRoutes();
+    const user = userEvent.setup();
+    renderPage();
+    const row = (await screen.findByText('Market')).closest('.touch-pan-y') as HTMLElement;
+    vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 64));
+    const swipe = (from: number, to: number) => {
+      fireEvent.pointerDown(row, { clientX: from });
+      fireEvent.pointerMove(row, { clientX: to });
+      fireEvent.pointerUp(row, { clientX: to });
+    };
+    swipe(300, 200);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    swipe(350, 100);
+    expect(screen.getByRole('button', { name: 'Delete transaction' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    swipe(50, 300);
+    expect(screen.getByLabelText('Description')).toHaveValue('Market');
+    expect(screen.queryByRole('button', { name: 'Delete transaction' })).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.touch-pan-y')).toHaveLength(transactions.length - 1);
   });
 });

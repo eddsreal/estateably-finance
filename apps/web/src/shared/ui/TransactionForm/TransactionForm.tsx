@@ -3,14 +3,17 @@ import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { api, unwrap } from '../../lib/api';
 import { localToday } from '../../lib/dates';
+import { usePhoneLayout } from '../../lib/media';
 import { applyServerError } from '../../lib/form-errors';
 import { Cents, formatPlain, parseDollars } from '../../lib/money';
 import { AccountOption, AccountPicker } from '../AccountPicker/AccountPicker';
 import { CategoryOption, CategoryPicker } from '../CategoryPicker/CategoryPicker';
+import { Keypad } from '../Keypad/Keypad';
 import { KindGlyph } from '../KindGlyph/KindGlyph';
 import { MoneyInput } from '../MoneyInput/MoneyInput';
 import { ProjectOption, ProjectPicker } from '../ProjectPicker/ProjectPicker';
 import {
+  BANNER_ERROR,
   BUTTON,
   BUTTON_DANGER,
   BUTTON_PRIMARY,
@@ -97,23 +100,28 @@ export function TransactionForm({
   categories,
   projects,
   onDone,
+  confirmDelete = false,
 }: {
   transaction: EditableTransaction | null;
   accounts: AccountOption[];
   categories: CategoryOption[];
   projects: ProjectOption[];
   onDone: () => void;
+  confirmDelete?: boolean;
 }) {
   const saved = useSavedFeedback();
+  const keypad = usePhoneLayout() && !transaction;
   const { showError, closeUndoFor } = useToast();
   const pickable = transaction ? accounts : accounts.filter((account) => !account.archived);
   const [formError, setFormError] = useState<{ title: string; error: unknown } | null>(null);
+  const [confirming, setConfirming] = useState(confirmDelete && transaction !== null);
   const {
     register,
     control,
     handleSubmit,
     setError,
-    formState: { errors, isSubmitting },
+    setValue,
+    formState: { errors, isSubmitting, isSubmitted },
   } = useForm<FormValues>({
     defaultValues: transaction
       ? {
@@ -140,6 +148,7 @@ export function TransactionForm({
   const kind = useWatch({ control, name: 'kind' });
   const accountId = useWatch({ control, name: 'accountId' });
   const description = useWatch({ control, name: 'description' });
+  const amount = useWatch({ control, name: 'amount' });
 
   const saveMutation = useMutation({
     mutationFn: (values: FormValues) => {
@@ -212,6 +221,30 @@ export function TransactionForm({
       }}
     >
       {formError && <ErrorNotice title={formError.title} error={formError.error} />}
+      {confirming && transaction && (
+        <fieldset
+          aria-labelledby="transaction-delete-title"
+          className={`${BANNER_ERROR} flex min-w-0 flex-col gap-10`}
+        >
+          <p id="transaction-delete-title" className="font-semibold">
+            Delete “{transaction.description}”? This can&apos;t be undone.
+          </p>
+          <div className="flex flex-wrap gap-8">
+            <button
+              type="button"
+              className={BUTTON_DANGER}
+              data-autofocus
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete transaction'}
+            </button>
+            <button type="button" className={BUTTON} onClick={() => setConfirming(false)}>
+              Keep it
+            </button>
+          </div>
+        </fieldset>
+      )}
       <div className={FIELD}>
         <span className={LABEL} id="transaction-kind-label">
           Type
@@ -250,6 +283,7 @@ export function TransactionForm({
                 autoFocus={!transaction}
                 invalid={!!errors.amount}
                 describedBy={errors.amount ? 'transaction-amount-error' : 'transaction-amount-hint'}
+                keypad={keypad}
                 ref={field.ref}
               />
             )}
@@ -278,6 +312,12 @@ export function TransactionForm({
           {errors.date && <FieldError id="transaction-date-error" message={errors.date.message} />}
         </div>
       </div>
+      {keypad && (
+        <Keypad
+          value={amount}
+          onChange={(value) => setValue('amount', value, { shouldValidate: isSubmitted })}
+        />
+      )}
       <div className="grid grid-cols-2 gap-12">
         <div className={FIELD}>
           <label className={LABEL} htmlFor="transaction-account">

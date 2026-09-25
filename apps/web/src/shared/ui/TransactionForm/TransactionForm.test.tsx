@@ -212,7 +212,11 @@ describe('TransactionForm undo', () => {
     );
   }
 
-  function renderWithToasts(transaction: EditableTransaction | null, routes: Routes) {
+  function renderWithToasts(
+    transaction: EditableTransaction | null,
+    routes: Routes,
+    confirmDelete = false,
+  ) {
     document.documentElement.style.setProperty('--dur-undo', '5s');
     const deletes: string[] = [];
     stubApi({
@@ -234,6 +238,7 @@ describe('TransactionForm undo', () => {
             categories={categories}
             projects={[]}
             onDone={() => undefined}
+            confirmDelete={confirmDelete}
           />
         </ToastProvider>
       </QueryClientProvider>,
@@ -285,6 +290,35 @@ describe('TransactionForm undo', () => {
     expect(screen.queryByRole('button', { name: /^Undo/ })).not.toBeInTheDocument();
   });
 
+  it('opens with the delete confirmation showing when confirmDelete is set, and Keep it keeps it', async () => {
+    const { user, deletes } = renderWithToasts(existing, {}, true);
+    const confirm = screen.getByRole('group', {
+      name: "Delete “Market”? This can't be undone.",
+    });
+    expect(screen.getByRole('button', { name: 'Delete transaction' })).toHaveAttribute(
+      'data-autofocus',
+    );
+    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(confirm).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Description')).toHaveValue('Market');
+    expect(deletes).toEqual([]);
+  });
+
+  it('deletes through the form delete path on confirm, closing a held Undo of that id', async () => {
+    const { user, deletes } = renderWithToasts(existing, {}, true);
+    await user.click(screen.getByRole('button', { name: 'hold t9' }));
+    await user.click(screen.getByRole('button', { name: 'Delete transaction' }));
+    expect(await screen.findByText('Transaction deleted.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Undo/ })).not.toBeInTheDocument();
+    expect(deletes).toEqual(['/transactions/t9']);
+  });
+
+  it('never shows the confirmation without confirmDelete, keeping the feature 001 Delete', () => {
+    renderWithToasts(existing, {});
+    expect(screen.queryByRole('button', { name: 'Delete transaction' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+  });
+
   it('closes the held Undo on a delete of that id and offers no Undo for the delete', async () => {
     const { user, deletes } = renderWithToasts(existing, {});
     await user.click(screen.getByRole('button', { name: 'hold t9' }));
@@ -292,5 +326,53 @@ describe('TransactionForm undo', () => {
     expect(await screen.findByText('Transaction deleted.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Undo/ })).not.toBeInTheDocument();
     expect(deletes).toHaveLength(1);
+  });
+});
+
+describe('TransactionForm on a phone', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubPhone() {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.startsWith('(width <'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+  }
+
+  it('drives the amount of a new transaction with the keypad and sends the same cents', async () => {
+    stubPhone();
+    const { user } = renderForm();
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('inputmode', 'none');
+    for (const name of ['1', '8', 'Decimal point', '4', '0', '7']) {
+      await user.click(screen.getByRole('button', { name }));
+    }
+    expect(screen.getByLabelText('Amount')).toHaveValue('18.40');
+    await user.type(screen.getByLabelText('Description'), 'Uber');
+    await pick(user, 'Account', 'Checking');
+    await pick(user, 'Category', 'Groceries');
+    await user.click(screen.getByRole('button', { name: 'Record transaction' }));
+    await vi.waitFor(() => expect(sent).toMatchObject({ kind: 'expense', amount: '1840' }));
+  });
+
+  it('keeps the typed amount field when editing, even on a phone', () => {
+    stubPhone();
+    renderForm({
+      id: 't1',
+      kind: 'expense',
+      date: '2026-09-10',
+      description: 'Market',
+      amount: '4250',
+      accountId: 'a1',
+      categoryId: 'c1',
+    });
+    expect(screen.queryByRole('group', { name: 'Keypad' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('inputmode', 'decimal');
+  });
+
+  it('shows no keypad at desktop width', () => {
+    renderForm();
+    expect(screen.queryByRole('group', { name: 'Keypad' })).not.toBeInTheDocument();
   });
 });

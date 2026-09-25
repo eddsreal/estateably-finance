@@ -97,7 +97,7 @@ test('category totals sum to the grand total and drill down shows the expenses b
   expect(summed).toBe(grandTotal);
 
   await press(groceriesSummary(page), 'Enter');
-  await expect(page.getByRole('button', { name: expenseDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: expenseDesc, exact: true })).toBeVisible();
   await expect(page.getByText('$55.25').first()).toBeVisible();
 });
 
@@ -110,17 +110,17 @@ test('an expense edited into last month moves between both reports, month switch
   });
 
   await press(groceriesSummary(page), 'Enter');
-  await press(page.getByRole('button', { name: expenseDesc }));
+  await press(page.getByRole('button', { name: expenseDesc, exact: true }));
   const modal = page.getByRole('dialog');
   await modal.getByLabel('Date').fill(lastMonthDate);
   await press(modal.getByRole('button', { name: 'Save changes' }));
   await expect(modal).not.toBeVisible();
-  await expect(page.getByRole('button', { name: expenseDesc })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: expenseDesc, exact: true })).not.toBeVisible();
 
   await press(page.getByRole('button', { name: 'Previous month' }));
   await expect(page.getByText(monthLabel(-1)).first()).toBeVisible();
   await press(groceriesSummary(page), 'Enter');
-  await expect(page.getByRole('button', { name: expenseDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: expenseDesc, exact: true })).toBeVisible();
 
   const markerSurvived = await page.evaluate(
     () => (globalThis as { __noReloadMarker?: boolean }).__noReloadMarker === true,

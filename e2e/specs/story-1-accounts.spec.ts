@@ -99,7 +99,7 @@ test('records an expense, an income and a transfer whose balances update without
   await pickOption(page, modal.getByRole('combobox', { name: 'Account' }), checkingName);
   await pickOption(page, modal.getByRole('combobox', { name: 'Category' }), 'Groceries');
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: expenseDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: expenseDesc, exact: true })).toBeVisible();
 
   await press(page.getByRole('button', { name: 'New transaction' }));
   modal = dialog(page);
@@ -109,7 +109,7 @@ test('records an expense, an income and a transfer whose balances update without
   await pickOption(page, modal.getByRole('combobox', { name: 'Account' }), checkingName);
   await pickOption(page, modal.getByRole('combobox', { name: 'Category' }), 'Salary');
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: incomeDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: incomeDesc, exact: true })).toBeVisible();
 
   await press(page.getByRole('button', { name: 'New transaction' }));
   modal = dialog(page);
@@ -119,7 +119,7 @@ test('records an expense, an income and a transfer whose balances update without
   await pickOption(page, modal.getByRole('combobox', { name: 'From account' }), checkingName);
   await pickOption(page, modal.getByRole('combobox', { name: 'To account' }), savingsName);
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: transferDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: transferDesc, exact: true })).toBeVisible();
 
   const markerSurvived = await page.evaluate(
     () => (globalThis as { __noReloadMarker?: boolean }).__noReloadMarker === true,
@@ -143,7 +143,7 @@ test('edits a transaction into another kind and sees both balances move (US1 #5,
   page,
 }) => {
   await page.goto('/transactions');
-  await press(page.getByRole('button', { name: expenseDesc }).first());
+  await press(page.getByRole('button', { name: expenseDesc, exact: true }).first());
   const modal = dialog(page);
   await press(modal.getByRole('radio', { name: 'Transfer' }), 'Space');
   await expect(modal.getByRole('combobox', { name: 'Category' })).toHaveCount(0);
@@ -208,11 +208,11 @@ test('a new category is immediately usable on an expense, and deleting removes i
   await pickOption(page, modal.getByRole('combobox', { name: 'Account' }), checkingName);
   await pickOption(page, modal.getByRole('combobox', { name: 'Category' }), categoryName);
   await press(modal.getByRole('button', { name: 'Record transaction' }));
-  await expect(page.getByRole('button', { name: petsDesc })).toBeVisible();
+  await expect(page.getByRole('button', { name: petsDesc, exact: true })).toBeVisible();
 
-  await press(page.getByRole('button', { name: petsDesc }));
+  await press(page.getByRole('button', { name: petsDesc, exact: true }));
   await press(dialog(page).getByRole('button', { name: 'Delete' }));
-  await expect(page.getByRole('button', { name: petsDesc })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: petsDesc, exact: true })).toHaveCount(0);
 });
 
 test('archives an account out of the list and totals, then restores it intact (US1 #9)', async ({

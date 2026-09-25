@@ -1,7 +1,7 @@
 const EASE = 'duration-(--dur-hover) ease-(--ease-out)';
 const PRESSABLE = `cursor-pointer transition ${EASE} active:scale-97 active:duration-(--dur-press) disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100`;
 
-export const PAGE = 'flex flex-col gap-20 px-32 py-28';
+export const PAGE = 'flex flex-col gap-20 px-32 py-28 max-md:px-18 max-md:py-20';
 export const PAGE_HEADER = 'flex flex-wrap items-center justify-between gap-16';
 export const PAGE_TITLE = 'flex items-center gap-10 text-28 font-semibold tracking-tight';
 export const SECTION_TITLE = 'mb-12 text-17 font-semibold';

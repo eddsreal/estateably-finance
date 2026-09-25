@@ -53,7 +53,7 @@ async function record(page: Page, description: string): Promise<void> {
   await press(modal.getByRole('button', { name: 'Record transaction' }));
   await expect(modal).toBeHidden();
   await expect(undoButton(page)).toBeVisible();
-  await expect(page.getByRole('button', { name: description })).toBeVisible();
+  await expect(page.getByRole('button', { name: description, exact: true })).toBeVisible();
 }
 
 async function pressUndoShortcut(page: Page): Promise<void> {
@@ -101,7 +101,7 @@ test('Undo within 5 s removes the row everywhere and restores balances (US6 #1)'
   await press(undoButton(page));
   await expect(undoButton(page)).toHaveCount(0);
   await expect(toasts(page).getByText('Transaction removed.')).toBeVisible();
-  await expect(page.getByRole('button', { name: description })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: description, exact: true })).toHaveCount(0);
   expect(await matching(request, description)).toEqual([]);
   expect(await balance(request)).toBe('0');
 
@@ -129,7 +129,7 @@ test('⌘Z inside a text field undoes text only; outside it undoes the create (U
   await page.keyboard.press('Escape');
   await pressUndoShortcut(page);
   await expect(undoButton(page)).toHaveCount(0);
-  await expect(page.getByRole('button', { name: description })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: description, exact: true })).toHaveCount(0);
   expect(await matching(request, description)).toEqual([]);
 });
 
@@ -144,7 +144,7 @@ test('a second press sends no second DELETE', async ({ page, request }) => {
 
   await undoButton(page).click();
   await pressUndoShortcut(page);
-  await expect(page.getByRole('button', { name: description })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: description, exact: true })).toHaveCount(0);
   await expect(toasts(page).getByText('Transaction removed.')).toBeVisible();
   expect(deletes).toHaveLength(1);
   expect(await matching(request, description)).toEqual([]);
@@ -174,7 +174,7 @@ test('a failed Undo shows the error toast with its correlation id and keeps the 
 
   await press(undoButton(page));
   await expect(toasts(page).getByText('Correlation ID E2E-UNDO-FAIL')).toBeVisible();
-  await expect(page.getByRole('button', { name: description })).toBeVisible();
+  await expect(page.getByRole('button', { name: description, exact: true })).toBeVisible();
   expect(await matching(request, description)).toHaveLength(1);
   await page.unrouteAll();
 });
@@ -188,8 +188,8 @@ test('a second create replaces the first Undo', async ({ page, request }) => {
   await expect(undoButton(page)).toHaveCount(1);
 
   await press(undoButton(page));
-  await expect(page.getByRole('button', { name: second })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: first })).toBeVisible();
+  await expect(page.getByRole('button', { name: second, exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: first, exact: true })).toBeVisible();
   expect(await matching(request, second)).toEqual([]);
   expect(await matching(request, first)).toHaveLength(1);
 });
@@ -202,7 +202,7 @@ test('editing the new row closes its Undo, and the edit toast has no Undo', asyn
   await page.goto('/transactions');
   await record(page, description);
 
-  await press(page.getByRole('button', { name: description }));
+  await press(page.getByRole('button', { name: description, exact: true }));
   const modal = page.getByRole('dialog', { name: 'Edit transaction' });
   await typeInto(modal.getByLabel('Description'), `${description} again`);
   await press(modal.getByRole('button', { name: 'Save changes' }));
@@ -210,7 +210,9 @@ test('editing the new row closes its Undo, and the edit toast has no Undo', asyn
   await expect(undoButton(page)).toHaveCount(0);
 
   await pressUndoShortcut(page);
-  await expect(page.getByRole('button', { name: `${description} again` })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: `${description} again`, exact: true }),
+  ).toBeVisible();
   expect(await matching(request, `${description} again`)).toHaveLength(1);
 });
 
@@ -224,14 +226,14 @@ test('no Undo after 5 s, and the delete toast has no Undo (US6 #2, #3)', async (
 
   await expect(undoButton(page)).toHaveCount(0, { timeout: 7000 });
   await pressUndoShortcut(page);
-  await expect(page.getByRole('button', { name: description })).toBeVisible();
+  await expect(page.getByRole('button', { name: description, exact: true })).toBeVisible();
   expect(await matching(request, description)).toHaveLength(1);
 
-  await press(page.getByRole('button', { name: description }));
+  await press(page.getByRole('button', { name: description, exact: true }));
   await press(
     page.getByRole('dialog', { name: 'Edit transaction' }).getByRole('button', { name: 'Delete' }),
   );
   await expect(toasts(page).getByText('Transaction deleted.')).toBeVisible();
   await expect(undoButton(page)).toHaveCount(0);
-  await expect(page.getByRole('button', { name: description })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: description, exact: true })).toHaveCount(0);
 });

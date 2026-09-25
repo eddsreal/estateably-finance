@@ -104,8 +104,8 @@ export function LineChart({ label, from, series, selected, onSelect }: LineChart
           <Area
             dataKey="plot"
             type="linear"
+            className="[&_.recharts-area-curve]:[stroke-width:var(--chart-stroke)]"
             stroke="var(--color-accent)"
-            strokeWidth="var(--chart-stroke)"
             fill={`url(#${gradient})`}
             dot={false}
             activeDot={false}

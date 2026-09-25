@@ -3,6 +3,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { addDays, formatDay, localToday } from '../../../../shared/lib/dates';
+import { usePhoneLayout } from '../../../../shared/lib/media';
 import { Cents, compareCents, formatCents, isNegative } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import { Amount } from '../../../../shared/ui/Amount/Amount';
@@ -105,6 +106,7 @@ export function ProjectionPage() {
   const today = localToday();
   const latest = addMonths(today, 24);
   const navigate = useNavigate();
+  const phone = usePhoneLayout();
   const [horizon, setHorizon] = useState(() => endOfNextMonth(today));
   const [draft, setDraft] = useState(horizon);
   const [selected, setSelected] = useState<number | null>(null);
@@ -247,7 +249,7 @@ export function ProjectionPage() {
                 columns={[
                   { label: 'Date' },
                   { label: 'Payment' },
-                  { label: 'Amount', align: 'right' },
+                  { label: 'Amount', align: 'right', hideOnPhone: true },
                   { label: 'Balance after', align: 'right' },
                 ]}
               >
@@ -259,22 +261,34 @@ export function ProjectionPage() {
                       className={first ? 'bg-negative-soft' : ''}
                     >
                       <td>
-                        <span className="flex items-center gap-8 font-mono text-12 whitespace-nowrap text-text-strong">
+                        <span className="flex items-center gap-8 font-mono text-12 whitespace-nowrap text-text-strong max-md:flex-col max-md:items-start max-md:gap-4">
                           {formatDay(occurrence.date)}
                           {occurrence.overdue && <span className={CHIP_WARNING}>Overdue</span>}
                         </span>
                       </td>
                       <td>
-                        <span className="flex min-w-0 items-center gap-8 font-medium">
+                        <span className="flex min-w-0 items-center gap-8 font-medium max-md:flex-col max-md:items-start max-md:gap-4">
                           <span className={TRUNCATE}>{occurrence.description}</span>
                           {first && (
                             <span className="inline-flex h-24 shrink-0 items-center rounded-pill bg-negative px-10 text-12 font-semibold text-text-on-ink">
                               Below $0.00
                             </span>
                           )}
+                          {phone && (
+                            <span className="text-13 font-regular">
+                              <Amount
+                                cents={
+                                  occurrence.kind === 'bill'
+                                    ? `-${occurrence.amount}`
+                                    : occurrence.amount
+                                }
+                                sign="always"
+                              />
+                            </span>
+                          )}
                         </span>
                       </td>
-                      <td className={TD_AMOUNT}>
+                      <td className={`${TD_AMOUNT} max-md:hidden`}>
                         <Amount
                           cents={
                             occurrence.kind === 'bill' ? `-${occurrence.amount}` : occurrence.amount

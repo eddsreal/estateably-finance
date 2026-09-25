@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { localToday } from '../../../../shared/lib/dates';
+import { usePhoneLayout } from '../../../../shared/lib/media';
 import { addCents, Cents, change } from '../../../../shared/lib/money';
 import { queryKeys } from '../../../../shared/lib/query-keys';
 import {
@@ -30,8 +31,15 @@ import { ErrorNotice } from '../../../../shared/ui/ErrorNotice/ErrorNotice';
 import { Icon, ICONS } from '../../../../shared/ui/Icon/Icon';
 import { Kind, KindGlyph } from '../../../../shared/ui/KindGlyph/KindGlyph';
 import { Modal } from '../../../../shared/ui/Modal/Modal';
+import { RowActions } from '../../../../shared/ui/RowActions/RowActions';
 import { Skeleton } from '../../../../shared/ui/Skeleton/Skeleton';
+import { SwipeRow } from '../../../../shared/ui/SwipeRow/SwipeRow';
 import { useToast } from '../../../../shared/ui/Toast/Toast';
+import {
+  EditableTransaction,
+  TransactionForm,
+  TransactionKindChoice,
+} from '../../../../shared/ui/TransactionForm/TransactionForm';
 import { AccountForm } from '../AccountForm/AccountForm';
 
 const PAGE_SIZE = 50;
@@ -47,6 +55,7 @@ type Row = {
   accountId: string;
   counterAccountId?: string;
   categoryId?: string;
+  projectId?: string;
 };
 
 export function signedAmount(row: Row, accountId: string): Cents {
@@ -95,6 +104,11 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(false);
   const { flashId } = useToast();
+  const phone = usePhoneLayout();
+  const [editingRow, setEditingRow] = useState<{
+    transaction: EditableTransaction;
+    confirmDelete: boolean;
+  } | null>(null);
   const today = localToday();
 
   const accountsQuery = useQuery({
@@ -114,6 +128,12 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categoriesList(true),
     queryFn: () => unwrap(api.GET('/categories', { params: { query: { includeArchived: true } } })),
+  });
+
+  const projectsQuery = useQuery({
+    queryKey: queryKeys.projectsList,
+    queryFn: () => unwrap(api.GET('/projects')),
+    enabled: editingRow !== null,
   });
 
   const transactionsQuery = useQuery({
@@ -268,33 +288,72 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
                 />
               </h2>
               <ul>
-                {day.rows.map((row) => (
-                  <li
-                    key={row.id}
-                    className={`flex items-center gap-14 px-22 py-12 ${row.id === flashId ? ROW_FLASH : ''}`}
-                  >
-                    <KindGlyph kind={row.kind as Kind} />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className={`${TRUNCATE} text-15 font-medium`}>{row.description}</span>
-                      {row.kind === 'transfer' && (
-                        <span className="text-12 text-text-3">
-                          {row.accountId === accountId
-                            ? `→ ${accountName(row.counterAccountId)}`
-                            : `← ${accountName(row.accountId)}`}
+                {day.rows.map((row) => {
+                  const editable = row.kind !== 'opening';
+                  const edit = (confirmDelete: boolean) =>
+                    setEditingRow({
+                      transaction: {
+                        id: row.id,
+                        kind: row.kind as TransactionKindChoice,
+                        date: row.date,
+                        description: row.description,
+                        amount: row.amount,
+                        accountId: row.accountId,
+                        categoryId: row.categoryId,
+                        counterAccountId: row.counterAccountId,
+                        projectId: row.projectId,
+                      },
+                      confirmDelete,
+                    });
+                  const content = (
+                    <div
+                      className={`flex items-center gap-14 py-12 pr-12 pl-22 ${row.id === flashId ? ROW_FLASH : ''}`}
+                    >
+                      <KindGlyph kind={row.kind as Kind} />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className={`${TRUNCATE} text-15 font-medium`}>{row.description}</span>
+                        {row.kind === 'transfer' && (
+                          <span className="text-12 text-text-3">
+                            {row.accountId === accountId
+                              ? `→ ${accountName(row.counterAccountId)}`
+                              : `← ${accountName(row.accountId)}`}
+                          </span>
+                        )}
+                      </span>
+                      {row.categoryId && (
+                        <span className={`${CHIP_CATEGORY} max-md:hidden`}>
+                          {categoryName(row.categoryId)}
                         </span>
                       )}
-                    </span>
-                    {row.categoryId && (
-                      <span className={CHIP_CATEGORY}>{categoryName(row.categoryId)}</span>
-                    )}
-                    <span className="text-14">
-                      <Amount
-                        cents={signedAmount(row, accountId)}
-                        sign={row.kind === 'opening' ? 'auto' : 'always'}
-                      />
-                    </span>
-                  </li>
-                ))}
+                      <span className="text-14 whitespace-nowrap">
+                        <Amount
+                          cents={signedAmount(row, accountId)}
+                          sign={row.kind === 'opening' ? 'auto' : 'always'}
+                        />
+                      </span>
+                      {editable ? (
+                        <RowActions
+                          label={`Actions for ${row.description}`}
+                          onEdit={() => edit(false)}
+                          onDelete={() => edit(true)}
+                        />
+                      ) : (
+                        <span aria-hidden="true" className="size-32 flex-none" />
+                      )}
+                    </div>
+                  );
+                  return (
+                    <li key={row.id}>
+                      {phone && editable ? (
+                        <SwipeRow onEdit={() => edit(false)} onDelete={() => edit(true)}>
+                          {content}
+                        </SwipeRow>
+                      ) : (
+                        content
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ))}
@@ -325,6 +384,22 @@ export function AccountDetailPage({ accountId }: { accountId: string }) {
           </span>
         </div>
       )}
+      <Modal
+        title="Edit transaction"
+        open={editingRow !== null}
+        onClose={() => setEditingRow(null)}
+      >
+        {editingRow && (
+          <TransactionForm
+            transaction={editingRow.transaction}
+            confirmDelete={editingRow.confirmDelete}
+            accounts={accounts}
+            categories={categoriesQuery.data ?? []}
+            projects={projectsQuery.data ?? []}
+            onDone={() => setEditingRow(null)}
+          />
+        )}
+      </Modal>
       <Modal title="Edit account" open={editing} onClose={() => setEditing(false)}>
         {editing && (
           <AccountForm
