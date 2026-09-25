@@ -1,6 +1,7 @@
 import { ConsoleLogger, INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { createServer, IncomingHttpHeaders, Server, ServerResponse } from 'node:http';
+import { randomInt } from 'node:crypto';
 import { AddressInfo } from 'node:net';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
@@ -381,6 +382,49 @@ describe('AI narrative over the similar report, streamed (FR-012)', () => {
       correlationId: res.headers.get('x-correlation-id'),
       outcome: 'client_closed',
     });
+  });
+
+  it('sends descriptions stripped of Markdown, HTML and line breaks, with max_tokens 512 (FR-008a)', async () => {
+    const month = `${randomInt(1901, 2000)}-${String(randomInt(1, 13)).padStart(2, '0')}`;
+    const account = await request(http)
+      .post('/accounts')
+      .send({
+        name: `AI marks ${Date.now()}`,
+        kind: 'bank',
+        openingBalance: '100000',
+        openingDate: `${month}-01`,
+      })
+      .expect(201);
+    const categories = await request(http).get('/categories').expect(200);
+    const categoryId = categories.body.find(
+      (category: { type: string }) => category.type === 'expense',
+    ).id;
+    await request(http)
+      .post('/transactions')
+      .send({
+        kind: 'expense',
+        date: `${month}-02`,
+        description: '**Rent** <b>May</b> [x](y)\nnote',
+        amount: '4250',
+        accountId: account.body.id,
+        categoryId,
+      })
+      .expect(201);
+
+    const res = await fetch(`${base}/reports/similar/narrative`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from: `${month}-01`, to: `${month}-28` }),
+    });
+    await res.text();
+    expect(res.status).toBe(200);
+    const sent = JSON.parse(received[0].body);
+    expect(sent.max_tokens).toBe(512);
+    const descriptions = JSON.parse(sent.messages[0].content).groups.map(
+      (group: { description: string }) => group.description,
+    );
+    expect(descriptions).toContain('rent bmay/b xy note');
+    for (const description of descriptions) expect(description).not.toMatch(/[*_`#<>[\]()!|~\n]/);
   });
 
   it('leaves the deterministic report untouched while the provider fails mid-stream', async () => {

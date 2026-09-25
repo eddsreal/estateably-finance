@@ -302,7 +302,7 @@ describe('SimilarPage', () => {
     expect(status).toHaveTextContent('Generating summary…');
     expect(screen.queryByRole('heading', { name: 'Narrative' })).not.toBeInTheDocument();
     stream().delta('Rent ');
-    await vi.waitFor(() => expect(narrativeText()).toBe('Rent '));
+    await vi.waitFor(() => expect(narrativeText()).toBe('Rent'));
     expect(narrativeCard()).toHaveAttribute('aria-busy', 'true');
     expect(narrativeCard()).not.toHaveAttribute('aria-live');
     expect(status).toHaveTextContent('Generating summary…');
@@ -313,6 +313,23 @@ describe('SimilarPage', () => {
     expect(narrativeCard()).toHaveAttribute('aria-busy', 'false');
     expect(narrativeText()).toBe('Rent dominated.');
     expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
+  });
+
+  it('formats the summary once a bold mark split across deltas closes (US2)', async () => {
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    stream().delta('You spent $1,248.80.\n\n- **Re');
+    await vi.waitFor(() => expect(narrativeText()).toContain('**Re'));
+    expect(narrativeCard().querySelector('strong')).toBeNull();
+    stream().delta('nt: $1,200.00**\n- Uber: $48.80\n');
+    await vi.waitFor(() =>
+      expect(narrativeCard().querySelector('strong')).toHaveTextContent('Rent: $1,200.00'),
+    );
+    expect(within(narrativeCard()).getAllByRole('listitem')).toHaveLength(2);
+    stream().end({ outcome: 'complete' });
   });
 
   it('empties the announcement on a pre-text failure and shows the notice instead', async () => {

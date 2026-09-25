@@ -159,7 +159,7 @@ stripped of marks.
 piece arrives. Raw HTML, links and images stay inert. The request the stub receives carries
 stripped descriptions and the new prompt.
 
-- [ ] T013 [P] [US2] In `apps/api/src/modules/ai/services/ai.service.ts`:
+- [x] T013 [P] [US2] In `apps/api/src/modules/ai/services/ai.service.ts`:
   - **`forPrompt`**: export a pure `forPrompt(text: string): string` that removes ``* _ ` # < > [ ] ( ) ! | ~``, replaces line breaks with spaces, collapses whitespace and trims. Apply it to each group `description` in `prompt(report)`, leaving counts and cent totals untouched (FR-008a).
   - **System prompt**, in English, with these rules:
     - Open with one sentence giving the period total.
@@ -171,12 +171,12 @@ stripped descriptions and the new prompt.
     - Keep the existing rules: only the figures given, never add, subtract or estimate, and cents divided by 100 for dollars.
   - Set `max_tokens` to `512`.
   - Extend `ai.service.spec.ts`: `forPrompt` for each stripped mark, line breaks, collapsed whitespace, text without marks unchanged, digits and `$` untouched; the request body's `max_tokens` is `512` and its group descriptions are stripped; the system prompt contains the at-most-10 and bold rules (research R-007).
-- [ ] T014 [US2] Extend `apps/api/test/ai-narrative.e2e-spec.ts`: the report under test has a transaction whose description contains `**`, `<b>`, `[x](y)` and a line break. Assert the body the stub receives carries it stripped, with `max_tokens` `512` (depends on T013)
-- [ ] T015 [P] [US2] Create `apps/web/src/features/similar/components/SimilarPage/NarrativeText.tsx` rendering `react-markdown` with `allowedElements={['p', 'strong', 'em', 'ul', 'ol', 'li']}` and `unwrapDisallowed`. Style it with token utilities only: bold with the emphasis weight, bullets with the list spacing used elsewhere on the page. Add `NarrativeText.test.tsx`:
+- [x] T014 [US2] Extend `apps/api/test/ai-narrative.e2e-spec.ts`: the report under test has a transaction whose description contains `**`, `<b>`, `[x](y)` and a line break. Assert the body the stub receives carries it stripped, with `max_tokens` `512` (depends on T013)
+- [x] T015 [P] [US2] Create `apps/web/src/features/similar/components/SimilarPage/NarrativeText.tsx` rendering `react-markdown` with `allowedElements={['p', 'strong', 'em', 'ul', 'ol', 'li']}` and `unwrapDisallowed`. Style it with token utilities only: bold with the emphasis weight, bullets with the list spacing used elsewhere on the page. Add `NarrativeText.test.tsx`:
   - `**Rent**` renders as `strong`, and `- a\n- b` as a list with 2 items;
   - `**Re` alone shows the literal `**Re`, and adding `nt**` renders `strong`;
   - a heading renders as plain text, a link as its label only with no `a` and no URL, an image as its alt text with no `img`, and `<script>`/`<b>` as escaped text, with no `script` element in the DOM (FR-009).
-- [ ] T016 [US2] Use `NarrativeText` for the narrative card's text in `SimilarPage.tsx`, replacing the plain paragraph from T010. Extend `SimilarPage.test.tsx` with a stream whose bold mark is split across two deltas: a list and `strong` appear once the closing delta arrives (depends on T015)
+- [x] T016 [US2] Use `NarrativeText` for the narrative card's text in `SimilarPage.tsx`, replacing the plain paragraph from T010. Extend `SimilarPage.test.tsx` with a stream whose bold mark is split across two deltas: a list and `strong` appear once the closing delta arrives (depends on T015)
 
 **Checkpoint**: US2 acceptance scenarios 1–3 pass. The user reviews a live summary (quickstart 6).
 

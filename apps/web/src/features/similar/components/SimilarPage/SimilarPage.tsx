@@ -35,6 +35,7 @@ import {
   TRUNCATE,
 } from '../../../../shared/lib/styles';
 import { NarrativeStatus, useNarrative } from '../../hooks/useNarrative';
+import { NarrativeText } from './NarrativeText';
 
 type Range = { from: string; to: string };
 
@@ -243,7 +244,7 @@ export function SimilarPage() {
       {narrative.text !== '' && (
         <div className={CARD} aria-busy={narrative.status === 'streaming'}>
           <h2 className={SECTION_TITLE}>Narrative</h2>
-          <p className="text-15 whitespace-pre-wrap text-text-1">{narrative.text}</p>
+          <NarrativeText text={narrative.text} />
         </div>
       )}
       {range === null ? (
