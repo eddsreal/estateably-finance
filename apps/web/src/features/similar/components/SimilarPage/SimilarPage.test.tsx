@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -374,7 +374,7 @@ describe('SimilarPage', () => {
     await generate();
     await summarize();
     await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
-    expect(screen.getByRole('button', { name: /Summarize with AI/ })).toHaveFocus();
+    expect(screen.getByRole('button', { name: /Regenerate/ })).toHaveFocus();
   });
 
   it('moves focus from Stop to the summary button when the stream ends while Stop has focus', async () => {
@@ -391,7 +391,7 @@ describe('SimilarPage', () => {
       expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument(),
     );
     await vi.waitFor(() =>
-      expect(screen.getByRole('button', { name: /Summarize with AI/ })).toHaveFocus(),
+      expect(screen.getByRole('button', { name: /Regenerate/ })).toHaveFocus(),
     );
   });
 
@@ -481,6 +481,68 @@ describe('SimilarPage', () => {
     expect(
       await within(narrativeCard()).findByRole('button', { name: 'Copied' }),
     ).toBeInTheDocument();
+  });
+
+  it('makes exactly one request while streaming, with a disabled Summarizing… button (SC-004)', async () => {
+    const { answer } = live();
+    const calls = stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    const button = await screen.findByRole('button', { name: 'Summarizing…' });
+    expect(button).toBeDisabled();
+    await userEvent.click(button);
+    await userEvent.click(button);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('reads Regenerate with a 5 s countdown after an ending, then streams anew (US5)', async () => {
+    const { answer, stream } = live();
+    const calls = stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    stream().delta('Old summary.');
+    await vi.waitFor(() => expect(narrativeText()).toContain('Old summary.'));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    try {
+      stream().end({ outcome: 'complete' });
+      const button = await vi.waitFor(() =>
+        screen.getByRole('button', { name: '✦ Regenerate (5)' }),
+      );
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).toHaveAccessibleDescription('Available again in a few seconds.');
+      button.click();
+      expect(calls).toHaveLength(1);
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      const ready = screen.getByRole('button', { name: '✦ Regenerate' });
+      expect(ready).not.toHaveAttribute('aria-disabled');
+      expect(ready).toBeEnabled();
+      expect(screen.queryByText('Available again in a few seconds.')).not.toBeInTheDocument();
+      ready.click();
+      await vi.waitFor(() => expect(calls).toHaveLength(2));
+      expect(screen.queryByRole('heading', { name: 'Narrative' })).not.toBeInTheDocument();
+      stream().delta('New summary.');
+      await vi.waitFor(() => expect(narrativeText()).toBe('New summary.'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reads Summarize with AI and is enabled at once after a pre-text failure', async () => {
+    stubRoutes({
+      status: 502,
+      body: { code: 'AI_PROVIDER_ERROR', message: 'The provider failed', correlationId },
+    });
+    renderPage();
+    await generate();
+    await summarize();
+    await screen.findByRole('alert');
+    const button = screen.getByRole('button', { name: '✦ Summarize with AI' });
+    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute('aria-disabled');
   });
 
   it('empties the announcement on a pre-text failure and shows the notice instead', async () => {

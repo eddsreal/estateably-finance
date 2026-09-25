@@ -138,6 +138,16 @@ export function SimilarPage() {
     narrative.stop();
   }
 
+  const streaming = narrative.status === 'streaming';
+  const summaryBlocked = aiDisabled || !report;
+  const coolingDown = narrative.coolingDown && !summaryBlocked && !streaming;
+  const summaryLabel =
+    narrative.status === 'idle'
+      ? '✦ Summarize with AI'
+      : coolingDown
+        ? `✦ Regenerate (${narrative.secondsLeft})`
+        : '✦ Regenerate';
+
   function generate() {
     narrative.clear();
     setAiError(null);
@@ -146,7 +156,7 @@ export function SimilarPage() {
   }
 
   function requestNarrative() {
-    if (!range) return;
+    if (!range || narrative.coolingDown) return;
     setAiError(null);
     setCopied(false);
     void narrative.start(range);
@@ -202,15 +212,28 @@ export function SimilarPage() {
             <button
               ref={summaryRef}
               type="button"
-              className={BUTTON}
-              disabled={aiDisabled || !report || narrative.status === 'streaming'}
+              className={`${BUTTON} aria-disabled:cursor-not-allowed aria-disabled:opacity-50`}
+              disabled={summaryBlocked || streaming}
+              aria-disabled={coolingDown || undefined}
               title={aiDisabled ? AI_DISABLED_REASON : undefined}
-              aria-describedby={aiDisabled || !report ? 'ai-disabled-reason' : undefined}
+              aria-describedby={
+                summaryBlocked ? 'ai-disabled-reason' : coolingDown ? 'ai-cooldown-hint' : undefined
+              }
               onClick={requestNarrative}
             >
-              {narrative.status === 'streaming' ? 'Summarizing…' : '✦ Summarize with AI'}
+              {streaming ? (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="size-14 rounded-pill border-2 border-sand-350 border-t-accent motion-safe:animate-spin"
+                  />
+                  Summarizing…
+                </>
+              ) : (
+                summaryLabel
+              )}
             </button>
-            {narrative.status === 'streaming' && (
+            {streaming && (
               <button ref={stopRef} type="button" className={BUTTON} onClick={stopNarrative}>
                 Stop
               </button>
@@ -219,6 +242,11 @@ export function SimilarPage() {
           {(from === '' || to === '') && (
             <p id="generate-disabled-reason" className={HINT}>
               Pick both dates to generate a report.
+            </p>
+          )}
+          {coolingDown && (
+            <p id="ai-cooldown-hint" className={HINT}>
+              Available again in a few seconds.
             </p>
           )}
           {(aiDisabled || !report) && (

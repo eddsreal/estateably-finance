@@ -233,11 +233,11 @@ closes without `end`) leaves both deltas visible with the notice, reason line an
 **Independent Test**: while streaming the button is disabled with a spinner. After the end it
 reads "✦ Regenerate", counts down 5 seconds, then starts a new stream that replaces the old text.
 
-- [ ] T019 [US5] Add the cooldown to `apps/web/src/features/similar/hooks/useNarrative.ts`:
+- [x] T019 [US5] Add the cooldown to `apps/web/src/features/similar/hooks/useNarrative.ts`:
   - When the status becomes `complete`, `stopped` or `incomplete`, set `coolingDown` to `true` and `secondsLeft` to `5`, and tick `secondsLeft` down every second with one interval cleared at 0 and on unmount.
   - `clear()` does not cancel a running cooldown. A pre-text failure starts none.
   - Extend `useNarrative.test.tsx` with fake timers: `coolingDown` for exactly 5 s after each ending kind, `secondsLeft` 5→1, none after a pre-text error, no timer left after unmount (SC-007).
-- [ ] T020 [US5] Update the summary button in `SimilarPage.tsx`:
+- [x] T020 [US5] Update the summary button in `SimilarPage.tsx`:
   - **Streaming**: disabled, with a spinner (a token-styled element; under `prefers-reduced-motion` it does not animate, following feature 002's reduced-motion rule) and the label "Summarizing…".
   - **After any ending**: "✦ Regenerate", disabled while `coolingDown`, labelled "✦ Regenerate ({secondsLeft})", with the hint "Available again in a few seconds." next to it through the existing `aria-describedby` pattern.
   - **After a pre-text failure**: "✦ Summarize with AI", enabled at once.

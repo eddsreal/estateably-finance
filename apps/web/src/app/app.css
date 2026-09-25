@@ -69,6 +69,12 @@
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes screen-enter {
   from {
     opacity: 0;
@@ -110,5 +116,6 @@
     --dur-morph: 0ms;
     --dur-count: 0ms;
     --dur-shimmer: 0ms;
+    --dur-spin: 0ms;
   }
 }

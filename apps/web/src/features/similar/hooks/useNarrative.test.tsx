@@ -122,4 +122,93 @@ describe('useNarrative', () => {
     hook.unmount();
     expect(signals[0].aborted).toBe(true);
   });
+
+  describe('cooldown (SC-007)', () => {
+    async function flush() {
+      for (let step = 0; step < 10; step += 1) {
+        await act(() => new Promise<void>((resolve) => setImmediate(resolve)));
+      }
+    }
+
+    async function streamed() {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+      const context = streaming();
+      act(() => void context.hook.result.current.start(range));
+      await flush();
+      act(() => context.stream().delta('Rent'));
+      await flush();
+      return context;
+    }
+
+    function expectCountdown(hook: ReturnType<typeof streaming>['hook']) {
+      expect(hook.result.current.coolingDown).toBe(true);
+      for (const left of [5, 4, 3, 2, 1]) {
+        expect(hook.result.current.secondsLeft).toBe(left);
+        act(() => {
+          vi.advanceTimersByTime(left === 1 ? 999 : 1000);
+        });
+      }
+      expect(hook.result.current.coolingDown).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(hook.result.current.coolingDown).toBe(false);
+      expect(hook.result.current.secondsLeft).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it.each([
+      ['complete', (stream: NarrativeStream) => stream.end({ outcome: 'complete' })],
+      [
+        'incomplete',
+        (stream: NarrativeStream) => stream.end({ outcome: 'incomplete', reason: 'length' }),
+      ],
+      ['connection lost', (stream: NarrativeStream) => stream.close()],
+    ])('cools down for exactly 5 s after %s', async (_name, finish) => {
+      const { hook, stream } = await streamed();
+      expect(hook.result.current.coolingDown).toBe(false);
+      act(() => finish(stream()));
+      await flush();
+      expect(hook.result.current.status).not.toBe('streaming');
+      expectCountdown(hook);
+    });
+
+    it('cools down for exactly 5 s after stop', async () => {
+      const { hook } = await streamed();
+      act(() => hook.result.current.stop());
+      expect(hook.result.current.status).toBe('stopped');
+      expectCountdown(hook);
+    });
+
+    it('keeps cooling down after clear', async () => {
+      const { hook, stream } = await streamed();
+      act(() => stream().end({ outcome: 'complete' }));
+      await flush();
+      act(() => hook.result.current.clear());
+      expect(hook.result.current.status).toBe('idle');
+      expectCountdown(hook);
+    });
+
+    it('starts no cooldown after a pre-text error', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+      const body = { code: 'AI_PROVIDER_ERROR', message: 'failed', correlationId: 'x' };
+      const { hook, onError } = setup(() => ({ status: 502, body }));
+      act(() => void hook.result.current.start(range));
+      await flush();
+      expect(onError).toHaveBeenCalled();
+      expect(hook.result.current.coolingDown).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('leaves no timer behind after unmount', async () => {
+      const { hook, stream } = await streamed();
+      act(() => stream().end({ outcome: 'complete' }));
+      await flush();
+      expect(vi.getTimerCount()).toBe(1);
+      hook.unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
 });

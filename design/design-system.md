@@ -42,6 +42,7 @@ All motion eases out with `--ease-out` (`cubic-bezier(.2,.8,.2,1)`). No bounces.
 | `--dur-flash`   | 2.4 s  | a saved row glows green                        |
 | `--dur-undo`    | 5 s    | the Undo window and its toast progress bar     |
 | `--dur-shimmer` | 1.2 s  | a loading skeleton's shimmer, left to right    |
+| `--dur-spin`    | 0.8 s  | one turn of the AI summary's busy spinner      |
 
 Components write `duration-(--dur-hover) ease-(--ease-out)`, never a bare `duration-150`. Under
 `prefers-reduced-motion: reduce` every `--dur-*` and `--stagger` becomes `0ms`, except
