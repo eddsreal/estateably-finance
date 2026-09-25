@@ -44,7 +44,7 @@ These are all the variables the app reads. `.env.example` holds the development 
 | `APP_TIMEZONE`   | `UTC`                                                   | The timezone that defines "today"                              |
 | `LOG_LEVEL`      | `info`                                                  | JSON log level                                                 |
 | `LLM_API_KEY`    | _(empty = AI disabled)_                                 | Anthropic key for the similar-transaction narrative            |
-| `LLM_TIMEOUT_MS` | `10000`                                                 | LLM call timeout                                               |
+| `LLM_TIMEOUT_MS` | `10000`                                                 | Longest the LLM may go without sending text                    |
 | `LLM_BASE_URL`   | `https://api.anthropic.com`                             | LLM provider base URL; the e2e suite points it at a local stub |
 | `CORS_ORIGINS`   | `http://localhost:5173,http://localhost:8080`           | Comma-separated browser origins the API accepts                |
 | `NODE_ENV`       | _(unset in dev; compose sets `production`)_             | Platform convention; `production` turns on the HSTS header     |
@@ -213,5 +213,16 @@ log backend, with metrics (p95 per endpoint, error rate, pool saturation) and al
 
 The similar-transaction report can add a short written summary. The summary is optional:
 set `LLM_API_KEY` (for compose: `LLM_API_KEY=... docker compose up`). Without a key, the
-report works as usual and the summary button is disabled. If the provider fails or is slow,
-the app shows a notice and leaves the report on screen.
+report works as usual and the summary button is disabled. If the provider fails or is slow
+before writing anything, the app shows a notice and leaves the report on screen.
+
+The summary streams in as the provider writes it: a short Markdown list, one bullet per group,
+the most expensive in bold. Stop ends it at once and keeps what arrived. If the provider fails,
+goes silent for `LLM_TIMEOUT_MS` or hits the length limit part-way, the text stays with an
+"incomplete" notice, the reason and a correlation id. After any ending the button reads
+Regenerate and waits 5 seconds before it can start another summary.
+
+The provider is called through `@anthropic-ai/sdk`, once per summary and never retried.
+Descriptions are stripped of Markdown and HTML marks and line breaks before they are sent, and
+the answer is rendered with only paragraphs, bold, italics and lists; anything else shows as
+plain text. The environment variables are unchanged.

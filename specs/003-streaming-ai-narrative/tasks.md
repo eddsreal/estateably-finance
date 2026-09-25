@@ -258,8 +258,8 @@ reads "✦ Regenerate", counts down 5 seconds, then starts a new stream that rep
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Update the AI section of `README.md`: the summary streams as it is written, can be stopped, keeps partial text with an "incomplete" notice, waits 5 s between summaries, and strips Markdown/HTML marks from descriptions before sending them. Note the provider is called through `@anthropic-ai/sdk` with no retries. Environment variables are unchanged
-- [ ] T022 Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm contract:check`, `pnpm test`, `pnpm test:e2e`, `pnpm test:ui`, `pnpm --filter web run check:tokens` and `pnpm ledger:check`, and fix any failure this feature caused
+- [x] T021 [P] Update the AI section of `README.md`: the summary streams as it is written, can be stopped, keeps partial text with an "incomplete" notice, waits 5 s between summaries, and strips Markdown/HTML marks from descriptions before sending them. Note the provider is called through `@anthropic-ai/sdk` with no retries. Environment variables are unchanged
+- [x] T022 Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm contract:check`, `pnpm test`, `pnpm test:e2e`, `pnpm test:ui`, `pnpm --filter web run check:tokens` and `pnpm ledger:check`, and fix any failure this feature caused
 - [ ] T023 The user runs quickstart scenarios 6 (live provider, Stop) and 7 (VoiceOver) by hand, with `LLM_API_KEY` set locally, and records the result in the pull request
 
 ---
