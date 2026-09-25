@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import Anthropic, { RateLimitError } from '@anthropic-ai/sdk';
 import {
   AiNotConfiguredError,
   AiProviderError,
@@ -8,6 +9,12 @@ import {
 import { ReportsService, SimilarReportData } from '../../reports/services/reports.service';
 
 export const LLM_MODEL = 'claude-haiku-4-5-20251001';
+
+export type NarrativeEndReason = 'provider_error' | 'timeout' | 'length';
+
+export type NarrativeEvent =
+  | { type: 'delta'; text: string }
+  | { type: 'end'; outcome: 'complete' | 'incomplete'; reason?: NarrativeEndReason };
 
 function timeoutMs(): number {
   const value = Number(process.env.LLM_TIMEOUT_MS);
@@ -36,13 +43,10 @@ function prompt(report: SimilarReportData): string {
   });
 }
 
-export function plainText(text: string): string {
-  return text
-    .replace(/^\s*#{1,6}\s.*$/gm, '')
-    .replace(/(\*\*|__)(.+?)\1/g, '$2')
-    .replace(/^\s*[-*]\s+/gm, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+function ending(stopReason: string | null): NarrativeEvent {
+  if (stopReason === 'end_turn') return { type: 'end', outcome: 'complete' };
+  if (stopReason === 'max_tokens') return { type: 'end', outcome: 'incomplete', reason: 'length' };
+  return { type: 'end', outcome: 'incomplete', reason: 'provider_error' };
 }
 
 @Injectable()
@@ -53,40 +57,79 @@ export class AiService {
     return (process.env.LLM_API_KEY ?? '') !== '';
   }
 
-  async similarNarrative(from: string, to: string): Promise<string> {
+  async *similarNarrative(
+    from: string,
+    to: string,
+    signal: AbortSignal,
+  ): AsyncGenerator<NarrativeEvent> {
     if (!this.isConfigured()) throw new AiNotConfiguredError();
-    const apiKey = process.env.LLM_API_KEY ?? '';
     const report = await this.reports.similar(from, to);
-    const baseUrl = process.env.LLM_BASE_URL || 'https://api.anthropic.com';
+    if (signal.aborted) return;
     const timeout = timeoutMs();
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeout);
+    };
+    let started = false;
+    let pending = '';
+    let stopReason: string | null = null;
+    let failure: unknown = null;
     try {
-      const res = await fetch(`${baseUrl}/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: LLM_MODEL,
-          max_tokens: 300,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: prompt(report) }],
-        }),
-        signal: AbortSignal.timeout(timeout),
+      const client = new Anthropic({
+        apiKey: process.env.LLM_API_KEY ?? '',
+        baseURL: process.env.LLM_BASE_URL || 'https://api.anthropic.com',
+        maxRetries: 0,
       });
-      if (res.status === 429) throw new AiRateLimitedError();
-      if (!res.ok) throw new AiProviderError();
-      const body = (await res.json()) as { content?: { text?: unknown }[] };
-      const raw = body.content?.[0]?.text;
-      const text = typeof raw === 'string' ? plainText(raw) : '';
-      if (text === '') throw new AiProviderError();
-      return text;
-    } catch (error) {
-      if (error instanceof AiRateLimitedError || error instanceof AiProviderError) throw error;
-      if (error instanceof Error && error.name === 'TimeoutError')
-        throw new AiTimeoutError(timeout);
-      throw new AiProviderError();
+      arm();
+      try {
+        const stream = client.messages.stream(
+          {
+            model: LLM_MODEL,
+            max_tokens: 300,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: 'user', content: prompt(report) }],
+          },
+          { signal: controller.signal },
+        );
+        for await (const event of stream) {
+          if (event.type === 'message_delta') stopReason = event.delta.stop_reason;
+          if (event.type !== 'content_block_delta' || event.delta.type !== 'text_delta') continue;
+          let text = event.delta.text;
+          if (!started) {
+            pending += text;
+            if (pending.trim() === '') continue;
+            started = true;
+            text = pending;
+          }
+          if (text === '') continue;
+          arm();
+          yield { type: 'delta', text };
+        }
+      } catch (error) {
+        failure = error;
+      }
+      if (signal.aborted) return;
+      if (!started) {
+        if (timedOut) throw new AiTimeoutError(timeout);
+        if (failure instanceof RateLimitError) throw new AiRateLimitedError();
+        throw new AiProviderError();
+      }
+      if (timedOut) yield { type: 'end', outcome: 'incomplete', reason: 'timeout' };
+      else if (failure !== null)
+        yield { type: 'end', outcome: 'incomplete', reason: 'provider_error' };
+      else yield ending(stopReason);
+    } finally {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      controller.abort();
     }
   }
 }

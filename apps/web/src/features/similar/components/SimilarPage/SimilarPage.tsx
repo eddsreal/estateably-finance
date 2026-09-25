@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { api, unwrap } from '../../../../shared/lib/api';
 import { formatDay, localToday } from '../../../../shared/lib/dates';
@@ -34,6 +34,7 @@ import {
   TOOLBAR_FIELD,
   TRUNCATE,
 } from '../../../../shared/lib/styles';
+import { useNarrative } from '../../hooks/useNarrative';
 
 type Range = { from: string; to: string };
 
@@ -79,8 +80,7 @@ export function SimilarPage() {
     queryKey: queryKeys.projectsList,
     queryFn: () => unwrap(api.GET('/projects')),
   });
-  const narrative = useMutation({
-    mutationFn: (body: Range) => unwrap(api.POST('/reports/similar/narrative', { body })),
+  const narrative = useNarrative({
     onError: (error) => {
       if (isApiError(error) && error.code === 'AI_NOT_CONFIGURED') setAiRejected(true);
       else {
@@ -103,7 +103,7 @@ export function SimilarPage() {
   );
 
   function generate() {
-    narrative.reset();
+    narrative.clear();
     setAiError(null);
     setRange({ from, to });
     if (range?.from === from && range.to === to) void reportQuery.refetch();
@@ -112,7 +112,7 @@ export function SimilarPage() {
   function requestNarrative() {
     if (!range) return;
     setAiError(null);
-    narrative.mutate(range);
+    void narrative.start(range);
   }
 
   return (
@@ -165,12 +165,12 @@ export function SimilarPage() {
             <button
               type="button"
               className={BUTTON}
-              disabled={aiDisabled || !report || narrative.isPending}
+              disabled={aiDisabled || !report || narrative.status === 'streaming'}
               title={aiDisabled ? AI_DISABLED_REASON : undefined}
               aria-describedby={aiDisabled || !report ? 'ai-disabled-reason' : undefined}
               onClick={requestNarrative}
             >
-              {narrative.isPending ? 'Summarizing…' : '✦ Summarize with AI'}
+              {narrative.status === 'streaming' ? 'Summarizing…' : '✦ Summarize with AI'}
             </button>
           </div>
           {(from === '' || to === '') && (
@@ -234,10 +234,10 @@ export function SimilarPage() {
           </button>
         </div>
       )}
-      {narrative.data && (
+      {narrative.text !== '' && (
         <div className={CARD}>
           <h2 className={SECTION_TITLE}>Narrative</h2>
-          <p className="text-15 text-text-1">{narrative.data.narrative}</p>
+          <p className="text-15 whitespace-pre-wrap text-text-1">{narrative.text}</p>
         </div>
       )}
       {range === null ? (

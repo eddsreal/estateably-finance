@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { stubApi } from '../../../../test-api-stub';
+import { narrativeStream, stubApi } from '../../../../test-api-stub';
 import { SimilarPage } from './SimilarPage';
 
 const correlationId = '6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10';
@@ -38,7 +38,18 @@ const emptyReport = {
   topGroupKey: null,
 };
 
-function stubRoutes(narrative: { status?: number; body: unknown }, configured = true) {
+type NarrativeAnswer = { status?: number; body: unknown } | (() => Response);
+
+function completed(...pieces: string[]): () => Response {
+  return () => {
+    const stream = narrativeStream(correlationId);
+    pieces.forEach((piece) => stream.delta(piece));
+    stream.end({ outcome: 'complete' });
+    return stream.response;
+  };
+}
+
+function stubRoutes(narrative: NarrativeAnswer = completed('Unused.'), configured = true) {
   const narrativeCalls: unknown[] = [];
   stubApi({
     'GET /ai/status': { configured },
@@ -47,7 +58,7 @@ function stubRoutes(narrative: { status?: number; body: unknown }, configured = 
     }),
     'POST /reports/similar/narrative': (_url: URL, init?: RequestInit) => {
       narrativeCalls.push(JSON.parse(init?.body as string));
-      return narrative;
+      return typeof narrative === 'function' ? narrative() : narrative;
     },
     'GET /accounts': {
       items: [
@@ -94,7 +105,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('SimilarPage', () => {
   it('asks for a report first, with the narrative unavailable until one exists', () => {
-    stubRoutes({ body: { narrative: '' } });
+    stubRoutes();
     renderPage();
     expect(screen.getByText('No report yet')).toBeInTheDocument();
     const button = screen.getByRole('button', { name: '✦ Summarize with AI' });
@@ -103,7 +114,7 @@ describe('SimilarPage', () => {
   });
 
   it('renders Summarize with AI disabled with its reason when no key is configured', async () => {
-    stubRoutes({ body: { narrative: '' } }, false);
+    stubRoutes(undefined, false);
     renderPage();
     expect(await screen.findByText('Disabled until an AI key is configured.')).toBeVisible();
     await generate();
@@ -114,7 +125,7 @@ describe('SimilarPage', () => {
   });
 
   it('shows a failed report with its correlation id and Try again', async () => {
-    stubRoutes({ body: { narrative: '' } });
+    stubRoutes();
     stubApi({
       'GET /ai/status': { configured: true },
       'GET /reports/similar': () => ({
@@ -133,7 +144,7 @@ describe('SimilarPage', () => {
   });
 
   it('shows groups with count and dollar totals, the top group and the top 5 (US6 #1, #2, SC-009)', async () => {
-    stubRoutes({ body: { narrative: '' } });
+    stubRoutes();
     renderPage();
     await generate();
     const groups = await screen.findByRole('list', { name: /^Groups from 2026-09-01/ });
@@ -157,7 +168,7 @@ describe('SimilarPage', () => {
   });
 
   it('sizes each group bar by its total relative to the largest group', async () => {
-    stubRoutes({ body: { narrative: '' } });
+    stubRoutes();
     renderPage();
     await generate();
     const groups = await screen.findByRole('list', { name: /^Groups from 2026-09-01/ });
@@ -168,7 +179,7 @@ describe('SimilarPage', () => {
   });
 
   it('shows the empty state for a period without expenses (US6 #3)', async () => {
-    stubRoutes({ body: { narrative: '' } });
+    stubRoutes();
     renderPage();
     await generate('2026-08-01', '2026-08-31');
     expect(await screen.findByText('No similar expenses in this range')).toBeInTheDocument();
@@ -182,7 +193,7 @@ describe('SimilarPage', () => {
   });
 
   it('requests the narrative for the generated range and shows it', async () => {
-    const calls = stubRoutes({ body: { narrative: 'Rent dominated this month.' } });
+    const calls = stubRoutes(completed('Rent dominated this month.'));
     renderPage();
     await generate();
     await screen.findByRole('list', { name: 'Top 5 most expensive' });
@@ -258,7 +269,7 @@ describe('SimilarPage', () => {
   });
 
   it('opens the edit form from a top-5 transaction', async () => {
-    stubRoutes({ body: { narrative: '' } });
+    stubRoutes();
     renderPage();
     await generate();
     await userEvent.click(await screen.findByRole('button', { name: 'Uber 1234' }));

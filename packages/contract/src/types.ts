@@ -500,8 +500,14 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * AI narrative over the similar-transaction report
-         * @description Sends the same grouped data to the configured LLM provider and returns a short natural-language summary. Requires `LLM_API_KEY`; without it the answer is `422 AI_NOT_CONFIGURED` and the UI keeps the button disabled. The provider call is bounded by `LLM_TIMEOUT_MS` (default 10 s) and never retried; a timeout answers `504 AI_TIMEOUT`, a provider rate limit `503 AI_RATE_LIMITED`, any other provider failure `502 AI_PROVIDER_ERROR`. The deterministic report on screen is never affected.
+         * AI narrative over the similar-transaction report, streamed
+         * @description Sends the same grouped data to the configured LLM provider, with each description stripped of Markdown and HTML marks and line breaks, and streams back a short Markdown summary (one bullet per group, largest first, at most 10, the most expensive in bold) as Server-Sent Events. Requires `LLM_API_KEY`; without it the answer is `422 AI_NOT_CONFIGURED`. The provider is called once and never retried.
+         *
+         *     **Before any text** the status line is not yet sent, so failures keep their JSON error responses: a provider rate limit `503 AI_RATE_LIMITED`, any other provider failure or an answer with no text `502 AI_PROVIDER_ERROR`, and no text within `LLM_TIMEOUT_MS` `504 AI_TIMEOUT`, counted from the provider call. Text means at least one non-whitespace character.
+         *
+         *     **Once text flows** the answer is `200 text/event-stream`. Each event has one JSON `data` line. `event: delta` carries a `NarrativeDeltaEvent`, in the order the provider produced them; concatenating every `text` gives the narrative. `event: end` carries a `NarrativeEndEvent` and is always the last event. A failure after the first delta, a gap longer than `LLM_TIMEOUT_MS` between deltas, or reaching the output cap ends the stream with `outcome: incomplete` and a `reason`. There is no overall time limit. A body that closes without an `end` event means the connection was lost; clients treat it as incomplete.
+         *
+         *     Closing the connection ends the provider request. The deterministic report is never affected.
          */
         post: operations["generateSimilarNarrative"];
         delete?: never;
@@ -1062,12 +1068,27 @@ export interface components {
             /** @example 2026-09-30 */
             to: components["schemas"]["DateOnly"];
         };
-        NarrativeResponse: {
+        /** @description `data` of an `event: delta`. The next piece of the narrative, in order. */
+        NarrativeDeltaEvent: {
             /**
-             * @description A short natural-language summary of the grouped report.
-             * @example Ride-hailing was your biggest recurring cost this month, with Uber appearing three times for $87.00 in total.
+             * @description Markdown text to append to what arrived before.
+             * @example - **Rent
              */
-            narrative: string;
+            text: string;
+        };
+        /** @description `data` of the `event: end` that closes every stream. `reason` is present exactly when `outcome` is `incomplete`. */
+        NarrativeEndEvent: {
+            /**
+             * @example complete
+             * @enum {string}
+             */
+            outcome: "complete" | "incomplete";
+            /**
+             * @description `provider_error`: the provider failed or stopped for any reason other than finishing or the cap. `timeout`: no text for `LLM_TIMEOUT_MS`. `length`: the output cap was reached.
+             * @example timeout
+             * @enum {string}
+             */
+            reason?: "provider_error" | "timeout" | "length";
         };
         AiStatusResponse: {
             /**
@@ -2177,13 +2198,23 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The narrative. */
+            /** @description The narrative as Server-Sent Events: zero or more `delta` events, then one `end` event. See `NarrativeDeltaEvent` and `NarrativeEndEvent`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NarrativeResponse"];
+                    /**
+                     * @example event: delta
+                     *     data: {"text":"You spent $412.30 in September.\n\n- **Rent"}
+                     *
+                     *     event: delta
+                     *     data: {"text":": $300.00 (1)**\n- Uber: $87.00 (3)\n"}
+                     *
+                     *     event: end
+                     *     data: {"outcome":"complete"}
+                     */
+                    "text/event-stream": string;
                 };
             };
             400: components["responses"]["ValidationError"];
