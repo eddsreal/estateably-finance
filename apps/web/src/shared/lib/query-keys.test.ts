@@ -4,13 +4,13 @@ import { queryKeys, refetchEntryDerived } from './query-keys';
 
 function seeded(failing: readonly unknown[] | null) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const calls: unknown[] = [];
+  const calls: string[] = [];
   let armed = false;
   const seed = (queryKey: readonly unknown[]) =>
     queryClient.fetchQuery({
       queryKey,
       queryFn: () => {
-        calls.push(queryKey[0]);
+        calls.push(String(queryKey[0]));
         if (armed && queryKey === failing) throw new Error('refetch failed');
         return 1;
       },
@@ -35,7 +35,7 @@ describe('refetchEntryDerived', () => {
     await seed(queryKeys.reportMonthly('2026-09'));
     arm();
     await expect(refetchEntryDerived(queryClient)).resolves.toBeUndefined();
-    expect(calls.sort()).toEqual(['accounts', 'reports']);
+    expect(calls.toSorted((a, b) => a.localeCompare(b))).toEqual(['accounts', 'reports']);
   });
 
   it('rejects when any refetch fails', async () => {

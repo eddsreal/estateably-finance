@@ -278,10 +278,10 @@ swiping (quickstart scenario 9).
 
 **Purpose**: documentation, retired notes and the full validation run.
 
-- [ ] T097 [P] Update `README.md`: Tailwind v4 styling from `design/tokens.css`, the `check:tokens` and `test:perf` scripts, the three new read-only endpoints, and the design references in `design/screens/`
-- [ ] T098 [P] Mark the feature 001 Complexity Tracking entry "Narrative button learns 'not configured' from the first answer" in `specs/001-personal-finance-manager/plan.md` as retired by feature 002 (`GET /ai/status`, research R-004)
-- [ ] T099 Run every quickstart scenario in `specs/002-ui-redesign/quickstart.md` (1–13), including `pnpm db:generate-perf && pnpm perf:measure && pnpm test:perf`, reduced-motion emulation and the blocked-font check; record any failure and fix it before handing over
-- [ ] T100 Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm ledger:check`, `pnpm --filter web run check:tokens` and `pnpm test:ui`; all green
+- [x] T097 [P] Update `README.md`: Tailwind v4 styling from `design/tokens.css`, the `check:tokens` and `test:perf` scripts, the three new read-only endpoints, and the design references in `design/screens/`
+- [x] T098 [P] Mark the feature 001 Complexity Tracking entry "Narrative button learns 'not configured' from the first answer" in `specs/001-personal-finance-manager/plan.md` as retired by feature 002 (`GET /ai/status`, research R-004)
+- [x] T099 Run every quickstart scenario in `specs/002-ui-redesign/quickstart.md` (1–13), including `pnpm db:generate-perf && pnpm perf:measure && pnpm test:perf`, reduced-motion emulation and the blocked-font check; record any failure and fix it before handing over
+- [x] T100 Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm ledger:check`, `pnpm --filter web run check:tokens` and `pnpm test:ui`; all green
 
 ---
 

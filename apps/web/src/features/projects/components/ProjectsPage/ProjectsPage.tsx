@@ -20,7 +20,6 @@ import { EditableProject, ProjectForm } from '../ProjectForm/ProjectForm';
 import {
   BUTTON_COMPACT,
   BUTTON_PRIMARY,
-  CARD,
   CHIP_NEUTRAL,
   LINK,
   PAGE,

@@ -150,7 +150,12 @@ function ToastView({
         </>
       )}
       {toast.kind === 'refresh-failed' ? (
-        <button type="button" className={TOAST_BUTTON} disabled={retrying} onClick={retry}>
+        <button
+          type="button"
+          className={TOAST_BUTTON}
+          disabled={retrying}
+          onClick={() => void retry()}
+        >
           {retrying ? 'Retrying…' : 'Retry'}
         </button>
       ) : (

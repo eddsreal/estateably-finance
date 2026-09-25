@@ -35,9 +35,13 @@ describe('Toast', () => {
     act(() => screen.getByRole('button', { name: 'trigger' }).click());
     const toast = screen.getByText('Transaction saved.');
     expect(toast.closest('[aria-live="polite"]')).not.toBeNull();
-    act(() => vi.advanceTimersByTime(4900));
+    act(() => {
+      vi.advanceTimersByTime(4900);
+    });
     expect(screen.getByText('Transaction saved.')).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(100));
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
     expect(screen.queryByText('Transaction saved.')).not.toBeInTheDocument();
   });
 
