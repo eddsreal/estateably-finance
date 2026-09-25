@@ -501,7 +501,7 @@ export interface paths {
         put?: never;
         /**
          * AI narrative over the similar-transaction report, streamed
-         * @description Sends the same grouped data to the configured LLM provider, with each description stripped of Markdown and HTML marks and line breaks, and streams back a short Markdown summary (one bullet per group, largest first, at most 10, the most expensive in bold) as Server-Sent Events. Requires `LLM_API_KEY`; without it the answer is `422 AI_NOT_CONFIGURED`. The provider is called once and never retried.
+         * @description Sends the same grouped data to the configured LLM provider, with each description stripped of Markdown and HTML marks and line breaks, and streams back a short prose summary in Markdown (one or two paragraphs, the most expensive group in bold) as Server-Sent Events. Requires `LLM_API_KEY`; without it the answer is `422 AI_NOT_CONFIGURED`. The provider is called once and never retried.
          *
          *     **Before any text** the status line is not yet sent, so failures keep their JSON error responses: a provider rate limit `503 AI_RATE_LIMITED`, any other provider failure or an answer with no text `502 AI_PROVIDER_ERROR`, and no text within `LLM_TIMEOUT_MS` `504 AI_TIMEOUT`, counted from the provider call. Text means at least one non-whitespace character.
          *

@@ -216,8 +216,8 @@ set `LLM_API_KEY` (for compose: `LLM_API_KEY=... docker compose up`). Without a 
 report works as usual and the summary button is disabled. If the provider fails or is slow
 before writing anything, the app shows a notice and leaves the report on screen.
 
-The summary streams in as the provider writes it: a short Markdown list, one bullet per group,
-the most expensive in bold. Stop ends it at once and keeps what arrived. If the provider fails,
+The summary streams in as the provider writes it: one or two short paragraphs of prose, with the
+most expensive group in bold. Stop ends it at once and keeps what arrived. If the provider fails,
 goes silent for `LLM_TIMEOUT_MS` or hits the length limit part-way, the text stays with an
 "incomplete" notice, the reason and a correlation id. After any ending the button reads
 Regenerate and waits 5 seconds before it can start another summary.

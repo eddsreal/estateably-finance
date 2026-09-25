@@ -80,6 +80,10 @@ presentation text and never writes to the ledger.
   "Summarizing…" remains. A failure before any text is announced only by the existing alert, and
   the "Generating summary…" status is cleared. Every summary leaves one log line with its ending
   and its correlation id.
+- Q: List or prose? → A: Prose, decided after reading a live summary. One or two short paragraphs:
+  the period total first, then the most expensive group in bold and the next few largest groups
+  by name with their totals. No list, and no combined total for the groups not named. This
+  replaces the earlier answer of one list item per group.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -114,23 +118,23 @@ piece, in order, until it matches the full answer.
 
 ### User Story 2 - Structured summary that highlights the most expensive group (Priority: P1)
 
-The summary is short and structured: one list item per group of similar transactions (at most
-10, largest first), with the most expensive group emphasised. Formatting (emphasis, list items) is rendered as it arrives,
-not shown as raw markup.
+The summary is short natural prose: the period total, then the most expensive group emphasised
+and the next few largest groups by name. Formatting (emphasis) is rendered as it arrives, not
+shown as raw markup.
 
 **Why this priority**: it is what makes the progressive text readable and useful; a stream of
 raw markup characters would look broken.
 
 **Independent Test**: with the stub sending a structured answer split mid-formatting (e.g. the
-emphasis marker in one piece and the words in the next), the page shows a list and emphasised
-text, never raw formatting characters once the piece that closes them has arrived.
+emphasis marker in one piece and the words in the next), the page shows emphasised text, never
+raw formatting characters once the piece that closes them has arrived.
 
 **Acceptance Scenarios**:
 
-1. **Given** a report with several groups, **When** the summary completes, **Then** it contains
-   one list item per group, largest first, at most 10, followed by one line with the number of
-   groups left out when there are more than 10, and the most expensive group is visually
-   emphasised.
+1. **Given** a report with several groups, **When** the summary completes, **Then** it is one or
+   two short paragraphs with no list: the period total, then the most expensive group visually
+   emphasised and the next few largest groups by name, with no combined total for groups it does
+   not name.
 2. **Given** a piece of the answer opens a formatting mark that a later piece closes, **When**
    the later piece arrives, **Then** the text is shown formatted, not with the raw marks.
 3. **Given** the provider's answer contains markup that could run code or load content (scripts,
@@ -285,9 +289,9 @@ clears the old text and streams a new one.
   ends. Individual pieces of text MUST NOT be announced as they arrive. A failure before any text
   is announced only by the existing failure alert, and the "Generating summary…" status is
   cleared.
-- **FR-008**: The narrative MUST be short and structured: one list item per group of similar
-  transactions, largest first, at most 10, then one line with the number of groups left out when
-  there are more, with the most expensive group emphasised. The instructions sent to the provider
+- **FR-008**: The narrative MUST be short natural prose, one or two paragraphs with no list: the
+  period total, then the most expensive group emphasised and the next few largest groups by name,
+  never a combined total for groups it does not name. The instructions sent to the provider
   MUST ask it to group similar transactions and highlight the most expensive, using only the
   figures given (the existing rule against computing amounts stays).
 - **FR-008a**: Before the grouped data is sent to the provider, each transaction description MUST

@@ -17,8 +17,8 @@ Three pieces change:
   - One `AbortController` per narrative is fired by an inactivity timer of `LLM_TIMEOUT_MS` or by
     the client closing the connection (R-003, R-005).
   - Failures after text end the stream as `incomplete` with a reason.
-- **Prompt**: asks for Markdown in the brief's words: one bullet per group, the most expensive
-  in bold, at most 10 bullets. `max_tokens` is 512. Descriptions are stripped of Markdown and
+- **Prompt**: asks for one or two short paragraphs of natural prose, the most expensive group
+  in bold, no list (R-007). `max_tokens` is 512. Descriptions are stripped of Markdown and
   HTML marks before they reach the provider (R-002, R-007).
 - **Web**: the Similar page reads the stream through openapi-fetch's `parseAs: 'stream'` and a
   small SSE parser (R-009). The text is rendered progressively with `react-markdown` on a strict

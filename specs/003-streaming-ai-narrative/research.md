@@ -118,11 +118,13 @@ so the extra log line keeps them visible.
 
 ## R-007 Prompt
 
-**Decision**: the system prompt asks for lightweight Markdown in the words of the brief. In
-substance: open with one sentence giving the period total. Then group similar transactions,
-one `-` bullet per group, largest total first, at most 10 bullets, and one closing line with
-the count of smaller groups left out, if any. Put the most expensive group in `**bold**`. Use
-no headings, tables, links, images or HTML. The existing rules stay: only the figures given,
+**Decision**: the system prompt asks for natural prose, one or two short paragraphs and never a
+list (clarification 2026-09-24, replacing the first design of one bullet per group). In
+substance: start with the period total, then say where the money went, starting with the most
+expensive group and naming the next few largest with their totals. Do not describe every group,
+and never give a combined total for the groups not named: a live run of the list design summed
+the left-out groups itself and got it wrong. Put the most expensive group's name in `**bold**`.
+Use no other formatting. The existing rules stay: only the figures given,
 never compute amounts, and cents divided by 100 for dollars. The user message stays the JSON of
 the grouped report. `plainText` is removed.
 

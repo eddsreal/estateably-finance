@@ -763,8 +763,8 @@ paths:
       summary: AI narrative over the similar-transaction report, streamed
       description: >
         Sends the same grouped data to the configured LLM provider, with each description
-        stripped of Markdown and HTML marks and line breaks, and streams back a short Markdown
-        summary (one bullet per group, largest first, at most 10, the most expensive in bold) as
+        stripped of Markdown and HTML marks and line breaks, and streams back a short prose
+        summary in Markdown (one or two paragraphs, the most expensive group in bold) as
         Server-Sent Events. Requires `LLM_API_KEY`; without it the answer is `422 AI_NOT_CONFIGURED`.
         The provider is called once and never retried.
 
