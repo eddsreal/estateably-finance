@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { narrativeStream, stubApi } from '../../../../test-api-stub';
+import { narrativeStream, NarrativeStream, stubApi } from '../../../../test-api-stub';
 import { SimilarPage } from './SimilarPage';
 
 const correlationId = '6f1b0c1e-8a24-4a5f-9b6d-2f3a7c1d9e10';
@@ -47,6 +47,30 @@ function completed(...pieces: string[]): () => Response {
     stream.end({ outcome: 'complete' });
     return stream.response;
   };
+}
+
+function live(): { answer: () => Response; stream: () => NarrativeStream } {
+  let stream: NarrativeStream | undefined;
+  return {
+    answer: () => {
+      stream = narrativeStream(correlationId);
+      return stream.response;
+    },
+    stream: () => stream!,
+  };
+}
+
+async function summarize() {
+  await screen.findByRole('list', { name: 'Top 5 most expensive' });
+  await userEvent.click(screen.getByRole('button', { name: '✦ Summarize with AI' }));
+}
+
+function narrativeCard(): HTMLElement {
+  return screen.getByRole('heading', { name: 'Narrative' }).parentElement!;
+}
+
+function narrativeText(): string | null | undefined {
+  return screen.queryByRole('heading', { name: 'Narrative' })?.nextElementSibling?.textContent;
 }
 
 function stubRoutes(narrative: NarrativeAnswer = completed('Unused.'), configured = true) {
@@ -266,6 +290,44 @@ describe('SimilarPage', () => {
     await userEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
     await vi.waitFor(() => expect(calls).toHaveLength(2));
     expect(calls[1]).toEqual({ from: '2026-09-01', to: '2026-09-30' });
+  });
+
+  it('grows the text piece by piece, in order, with two announcements (US1, FR-007a)', async () => {
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Generating summary…');
+    expect(screen.queryByRole('heading', { name: 'Narrative' })).not.toBeInTheDocument();
+    stream().delta('Rent ');
+    await vi.waitFor(() => expect(narrativeText()).toBe('Rent '));
+    expect(narrativeCard()).toHaveAttribute('aria-busy', 'true');
+    expect(narrativeCard()).not.toHaveAttribute('aria-live');
+    expect(status).toHaveTextContent('Generating summary…');
+    stream().delta('dominated.');
+    await vi.waitFor(() => expect(narrativeText()).toBe('Rent dominated.'));
+    stream().end({ outcome: 'complete' });
+    await vi.waitFor(() => expect(status).toHaveTextContent('Summary complete.'));
+    expect(narrativeCard()).toHaveAttribute('aria-busy', 'false');
+    expect(narrativeText()).toBe('Rent dominated.');
+    expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
+  });
+
+  it('empties the announcement on a pre-text failure and shows the notice instead', async () => {
+    stubRoutes({
+      status: 502,
+      body: { code: 'AI_PROVIDER_ERROR', message: 'The provider failed', correlationId },
+    });
+    renderPage();
+    await generate();
+    await summarize();
+    const notice = await screen.findByRole('alert');
+    expect(notice).toHaveTextContent('The provider failed');
+    expect(screen.getByRole('status')).toHaveTextContent('');
+    expect(screen.queryByRole('heading', { name: 'Narrative' })).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
   });
 
   it('opens the edit form from a top-5 transaction', async () => {

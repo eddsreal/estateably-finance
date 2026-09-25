@@ -38,8 +38,8 @@ feature 002's rule: Tailwind utilities from `design/tokens.css` only, checked by
 
 **Purpose**: the two new runtime dependencies, each with its reason in plan.md.
 
-- [X] T001 [P] Add `@anthropic-ai/sdk` `0.128.0` as an exact-pinned dependency in `apps/api/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-001)
-- [X] T002 [P] Add `react-markdown` `10.1.0` as an exact-pinned dependency in `apps/web/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-008)
+- [x] T001 [P] Add `@anthropic-ai/sdk` `0.128.0` as an exact-pinned dependency in `apps/api/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-001)
+- [x] T002 [P] Add `react-markdown` `10.1.0` as an exact-pinned dependency in `apps/web/package.json` and run `pnpm install` to update `pnpm-lock.yaml` (research R-008)
 
 **Checkpoint**: `pnpm install`, `pnpm typecheck` and `pnpm build` pass.
 
@@ -54,11 +54,11 @@ and its tests, and switch the web to the stream showing plain accumulated text.
 
 ### Contract (Principle IV)
 
-- [X] T003 Merge every fragment of `specs/003-streaming-ai-narrative/contracts/openapi-delta.yaml`, unedited, into the canonical `specs/001-personal-finance-manager/contracts/openapi.yaml` as its description says: replace `paths./reports/similar/narrative.post` with the fragment; delete `components.schemas.NarrativeResponse`; insert `NarrativeDeltaEvent` and `NarrativeEndEvent` where `NarrativeResponse` was (before `AiStatusResponse`); set `info.version` to `1.2.0`. Then run `pnpm contract:generate` to regenerate `packages/contract/src/types.ts` (never edited by hand)
+- [x] T003 Merge every fragment of `specs/003-streaming-ai-narrative/contracts/openapi-delta.yaml`, unedited, into the canonical `specs/001-personal-finance-manager/contracts/openapi.yaml` as its description says: replace `paths./reports/similar/narrative.post` with the fragment; delete `components.schemas.NarrativeResponse`; insert `NarrativeDeltaEvent` and `NarrativeEndEvent` where `NarrativeResponse` was (before `AiStatusResponse`); set `info.version` to `1.2.0`. Then run `pnpm contract:generate` to regenerate `packages/contract/src/types.ts` (never edited by hand)
 
 ### API: streaming service and endpoint (FR-001–FR-006, FR-010, FR-011, FR-013, FR-014a, research R-001, R-003–R-006)
 
-- [X] T004 Rewrite `AiService.similarNarrative(from, to, signal: AbortSignal)` in `apps/api/src/modules/ai/services/ai.service.ts` as an async generator yielding `{ type: 'delta'; text: string } | { type: 'end'; outcome: 'complete' | 'incomplete'; reason?: 'provider_error' | 'timeout' | 'length' }`:
+- [x] T004 Rewrite `AiService.similarNarrative(from, to, signal: AbortSignal)` in `apps/api/src/modules/ai/services/ai.service.ts` as an async generator yielding `{ type: 'delta'; text: string } | { type: 'end'; outcome: 'complete' | 'incomplete'; reason?: 'provider_error' | 'timeout' | 'length' }`:
   - Throw `AiNotConfiguredError` before any call when `LLM_API_KEY` is empty.
   - Per call, build `new Anthropic({ apiKey: LLM_API_KEY, baseURL: LLM_BASE_URL || 'https://api.anthropic.com', maxRetries: 0 })` and call `client.messages.stream({ model: LLM_MODEL, max_tokens: 300, system: SYSTEM_PROMPT, messages }, { signal: controller.signal })`. `LLM_MODEL` is unchanged; the prompt and cap change in US2.
   - Own one `AbortController`: abort it when the external `signal` aborts, and from an inactivity timer of `LLM_TIMEOUT_MS` (default 10000) armed at the provider call and reset on each text delta, recording `timedOut`. Do not use the SDK's `timeout` option.
@@ -77,14 +77,14 @@ and its tests, and switch the web to the stream showing plain accumulated text.
     - an external abort yields nothing more;
     - exactly one fetch call per narrative;
     - the request goes to `${LLM_BASE_URL}/v1/messages` with the `x-api-key` and `anthropic-version` headers and `model` `claude-haiku-4-5-20251001`.
-- [X] T005 Rewrite `AiController.narrative` in `apps/api/src/modules/ai/controllers/ai.controller.ts` with `@Req() req: IncomingMessage` and `@Res() res: ServerResponse` from `node:http`:
+- [x] T005 Rewrite `AiController.narrative` in `apps/api/src/modules/ai/controllers/ai.controller.ts` with `@Req() req: IncomingMessage` and `@Res() res: ServerResponse` from `node:http`:
   - Create an `AbortController`, aborted on `res.on('close')` when `!res.writableEnded`.
   - Pull the first event from `similarNarrative(body.from, body.to, signal)` before writing anything, so a thrown domain error reaches the global `HttpExceptionFilter` unchanged.
   - Then `res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' })`, `flushHeaders()`, and write every event through a local one-line `sseEvent(name, data)`: `event: <name>\ndata: <JSON.stringify(data)>\n\n`. `delta` carries `{ text }`; `end` carries `{ outcome }` or `{ outcome, reason }`. Then `res.end()`.
   - When the generator returns without an `end` because the client closed, write nothing more.
   - Log exactly one line through `buildLogger()` from `apps/api/src/common/logging.interceptor/logging.interceptor.ts` when the narrative finishes, with `correlationId` (`correlationIdOf(req)`) and `outcome`: `complete`, `incomplete` with its `reason`, or `client_closed` (FR-014a).
   - Delete `apps/api/src/modules/ai/dtos/narrative-response.dto.ts` and `narrative-response.dto.spec.ts`. `getAiStatus` is unchanged (depends on T003, T004).
-- [X] T006 Rewrite `apps/api/test/ai-narrative.e2e-spec.ts` (FR-012).
+- [x] T006 Rewrite `apps/api/test/ai-narrative.e2e-spec.ts` (FR-012).
   - **Stub**: keep the `node:http` stub, but answer `/v1/messages` in the provider's SSE format: `message_start`, `content_block_start`, `content_block_delta` (`text_delta`) per piece, `content_block_stop`, `message_delta` with `stop_reason`, and `message_stop`. It records each request and whether its connection closed, with a timestamp. Modes:
     - `ok`: three pieces, `end_turn`;
     - `gated`: the second piece is held until the test releases it;
@@ -116,9 +116,9 @@ and its tests, and switch the web to the stream showing plain accumulated text.
 
 ### Web: stream reader and hook (research R-009)
 
-- [X] T007 [P] Create `apps/web/src/shared/lib/sse.ts` exporting `async function* parseSse(stream: ReadableStream<string>): AsyncGenerator<{ event: string; data: string }>`. It buffers across chunks, splits on a blank line, and reads the `event:` and `data:` lines of each block. Add `sse.test.ts` covering an event split across chunks, several events in one chunk, a trailing partial block ignored at close, and default `event` `message` when the line is absent
-- [X] T008 [P] In `apps/web/src/test-api-stub.ts`, let a route handler return a `Response`, which is passed through unchanged. Every other route keeps its current JSON behaviour
-- [X] T009 Create `apps/web/src/features/similar/hooks/useNarrative.ts` with its test `useNarrative.test.tsx`, exposing `{ status, text, reason, correlationId, start(range), stop(), clear() }`:
+- [x] T007 [P] Create `apps/web/src/shared/lib/sse.ts` exporting `async function* parseSse(stream: ReadableStream<string>): AsyncGenerator<{ event: string; data: string }>`. It buffers across chunks, splits on a blank line, and reads the `event:` and `data:` lines of each block. Add `sse.test.ts` covering an event split across chunks, several events in one chunk, a trailing partial block ignored at close, and default `event` `message` when the line is absent
+- [x] T008 [P] In `apps/web/src/test-api-stub.ts`, let a route handler return a `Response`, which is passed through unchanged. Every other route keeps its current JSON behaviour
+- [x] T009 Create `apps/web/src/features/similar/hooks/useNarrative.ts` with its test `useNarrative.test.tsx`, exposing `{ status, text, reason, correlationId, start(range), stop(), clear() }`:
   - `status` is `'idle' | 'streaming' | 'complete' | 'stopped' | 'incomplete'`; `reason` is `'provider_error' | 'timeout' | 'length' | 'connection' | undefined`.
   - `start` aborts any previous controller, clears text, sets `streaming`, and calls `api.POST('/reports/similar/narrative', { body: range, parseAs: 'stream', signal })`.
   - On `error` the hook returns to `idle` and passes the error to an `onError` option (the page keeps today's `AI_NOT_CONFIGURED` / failure-notice handling).
@@ -126,8 +126,8 @@ and its tests, and switch the web to the stream showing plain accumulated text.
   - `stop()` aborts and sets `stopped`, keeping text. `clear()` aborts and returns to `idle` with empty text. Unmount aborts. An `AbortError` never changes state.
   - The tests drive a controllable `ReadableStream` through the T008 stub.
   - Depends on T003, T007, T008.
-- [X] T010 Switch `apps/web/src/features/similar/components/SimilarPage/SimilarPage.tsx` from the `narrative` `useMutation` to `useNarrative`. `generate()` calls `clear()`. The narrative card shows while `text` is not empty, with `text` as plain text in a `whitespace-pre-wrap` paragraph (formatting arrives in US2). Pre-text failures keep today's `aiRejected` / `aiError` notice, Try again and Copy ID. Update `SimilarPage.test.tsx` so every existing narrative case uses a streamed `Response` (a one-delta stream plus `end` `complete` for the success case, JSON errors unchanged) (depends on T009)
-- [X] T011 Run `pnpm contract:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e` and `pnpm test:ui`. `e2e/specs/redesign-states.spec.ts` (pre-text 502 notice) and `e2e/specs/story-6-similar.spec.ts` (no key) must pass unchanged. Fix only what this phase broke (depends on T003–T010)
+- [x] T010 Switch `apps/web/src/features/similar/components/SimilarPage/SimilarPage.tsx` from the `narrative` `useMutation` to `useNarrative`. `generate()` calls `clear()`. The narrative card shows while `text` is not empty, with `text` as plain text in a `whitespace-pre-wrap` paragraph (formatting arrives in US2). Pre-text failures keep today's `aiRejected` / `aiError` notice, Try again and Copy ID. Update `SimilarPage.test.tsx` so every existing narrative case uses a streamed `Response` (a one-delta stream plus `end` `complete` for the success case, JSON errors unchanged) (depends on T009)
+- [x] T011 Run `pnpm contract:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e` and `pnpm test:ui`. `e2e/specs/redesign-states.spec.ts` (pre-text 502 notice) and `e2e/specs/story-6-similar.spec.ts` (no key) must pass unchanged. Fix only what this phase broke (depends on T003–T010)
 
 **Checkpoint**: the API is complete except the prompt, and CI is green. The Similar page streams
 plain text. Quickstart scenarios 1, 2, 5 and 8 pass.
@@ -143,7 +143,7 @@ when it starts and once when it completes.
 piece by piece in order until it equals the full answer. Pre-text failures and the no-key state
 behave as today.
 
-- [ ] T012 [US1] In `apps/web/src/features/similar/components/SimilarPage/SimilarPage.tsx`, render the narrative card from the first delta. Set `aria-busy="true"` on it while `status === 'streaming'` and never make it a live region. Add one visually hidden `role="status"` element that reads "Generating summary…" while streaming and "Summary complete." on `complete`, and is emptied when a pre-text failure occurs (the existing `role="alert"` notice speaks) (FR-007a). Extend `SimilarPage.test.tsx`: text after delta 1, then after delta 2, in order; the final text equals the concatenation; the status sequence is exactly "Generating summary…" then "Summary complete."; a pre-text 502 empties the status and shows today's notice; the report stays on screen throughout
+- [x] T012 [US1] In `apps/web/src/features/similar/components/SimilarPage/SimilarPage.tsx`, render the narrative card from the first delta. Set `aria-busy="true"` on it while `status === 'streaming'` and never make it a live region. Add one visually hidden `role="status"` element that reads "Generating summary…" while streaming and "Summary complete." on `complete`, and is emptied when a pre-text failure occurs (the existing `role="alert"` notice speaks) (FR-007a). Extend `SimilarPage.test.tsx`: text after delta 1, then after delta 2, in order; the final text equals the concatenation; the status sequence is exactly "Generating summary…" then "Summary complete."; a pre-text 502 empties the status and shows today's notice; the report stays on screen throughout
 
 **Checkpoint**: US1 acceptance scenarios 1–4 pass. The user reviews the growing text.
 

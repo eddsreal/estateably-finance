@@ -34,7 +34,7 @@ import {
   TOOLBAR_FIELD,
   TRUNCATE,
 } from '../../../../shared/lib/styles';
-import { useNarrative } from '../../hooks/useNarrative';
+import { NarrativeStatus, useNarrative } from '../../hooks/useNarrative';
 
 type Range = { from: string; to: string };
 
@@ -42,6 +42,11 @@ const CAPTION =
   'flex justify-between gap-12 border-b border-sand-350 px-18 pt-14 pb-10 font-mono text-11 tracking-wide text-text-2 uppercase';
 
 const AI_DISABLED_REASON = 'Disabled until an AI key is configured.';
+
+const NARRATIVE_ANNOUNCEMENT: Partial<Record<NarrativeStatus, string>> = {
+  streaming: 'Generating summary…',
+  complete: 'Summary complete.',
+};
 
 export function SimilarPage() {
   const [from, setFrom] = useState(`${localToday().slice(0, 7)}-01`);
@@ -234,8 +239,9 @@ export function SimilarPage() {
           </button>
         </div>
       )}
+      <output className="sr-only">{NARRATIVE_ANNOUNCEMENT[narrative.status] ?? ''}</output>
       {narrative.text !== '' && (
-        <div className={CARD}>
+        <div className={CARD} aria-busy={narrative.status === 'streaming'}>
           <h2 className={SECTION_TITLE}>Narrative</h2>
           <p className="text-15 whitespace-pre-wrap text-text-1">{narrative.text}</p>
         </div>
