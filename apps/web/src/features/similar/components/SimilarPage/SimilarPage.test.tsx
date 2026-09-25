@@ -436,6 +436,53 @@ describe('SimilarPage', () => {
     expect(signals[0].aborted).toBe(true);
   });
 
+  it.each([
+    ['provider_error', 'The AI provider failed.'],
+    ['timeout', 'The AI provider stopped answering.'],
+    ['length', 'The summary hit its length limit.'],
+  ])(
+    'keeps the text with an incomplete notice for %s (US4, FR-003, FR-014)',
+    async (reason, line) => {
+      const { answer, stream } = live();
+      stubRoutes(answer);
+      renderPage();
+      await generate();
+      await summarize();
+      stream().delta('Rent ');
+      stream().delta('led.');
+      stream().end({ outcome: 'incomplete', reason });
+      await vi.waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent('Summary incomplete.'),
+      );
+      expect(narrativeText()).toContain('Rent led.');
+      expect(narrativeCard()).toHaveTextContent('The summary is incomplete.');
+      expect(narrativeCard()).toHaveTextContent(line);
+      expect(narrativeCard()).toHaveTextContent(`Correlation ID ${correlationId}`);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Top 5 most expensive' })).toBeInTheDocument();
+    },
+  );
+
+  it('shows the connection-lost notice when the body ends without end, and copies the id', async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue();
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const { answer, stream } = live();
+    stubRoutes(answer);
+    renderPage();
+    await generate();
+    await summarize();
+    stream().delta('Rent led.');
+    stream().close();
+    await vi.waitFor(() => expect(narrativeCard()).toHaveTextContent('The connection was lost.'));
+    expect(narrativeText()).toContain('Rent led.');
+    await user.click(within(narrativeCard()).getByRole('button', { name: 'Copy ID' }));
+    expect(writeText).toHaveBeenCalledWith(correlationId);
+    expect(
+      await within(narrativeCard()).findByRole('button', { name: 'Copied' }),
+    ).toBeInTheDocument();
+  });
+
   it('empties the announcement on a pre-text failure and shows the notice instead', async () => {
     stubRoutes({
       status: 502,

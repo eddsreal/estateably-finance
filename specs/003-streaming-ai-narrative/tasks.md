@@ -214,7 +214,7 @@ correlation id.
 **Independent Test**: a stream of two deltas then `end` `incomplete` / `timeout` (and one that
 closes without `end`) leaves both deltas visible with the notice, reason line and Copy ID.
 
-- [ ] T018 [US4] In `SimilarPage.tsx`, when `status === 'incomplete'`, show a warning banner under the narrative text using the same `BANNER_WARNING` pattern as the existing failure notice. It contains:
+- [x] T018 [US4] In `SimilarPage.tsx`, when `status === 'incomplete'`, show a warning banner under the narrative text using the same `BANNER_WARNING` pattern as the existing failure notice. It contains:
   - the title "The summary is incomplete.";
   - one reason line: `provider_error` → "The AI provider failed.", `timeout` → "The AI provider stopped answering.", `length` → "The summary hit its length limit.", `connection` → "The connection was lost.";
   - "Correlation ID {correlationId}" with a Copy ID button, shown when `correlationId` is known.

@@ -34,7 +34,7 @@ import {
   TOOLBAR_FIELD,
   TRUNCATE,
 } from '../../../../shared/lib/styles';
-import { NarrativeStatus, useNarrative } from '../../hooks/useNarrative';
+import { NarrativeReason, NarrativeStatus, useNarrative } from '../../hooks/useNarrative';
 import { NarrativeText } from './NarrativeText';
 
 type Range = { from: string; to: string };
@@ -48,6 +48,14 @@ const NARRATIVE_ANNOUNCEMENT: Partial<Record<NarrativeStatus, string>> = {
   streaming: 'Generating summary…',
   complete: 'Summary complete.',
   stopped: 'Summary stopped.',
+  incomplete: 'Summary incomplete.',
+};
+
+const INCOMPLETE_REASON: Record<NarrativeReason, string> = {
+  provider_error: 'The AI provider failed.',
+  timeout: 'The AI provider stopped answering.',
+  length: 'The summary hit its length limit.',
+  connection: 'The connection was lost.',
 };
 
 export function SimilarPage() {
@@ -140,6 +148,7 @@ export function SimilarPage() {
   function requestNarrative() {
     if (!range) return;
     setAiError(null);
+    setCopied(false);
     void narrative.start(range);
   }
 
@@ -269,11 +278,39 @@ export function SimilarPage() {
         </div>
       )}
       <output className="sr-only">{NARRATIVE_ANNOUNCEMENT[narrative.status] ?? ''}</output>
-      {narrative.text !== '' && (
+      {(narrative.text !== '' || narrative.status === 'incomplete') && (
         <div className={CARD} aria-busy={narrative.status === 'streaming'}>
           <h2 className={SECTION_TITLE}>Narrative</h2>
           <NarrativeText text={narrative.text} />
           {narrative.status === 'stopped' && <p className="mt-8 text-13 text-text-2">Stopped.</p>}
+          {narrative.status === 'incomplete' && (
+            <div className={`${BANNER_WARNING} mt-12`}>
+              <span className="flex min-w-0 flex-1 flex-col gap-2">
+                <span className="text-14 font-semibold">The summary is incomplete.</span>
+                {narrative.reason && (
+                  <span className="text-13">{INCOMPLETE_REASON[narrative.reason]}</span>
+                )}
+                {narrative.correlationId && (
+                  <span className="font-mono text-12 break-all">
+                    Correlation ID {narrative.correlationId}
+                  </span>
+                )}
+              </span>
+              {narrative.correlationId && (
+                <button
+                  type="button"
+                  className={`${BUTTON_COMPACT} border-warning-line bg-warning-surface text-warning-ink`}
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(narrative.correlationId ?? '')
+                      .then(() => setCopied(true));
+                  }}
+                >
+                  {copied ? 'Copied' : 'Copy ID'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {range === null ? (
